@@ -1,30 +1,37 @@
 import { useState } from 'react';
-import { api } from '../lib/api';
+import { api, LoginResponse } from '../lib/api';
 
 export function useAuth() {
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    const login = async (email: string, password: string, rememberMe: boolean) => {
+    const login = async (email: string, password: string): Promise<boolean> => {
         setIsLoading(true);
+        setError(null);
+
         try {
-            const response = await api.post('/auth/login', {
+            const loginRequest = {
                 email,
                 password
-            });
+            };
 
-            if (response.ok) {
-                const data = await response.json();
-                localStorage.setItem('authToken', data.token);
-                window.location.href = '/dashboard';
+            const response = await api.post<LoginResponse>('/auth/login', loginRequest);
+
+            if (response.status >= 200 && response.status < 300 && response.data) {
+                localStorage.setItem('authToken', response.data.token);
+                localStorage.setItem('tokenType', response.data.tokenType || 'Bearer');
+                return true;
             } else {
-                throw new Error('Giriş başarısız');
+                throw new Error(response.message || `HTTP error! status: ${response.status}`);
             }
         } catch (error) {
-            alert('Giriş hatası: ' + (error instanceof Error ? error.message : 'Bilinmeyen hata'));
+            const errorMessage = error instanceof Error ? error.message : 'Giriş sırasında bir hata oluştu';
+            setError(errorMessage);
+            return false;
         } finally {
             setIsLoading(false);
         }
     };
 
-    return { login, isLoading };
+    return { login, isLoading, error };
 }

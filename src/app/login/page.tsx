@@ -24,7 +24,7 @@ export default function LoginPage() {
                             </div>
                             <div>
                                 <h3>Gerçek Zamanlı Veri Senkronizasyonu</h3>
-                                <p>Google ve Facebook'tan anlık lead çekme</p>
+                                <p>Google ve Facebooktan anlık lead çekme</p>
                             </div>
                         </div>
 
@@ -61,7 +61,7 @@ export default function LoginPage() {
 
             <div className="right-panel">
                 <div className="form-header">
-                    <h1>CRM Pro'ya Hoş Geldiniz</h1>
+                    <h1>CRM Proya Hoş Geldiniz</h1>
                     <p>Lütfen hesabınıza giriş yapın</p>
                 </div>
 
