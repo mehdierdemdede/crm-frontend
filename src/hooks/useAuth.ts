@@ -18,7 +18,7 @@ export function useAuth() {
             const response = await api.post<LoginResponse>('/auth/login', loginRequest);
 
             if (response.status >= 200 && response.status < 300 && response.data) {
-                localStorage.setItem('authToken', response.data.token);
+                localStorage.setItem('authToken', response.data.accessToken);
                 localStorage.setItem('tokenType', response.data.tokenType || 'Bearer');
                 return true;
             } else {

@@ -6,11 +6,11 @@ import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 
 const INITIAL_MEMBERS = [
-    { id: "m1", name: "Ahmet Yılmaz", email: "ahmet@example.com", role: "Admin", status: "active", totalActivities: 25 },
-    { id: "m2", name: "Ayşe Kaya", email: "ayse@example.com", role: "Member", status: "active", totalActivities: 18 },
-    { id: "m3", name: "Mehmet Demir", email: "mehmet@example.com", role: "Member", status: "invited", totalActivities: 4 },
-    { id: "m4", name: "Zeynep Çelik", email: "zeynep@example.com", role: "Member", status: "active", totalActivities: 12 },
-    { id: "m5", name: "Kemal Öztürk", email: "kemal@example.com", role: "Viewer", status: "invited", totalActivities: 0 },
+    { id: "m1", name: "Ahmet Yılmaz", email: "ahmet@example.com", role: "ADMIN", status: "active", totalActivities: 25 },
+    { id: "m2", name: "Ayşe Kaya", email: "ayse@example.com", role: "USER", status: "active", totalActivities: 18 },
+    { id: "m3", name: "Mehmet Demir", email: "mehmet@example.com", role: "USER", status: "invited", totalActivities: 4 },
+    { id: "m4", name: "Zeynep Çelik", email: "zeynep@example.com", role: "USER", status: "active", totalActivities: 12 },
+    { id: "m5", name: "Kemal Öztürk", email: "kemal@example.com", role: "USER", status: "invited", totalActivities: 0 },
 ];
 
 export default function MembersPage() {
@@ -106,9 +106,8 @@ export default function MembersPage() {
                             className="px-3 py-2 rounded border w-full sm:w-auto"
                         >
                             <option value="all">Tüm Roller</option>
-                            <option value="Admin">Admin</option>
-                            <option value="Member">Üye</option>
-                            <option value="Viewer">Görüntüleyici</option>
+                            <option value="ADMIN">Admin</option>
+                            <option value="USER">Üye</option>
                         </select>
                     </div>
 
