@@ -20,6 +20,8 @@ import {
     Legend,
 } from "recharts";
 import { Input } from "@/components/Input";
+import { Download } from "lucide-react";
+
 
 // Dummy data
 const dummyStatusData = [
@@ -64,12 +66,53 @@ export default function ReportsPage() {
         }));
     };
 
+    const exportCSV = () => {
+        const headers = ["Kullanıcı", "Satış", "Toplam Lead"];
+        const rows = dummyUserPerformance.map(u => [u.name, u.sales, u.total]);
+        const csvContent =
+            [headers, ...rows].map(e => e.join(",")).join("\n");
+
+        const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        link.setAttribute("download", "report.csv");
+        link.click();
+    };
+
+    const exportPDF = async () => {
+        const { jsPDF } = await import("jspdf");
+        const doc = new jsPDF();
+        doc.text("Kullanıcı Performansı Raporu", 14, 16);
+
+        let y = 30;
+        dummyUserPerformance.forEach((u) => {
+            doc.text(`${u.name} - Satış: ${u.sales} / Toplam: ${u.total}`, 14, y);
+            y += 10;
+        });
+
+        doc.save("report.pdf");
+    };
+
+
     return (
         <Layout title="Reports" subtitle="Detaylı analiz ve raporlar">
             {/* 🔹 Filtre Alanı */}
             <div className="col-span-12">
+
                 <Card>
                     <CardHeader>Filtreler</CardHeader>
+
+                    <CardContent>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button variant="outline" onClick={exportCSV}>
+                                <Download className="h-4 w-4 mr-1"/> Export CSV
+                            </Button>
+                            <Button variant="outline" onClick={exportPDF}>
+                                <Download className="h-4 w-4 mr-1"/> Export PDF
+                            </Button>
+                        </div>
+                    </CardContent>
                     <CardContent>
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                             <div>
@@ -77,7 +120,7 @@ export default function ReportsPage() {
                                 <Input
                                     type="date"
                                     value={filters.startDate}
-                                    onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
+                                    onChange={(e) => setFilters({...filters, startDate: e.target.value})}
                                 />
                             </div>
                             <div>
@@ -85,7 +128,7 @@ export default function ReportsPage() {
                                 <Input
                                     type="date"
                                     value={filters.endDate}
-                                    onChange={(e) => setFilters({ ...filters, endDate: e.target.value })}
+                                    onChange={(e) => setFilters({...filters, endDate: e.target.value})}
                                 />
                             </div>
                             <div>
@@ -93,7 +136,7 @@ export default function ReportsPage() {
                                 <select
                                     className="w-full border rounded-md p-2"
                                     value={filters.campaign}
-                                    onChange={(e) => setFilters({ ...filters, campaign: e.target.value })}
+                                    onChange={(e) => setFilters({...filters, campaign: e.target.value})}
                                 >
                                     <option value="">Hepsi</option>
                                     <option value="Facebook A">Facebook A</option>
@@ -105,7 +148,7 @@ export default function ReportsPage() {
                                 <select
                                     className="w-full border rounded-md p-2"
                                     value={filters.user}
-                                    onChange={(e) => setFilters({ ...filters, user: e.target.value })}
+                                    onChange={(e) => setFilters({...filters, user: e.target.value})}
                                 >
                                     <option value="">Hepsi</option>
                                     <option value="Ahmet">Ahmet</option>
@@ -143,6 +186,8 @@ export default function ReportsPage() {
                     </CardContent>
                 </Card>
             </div>
+
+
 
             {/* 🔹 Özet Kartlar */}
             <div className="col-span-12 md:col-span-3">
@@ -187,10 +232,10 @@ export default function ReportsPage() {
                                     label
                                 >
                                     {dummyStatusData.map((_, i) => (
-                                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                                        <Cell key={i} fill={COLORS[i % COLORS.length]}/>
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip/>
                             </PieChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -204,11 +249,11 @@ export default function ReportsPage() {
                     <CardContent className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
                             <LineChart data={dummyTimelineData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="leads" stroke="#2563eb" />
+                                <CartesianGrid strokeDasharray="3 3"/>
+                                <XAxis dataKey="date"/>
+                                <YAxis/>
+                                <Tooltip/>
+                                <Line type="monotone" dataKey="leads" stroke="#2563eb"/>
                             </LineChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -222,13 +267,13 @@ export default function ReportsPage() {
                     <CardContent className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={dummyUserPerformance}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="sales" name="Satış" fill="#16a34a" />
-                                <Bar dataKey="total" name="Toplam Lead" fill="#2563eb" />
+                                <CartesianGrid strokeDasharray="3 3"/>
+                                <XAxis dataKey="name"/>
+                                <YAxis/>
+                                <Tooltip/>
+                                <Legend/>
+                                <Bar dataKey="sales" name="Satış" fill="#16a34a"/>
+                                <Bar dataKey="total" name="Toplam Lead" fill="#2563eb"/>
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>

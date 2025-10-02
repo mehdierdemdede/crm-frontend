@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import AddMemberModal from "@/components/AddMemberModal";
+import Link from "next/link"; // en üstte ekle
+
 
 interface Member {
     id: number;
@@ -18,9 +20,59 @@ interface Member {
     autoAssign: boolean;
 }
 
+// Dummy üyeler
+const DUMMY_MEMBERS: Member[] = [
+    {
+        id: 1,
+        name: "Ahmet Yılmaz",
+        email: "ahmet@example.com",
+        role: "USER",
+        langs: ["TR", "EN"],
+        capacityPerDay: 10,
+        assignedToday: 6,
+        active: true,
+        autoAssign: true,
+    },
+    {
+        id: 2,
+        name: "Ayşe Kaya",
+        email: "ayse@example.com",
+        role: "ADMIN",
+        langs: ["TR", "DE"],
+        capacityPerDay: 15,
+        assignedToday: 15,
+        active: true,
+        autoAssign: false,
+    },
+    {
+        id: 3,
+        name: "Mehmet Demir",
+        email: "mehmet@example.com",
+        role: "USER",
+        langs: ["EN"],
+        capacityPerDay: 8,
+        assignedToday: 3,
+        active: false,
+        autoAssign: false,
+    },
+];
+
+const LANG_COLORS: Record<string, string> = {
+    TR: "bg-red-100 text-red-800",
+    EN: "bg-blue-100 text-blue-800",
+    DE: "bg-yellow-100 text-yellow-800",
+    AR: "bg-green-100 text-green-800",
+    AL: "bg-purple-100 text-purple-800",
+};
+
 export default function MembersPage() {
     const [members, setMembers] = useState<Member[]>([]);
     const [openModal, setOpenModal] = useState(false);
+
+    useEffect(() => {
+        // sayfa açıldığında dummy üyeleri yükle
+        setMembers(DUMMY_MEMBERS);
+    }, []);
 
     const handleSave = (newMember: any) => {
         setMembers((prev) => [
@@ -38,7 +90,7 @@ export default function MembersPage() {
             <div className="col-span-12">
                 <Card>
                     <CardHeader className="flex items-center justify-between">
-                        <span>Üyeler</span>
+                        <span className="font-semibold">Üyeler</span>
                         <Button variant="primary" onClick={() => setOpenModal(true)}>
                             + Yeni Üye
                         </Button>
@@ -59,14 +111,20 @@ export default function MembersPage() {
                             <tbody>
                             {members.map((m) => (
                                 <tr key={m.id} className="border-t">
-                                    <td className="p-2">{m.name}</td>
+                                    <td className="p-2">
+                                        <Link href={`/members/${m.id}`} className="text-blue-600 hover:underline">
+                                            {m.name}
+                                        </Link>
+                                    </td>
                                     <td className="p-2">{m.email}</td>
                                     <td className="p-2">{m.role}</td>
                                     <td className="p-2">
                                         {m.langs.map((l) => (
                                             <span
                                                 key={l}
-                                                className="inline-block bg-gray-200 text-xs rounded px-2 py-0.5 mr-1"
+                                                className={`inline-block text-xs rounded px-2 py-0.5 mr-1 ${
+                                                    LANG_COLORS[l] || "bg-gray-200 text-gray-700"
+                                                }`}
                                             >
                           {l}
                         </span>
@@ -93,14 +151,22 @@ export default function MembersPage() {
                       </span>
                                     </td>
                                     <td className="p-2">
-                                        {m.active ? (
-                                            <span className="text-green-600 font-medium">Aktif</span>
-                                        ) : (
-                                            <span className="text-red-600 font-medium">Pasif</span>
-                                        )}
+                      <span
+                          className={`px-2 py-0.5 text-xs rounded ${
+                              m.active ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
+                          }`}
+                      >
+                        {m.active ? "Aktif" : "Pasif"}
+                      </span>
                                     </td>
                                     <td className="p-2">
-                                        {m.autoAssign ? "✔" : "✖"}
+                      <span
+                          className={`px-2 py-0.5 text-xs rounded ${
+                              m.autoAssign ? "bg-blue-100 text-blue-700" : "bg-gray-200 text-gray-600"
+                          }`}
+                      >
+                        {m.autoAssign ? "✔ Evet" : "✖ Hayır"}
+                      </span>
                                     </td>
                                 </tr>
                             ))}
