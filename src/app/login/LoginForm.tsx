@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useRouter } from 'next/navigation';
+import { Input } from '@/components/Input';
+import { Button } from '@/components/Button';
+import { Mail, Lock } from 'lucide-react';
 
 export default function LoginForm() {
     const [email, setEmail] = useState('');
@@ -13,85 +16,57 @@ export default function LoginForm() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-
         const success = await login(email, password);
-        if (success) {
-            // Başarılı giriş - dashboard'a yönlendir
-            router.push('/dashboard');
-        }
+        if (success) router.push('/dashboard');
     };
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
-                <div style={{
-                    color: 'var(--error)',
-                    backgroundColor: '#fee',
-                    padding: '12px',
-                    borderRadius: '8px',
-                    marginBottom: '20px',
-                    border: '1px solid var(--error)'
-                }}>
-                    <i className="fas fa-exclamation-circle" style={{ marginRight: '8px' }}></i>
+                <div className="text-red-700 bg-red-50 p-3 rounded-md border border-red-200">
                     {error}
                 </div>
             )}
 
-            <div className="form-group">
-                <label htmlFor="email">E-posta Adresi</label>
-                <div className="input-with-icon">
-                    <i className="fas fa-envelope"></i>
-                    <input
-                        type="email"
-                        id="email"
-                        placeholder="ornek@firma.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                        disabled={isLoading}
-                    />
-                </div>
-            </div>
+            <Input
+                label="E-posta Adresi"
+                type="email"
+                placeholder="ornek@firma.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isLoading}
+                icon={<Mail className="h-4 w-4 text-gray-400" />}
+            />
 
-            <div className="form-group">
-                <label htmlFor="password">Şifre</label>
-                <div className="input-with-icon">
-                    <i className="fas fa-lock"></i>
-                    <input
-                        type="password"
-                        id="password"
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        disabled={isLoading}
-                    />
-                </div>
-            </div>
+            <Input
+                label="Şifre"
+                type="password"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                disabled={isLoading}
+                icon={<Lock className="h-4 w-4 text-gray-400" />}
+            />
 
-            <div className="remember-forgot">
-                <div className="remember">
+            <div className="flex items-center justify-between text-sm">
+                <label className="inline-flex items-center gap-2 select-none">
                     <input
                         type="checkbox"
-                        id="remember"
                         checked={rememberMe}
                         onChange={(e) => setRememberMe(e.target.checked)}
                         disabled={isLoading}
+                        className="rounded border-gray-300"
                     />
-                    <label htmlFor="remember">Beni hatırla</label>
-                </div>
-
-                <a href="#" className="forgot-password">Şifremi unuttum?</a>
+                    Beni hatırla
+                </label>
+                <a href="#" className="text-blue-600 hover:underline">Şifremi unuttum?</a>
             </div>
 
-            <button
-                type="submit"
-                className="login-button"
-                disabled={isLoading}
-            >
-                {isLoading ? 'Giriş yapılıyor...' : 'Giriş Yap'}
-                {isLoading && <span className="loading"></span>}
-            </button>
+            <Button type="submit" variant="primary" size="md" isLoading={isLoading}>
+                Giriş Yap
+            </Button>
         </form>
     );
 }

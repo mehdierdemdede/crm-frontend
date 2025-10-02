@@ -1,126 +1,210 @@
 "use client";
-import React, { useState } from "react";
-// Özel Button bileşeniniz burada import ediliyor
+
+import { useState } from "react";
 import { Button } from "./Button";
-import {inviteUser, InviteUserRequest, Role} from "@/lib/api";
 
+type Role = "USER" | "ADMIN" | "SUPER_ADMIN";
 
-interface Props {
-    onClose: () => void;
-    onAdd: (member: any) => void;
-    remainingSlots: number;
+export interface NewMemberInput {
+    name: string;
+    email: string;
+    role: Role;
+    langs: string[];
+    capacityPerDay: number;
+    active: boolean;
+    autoAssign: boolean;
 }
-const roleOptions: { label: string; value: Role }[] = [
-    { label: "Member", value: "USER" },
-    { label: "Admin", value: "ADMIN" },
-    { label: "Super Admin", value: "SUPER_ADMIN" },
+
+interface AddMemberModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onSave: (member: NewMemberInput) => void;
+}
+
+const ALL_LANGS = [
+    { value: "TR", label: "Türkçe" },
+    { value: "EN", label: "İngilizce" },
+    { value: "DE", label: "Almanca" },
+    { value: "AR", label: "Arapça" },
+    { value: "AL", label: "Arnavutça" },
 ];
 
-export default function AddMemberModal({ onClose, onAdd, remainingSlots }: Props) {
+export default function AddMemberModal({
+                                           isOpen,
+                                           onClose,
+                                           onSave,
+                                       }: AddMemberModalProps) {
     const [name, setName] = useState("");
     const [email, setEmail] = useState("");
     const [role, setRole] = useState<Role>("USER");
+    const [langs, setLangs] = useState<string[]>([]);
+    const [capacityPerDay, setCapacityPerDay] = useState<number>(30);
+    const [active, setActive] = useState<boolean>(true);
+    const [autoAssign, setAutoAssign] = useState<boolean>(false);
+
     const [busy, setBusy] = useState(false);
-    const [message, setMessage] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [error, setError] = useState<string>("");
 
-    const handleSubmit = async (e?: React.FormEvent) => {
-        e?.preventDefault();
-        setBusy(true);
+    if (!isOpen) return null;
+
+    const toggleLang = (val: string) => {
+        setLangs((prev) =>
+            prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val]
+        );
+    };
+
+    const validate = (): string[] => {
+        const errs: string[] = [];
+        if (!name.trim()) errs.push("Ad Soyad zorunludur.");
+        if (!email.trim() || !email.includes("@")) errs.push("Geçerli bir e-posta giriniz.");
+        if (langs.length === 0) errs.push("En az bir dil seçiniz.");
+        if (capacityPerDay <= 0) errs.push("Günlük kapasite 1 veya üzeri olmalıdır.");
+        return errs;
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError("");
+
+        const errs = validate();
+        if (errs.length) {
+            setError(errs.join(" "));
+            return;
+        }
+
         try {
+            setBusy(true);
 
-            const requestData: InviteUserRequest = {
-                firstName: name,
-                email: email,
-                role: role,
-            };
+            // Backend entegrasyonu burada yapılacak:
+            // await api.post('/members', { name, email, role, langs, capacityPerDay, active, autoAssign });
 
+            onSave({
+                name,
+                email,
+                role,
+                langs,
+                capacityPerDay,
+                active,
+                autoAssign,
+            });
 
-
-            const response = await inviteUser(requestData);
-
-            if (response.data) {
-                setMessage("Davet başarıyla gönderildi.");
-                onAdd(response.data); // Backend'den dönen kullanıcıyı ekle
-                // ...
-            } else {
-                setError(response.message || "Bir hata oluştu.");
-            }
-
+            onClose();
         } catch (err: any) {
-            setError(err.message);
+            setError(err?.message || "Bir hata oluştu.");
         } finally {
             setBusy(false);
         }
     };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-            <div className="bg-white rounded-lg shadow-lg w-full max-w-md p-5">
-                <h3 className="text-lg font-semibold mb-4">Yeni Takım Üyesi Ekle</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                    Kullanıcıya, kendi şifresini oluşturabileceği bir davet linki gönderilecektir.
-                </p>
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/50">
+            <div className="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
+                <h2 className="text-lg font-bold mb-4">Yeni Üye Ekle</h2>
+
+                {error && (
+                    <div className="mb-4 rounded-md bg-red-50 text-red-700 px-3 py-2 text-sm">
+                        {error}
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    {/* ... form inputları aynı kalıyor ... */}
+                    {/* Ad Soyad */}
                     <div>
-                        <label className="text-sm block mb-1 font-medium">İsim Soyisim</label>
+                        <label className="block text-sm font-medium mb-1">Ad Soyad</label>
                         <input
+                            type="text"
+                            className="w-full border rounded-md px-3 py-2"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="Ahmet Yılmaz"
+                            placeholder="Örn: Ahmet Yılmaz"
+                            required
                         />
                     </div>
 
+                    {/* E-posta */}
                     <div>
-                        <label className="text-sm block mb-1 font-medium">E-posta</label>
+                        <label className="block text-sm font-medium mb-1">E-posta</label>
                         <input
                             type="email"
+                            className="w-full border rounded-md px-3 py-2"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            className="w-full border px-3 py-2 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            placeholder="ahmet@sirket.com"
+                            placeholder="ahmet@example.com"
+                            required
                         />
                     </div>
 
+                    {/* Rol */}
                     <div>
-                        <label className="text-sm block mb-1 font-medium">Rol</label>
-
+                        <label className="block text-sm font-medium mb-1">Rol</label>
                         <select
+                            className="w-full border rounded-md px-3 py-2 bg-white"
                             value={role}
                             onChange={(e) => setRole(e.target.value as Role)}
-                            className="w-full border px-3 py-2 rounded bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                            {roleOptions.map((opt) => (
-                                <option key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                </option>
-                            ))}
+                            <option value="USER">Member</option>
+                            <option value="ADMIN">Admin</option>
+                            <option value="SUPER_ADMIN">Super Admin</option>
                         </select>
                     </div>
 
-                    {error &&
-                        <div className="text-sm text-red-600 p-2 bg-red-50 rounded border border-red-200">{error}</div>}
-                    {message && <div
-                        className="text-sm text-green-700 p-2 bg-green-50 rounded border border-green-200">{message}</div>}
+                    {/* Diller (checkbox group) */}
+                    <div>
+                        <label className="block text-sm font-medium mb-2">Diller</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {ALL_LANGS.map((l) => (
+                                <label key={l.value} className="flex items-center gap-2 text-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={langs.includes(l.value)}
+                                        onChange={() => toggleLang(l.value)}
+                                    />
+                                    {l.label}
+                                </label>
+                            ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Birden fazla dil seçebilirsiniz.</p>
+                    </div>
 
-                    <div className="flex justify-end gap-3 pt-2">
-                        {/* === DEĞİŞİKLİK BURADA === */}
-                        <Button
-                            type="button"
-                            className="bg-transparent border border-gray-300 text-gray-700 hover:bg-gray-100"
-                            onClick={onClose}
-                            disabled={busy}
-                        >
+                    {/* Günlük Kapasite */}
+                    <div>
+                        <label className="block text-sm font-medium mb-1">Günlük Lead Kapasitesi</label>
+                        <input
+                            type="number"
+                            min={1}
+                            className="w-full border rounded-md px-3 py-2"
+                            value={capacityPerDay}
+                            onChange={(e) => setCapacityPerDay(Number(e.target.value))}
+                        />
+                    </div>
+
+                    {/* Aktif / Auto-assign */}
+                    <div className="flex items-center gap-6">
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={active}
+                                onChange={(e) => setActive(e.target.checked)}
+                            />
+                            Aktif
+                        </label>
+                        <label className="flex items-center gap-2 text-sm">
+                            <input
+                                type="checkbox"
+                                checked={autoAssign}
+                                onChange={(e) => setAutoAssign(e.target.checked)}
+                            />
+                            Auto-Assign
+                        </label>
+                    </div>
+
+                    {/* Aksiyonlar */}
+                    <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" type="button" onClick={onClose} disabled={busy}>
                             İptal
                         </Button>
-                        <Button
-                            type="submit"
-                            className="bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
-                            disabled={busy}
-                        >
-                            {busy ? "Ekleniyor..." : `Davet Gönder (${remainingSlots} slot kaldı)`}
+                        <Button type="submit" variant="primary" disabled={busy}>
+                            {busy ? "Ekleniyor…" : "Kaydet"}
                         </Button>
                     </div>
                 </form>

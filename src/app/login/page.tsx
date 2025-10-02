@@ -1,15 +1,14 @@
 import LoginForm from './LoginForm';
+import { Users, RefreshCw, BarChart2, Shield, Lock } from 'lucide-react';
 
 export default function LoginPage() {
     return (
-        <div className="container">
+        <div className="login-container">
             <div className="left-panel">
-                <i className="fas fa-circle decoration decoration-1"></i>
-                <i className="fas fa-square decoration decoration-2"></i>
-
+                {/* dekorasyon ikonlarını da Lucide ile değiştirebiliriz veya basit div olarak bırakabiliriz */}
                 <div>
-                    <div className="logo">
-                        <i className="fas fa-users"></i>
+                    <div className="logo flex items-center gap-2 text-lg font-bold">
+                        <Users className="h-6 w-6" />
                         CRM Pro
                     </div>
 
@@ -20,7 +19,7 @@ export default function LoginPage() {
                     <div className="feature-list">
                         <div className="feature">
                             <div className="feature-icon">
-                                <i className="fas fa-sync-alt"></i>
+                                <RefreshCw className="h-5 w-5" />
                             </div>
                             <div>
                                 <h3>Gerçek Zamanlı Veri Senkronizasyonu</h3>
@@ -30,7 +29,7 @@ export default function LoginPage() {
 
                         <div className="feature">
                             <div className="feature-icon">
-                                <i className="fas fa-chart-line"></i>
+                                <BarChart2 className="h-5 w-5" />
                             </div>
                             <div>
                                 <h3>Detaylı Analiz ve Raporlama</h3>
@@ -40,7 +39,7 @@ export default function LoginPage() {
 
                         <div className="feature">
                             <div className="feature-icon">
-                                <i className="fas fa-shield-alt"></i>
+                                <Shield className="h-5 w-5" />
                             </div>
                             <div>
                                 <h3>Güvenli Veri Saklama</h3>
@@ -50,7 +49,7 @@ export default function LoginPage() {
                     </div>
 
                     <div className="security-badge">
-                        <i className="fas fa-lock"></i>
+                        <Lock className="h-5 w-5 text-green-500" />
                         <div>
                             <h3>%100 Güvenli Giriş</h3>
                             <p>SSL şifreli bağlantı ile korunmaktasınız</p>
@@ -67,8 +66,8 @@ export default function LoginPage() {
 
                 <LoginForm />
 
-                <div className="admin-note">
-                    <i className="fas fa-info-circle"></i>
+                <div className="admin-note flex items-center gap-2">
+                    <Shield className="h-4 w-4 text-blue-600" />
                     Sadece yönetici tarafından oluşturulmuş hesaplarla giriş yapılabilir
                 </div>
             </div>
