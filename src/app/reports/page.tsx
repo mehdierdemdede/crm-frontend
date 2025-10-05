@@ -1,26 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import {useState} from "react";
 import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
-import { Button } from "@/components/Button";
+import {Card, CardContent, CardHeader} from "@/components/Card";
+import {Button} from "@/components/Button";
 import {
-    PieChart,
-    Pie,
+    Bar,
+    BarChart,
+    CartesianGrid,
     Cell,
-    Tooltip,
-    ResponsiveContainer,
-    LineChart,
+    Legend,
     Line,
+    LineChart,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
     XAxis,
     YAxis,
-    CartesianGrid,
-    BarChart,
-    Bar,
-    Legend,
 } from "recharts";
-import { Input } from "@/components/Input";
-import { Download } from "lucide-react";
+import {Input} from "@/components/Input";
+import {Download} from "lucide-react";
+import {jsPDF} from "jspdf";
 
 
 // Dummy data
@@ -81,7 +82,6 @@ export default function ReportsPage() {
     };
 
     const exportPDF = async () => {
-        const { jsPDF } = await import("jspdf");
         const doc = new jsPDF();
         doc.text("Kullanıcı Performansı Raporu", 14, 16);
 

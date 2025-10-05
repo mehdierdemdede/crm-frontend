@@ -14,6 +14,7 @@ import {
     Info,
 } from "lucide-react";
 import SalesForm from "@/app/leads/[id]/SalesForm";
+import {updateLeadStatus} from "@/lib/api";
 
 type LeadStatus =
     | "Uncontacted"
@@ -99,10 +100,18 @@ export default function LeadDetailPage() {
         }
     }, [status]);
 
-    const handleStatusChange = (val: LeadStatus) => {
+    const handleStatusChange = async (val: LeadStatus) => {
         setStatus(val);
         setShowSales(val === "Solded");
-        // TODO: PATCH /leads/:id { status: val }
+
+        // API çağrısı
+        const success = await updateLeadStatus(String(id), val);
+        if (success) {
+            setStatusMessage(`Durum başarıyla "${val}" olarak güncellendi ✅`);
+            setTimeout(() => setStatusMessage(""), 3000);
+        } else {
+            addActionLog("note", "Durum güncelleme başarısız oldu ❌");
+        }
     };
 
     const addActionLog = (type: string, message: string) => {

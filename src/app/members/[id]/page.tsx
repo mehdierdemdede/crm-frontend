@@ -23,33 +23,39 @@ const DUMMY_MEMBERS = [
         name: "Ahmet Yılmaz",
         email: "ahmet@example.com",
         role: "USER",
-        langs: ["TR", "EN"],
+        supportedLanguages: ["TR", "EN"],
         capacityPerDay: 10,
         assignedToday: 6,
         active: true,
         autoAssign: true,
+        autoAssignEnabled: true,
+        dailyCapacity: 5
     },
     {
         id: 2,
         name: "Ayşe Kaya",
         email: "ayse@example.com",
         role: "ADMIN",
-        langs: ["TR", "DE"],
+        supportedLanguages: ["TR", "DE"],
         capacityPerDay: 15,
         assignedToday: 15,
         active: true,
         autoAssign: false,
+        autoAssignEnabled: true,
+        dailyCapacity: 5
     },
     {
         id: 3,
         name: "Mehmet Demir",
         email: "mehmet@example.com",
         role: "USER",
-        langs: ["EN"],
+        supportedLanguages: ["EN"],
         capacityPerDay: 8,
         assignedToday: 3,
         active: false,
         autoAssign: false,
+        autoAssignEnabled: true,
+        dailyCapacity: 5
     },
 ];
 
@@ -98,7 +104,7 @@ export default function MemberDetailPage() {
                     <CardContent className="space-y-2 text-sm">
                         <p><b>Email:</b> {memberData.email}</p>
                         <p><b>Rol:</b> {memberData.role}</p>
-                        <p><b>Diller:</b> {memberData.langs.join(", ")}</p>
+                        <p><b>Diller:</b> {memberData.supportedLanguages.join(", ")}</p>
                         <p>
                             <b>Kapasite:</b> {memberData.assignedToday}/{memberData.capacityPerDay}
                         </p>

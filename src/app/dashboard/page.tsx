@@ -1,31 +1,26 @@
 "use client";
 
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import React, {useEffect, useState} from "react";
+import {useRouter} from "next/navigation";
 import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
-import { Button } from "@/components/Button";
-import {
-    Users,
-    Phone,
-    BarChart2,
-    Clock,
-} from "lucide-react";
+import {Card, CardContent, CardHeader} from "@/components/Card";
+import {BarChart2, Clock, Phone, Users,} from "lucide-react";
 
 // Recharts
 import {
-    PieChart,
-    Pie,
-    Cell,
-    Tooltip,
-    ResponsiveContainer,
-    BarChart,
     Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    Legend,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
     XAxis,
     YAxis,
-    CartesianGrid,
-    Legend,
 } from "recharts";
+import {getIntegrationLogs} from "@/lib/api";
 
 // ───────────────────────────────
 // Dummy Data
@@ -74,10 +69,17 @@ const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626", "#0ea5e9", "#9333ea"
 // ───────────────────────────────
 export default function DashboardPage() {
     const router = useRouter();
+    const [logs, setLogs] = useState<any[]>([]);
 
     useEffect(() => {
         const token = localStorage.getItem("authToken");
-        if (!token) router.push("/login");
+        if (!token) {
+            router.push("/login");
+            return;
+        }
+
+        // 🔹 Integration Log'ları çek
+        getIntegrationLogs().then(setLogs);
     }, [router]);
 
     return (
@@ -86,7 +88,7 @@ export default function DashboardPage() {
             <div className="col-span-12 md:col-span-6 lg:col-span-3">
                 <Card>
                     <CardHeader className="flex items-center gap-2">
-                        <Users className="h-5 w-5 text-blue-600" /> Toplam Lead
+                        <Users className="h-5 w-5 text-blue-600"/> Toplam Lead
                     </CardHeader>
                     <CardContent>{DUMMY_STATS.totalLeads}</CardContent>
                 </Card>
@@ -95,7 +97,7 @@ export default function DashboardPage() {
             <div className="col-span-12 md:col-span-6 lg:col-span-3">
                 <Card>
                     <CardHeader className="flex items-center gap-2">
-                        <Phone className="h-5 w-5 text-green-600" /> İletişime Geçilen
+                        <Phone className="h-5 w-5 text-green-600"/> İletişime Geçilen
                     </CardHeader>
                     <CardContent>{DUMMY_STATS.contactedLeads}</CardContent>
                 </Card>
@@ -104,7 +106,7 @@ export default function DashboardPage() {
             <div className="col-span-12 md:col-span-6 lg:col-span-3">
                 <Card>
                     <CardHeader className="flex items-center gap-2">
-                        <BarChart2 className="h-5 w-5 text-amber-600" /> Dönüşüm Oranı
+                        <BarChart2 className="h-5 w-5 text-amber-600"/> Dönüşüm Oranı
                     </CardHeader>
                     <CardContent>%{DUMMY_STATS.conversionRate}</CardContent>
                 </Card>
@@ -113,7 +115,7 @@ export default function DashboardPage() {
             <div className="col-span-12 md:col-span-6 lg:col-span-3">
                 <Card>
                     <CardHeader className="flex items-center gap-2">
-                        <Clock className="h-5 w-5 text-purple-600" /> Ort. Yanıt Süresi
+                        <Clock className="h-5 w-5 text-purple-600"/> Ort. Yanıt Süresi
                     </CardHeader>
                     <CardContent>{DUMMY_STATS.responseTime}</CardContent>
                 </Card>
@@ -136,10 +138,10 @@ export default function DashboardPage() {
                                     label
                                 >
                                     {campaignData.map((_, i) => (
-                                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                                        <Cell key={i} fill={COLORS[i % COLORS.length]}/>
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip/>
                             </PieChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -163,10 +165,10 @@ export default function DashboardPage() {
                                     label
                                 >
                                     {statusData.map((_, i) => (
-                                        <Cell key={i} fill={COLORS[i % COLORS.length]} />
+                                        <Cell key={i} fill={COLORS[i % COLORS.length]}/>
                                     ))}
                                 </Pie>
-                                <Tooltip />
+                                <Tooltip/>
                             </PieChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -179,13 +181,13 @@ export default function DashboardPage() {
                     <CardHeader>Ekip Performansı</CardHeader>
                     <CardContent className="h-72">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={DUMMY_TEAM} margin={{ top: 20, right: 20, left: 0, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                                <YAxis />
-                                <Tooltip />
-                                <Legend />
-                                <Bar dataKey="conversionRate" name="Dönüşüm %" fill="#2563eb" />
+                            <BarChart data={DUMMY_TEAM} margin={{top: 20, right: 20, left: 0, bottom: 5}}>
+                                <CartesianGrid strokeDasharray="3 3"/>
+                                <XAxis dataKey="name" tick={{fontSize: 12}}/>
+                                <YAxis/>
+                                <Tooltip/>
+                                <Legend/>
+                                <Bar dataKey="conversionRate" name="Dönüşüm %" fill="#2563eb"/>
                             </BarChart>
                         </ResponsiveContainer>
                     </CardContent>
@@ -234,6 +236,49 @@ export default function DashboardPage() {
                             ))}
                             </tbody>
                         </table>
+                    </CardContent>
+                </Card>
+            </div>
+            <div className="col-span-12">
+                <Card>
+                    <CardHeader>Son Entegrasyon Kayıtları</CardHeader>
+                    <CardContent>
+                        {logs.length === 0 ? (
+                            <p className="text-gray-500 text-sm">Henüz entegrasyon kaydı bulunmuyor.</p>
+                        ) : (
+                            <table className="min-w-full text-sm border">
+                                <thead className="bg-gray-100 text-left">
+                                <tr>
+                                    <th className="p-2">Platform</th>
+                                    <th className="p-2">Toplam</th>
+                                    <th className="p-2">Yeni</th>
+                                    <th className="p-2">Güncellendi</th>
+                                    <th className="p-2">Durum</th>
+                                    <th className="p-2">Tarih</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {logs.slice(0, 10).map((log) => (
+                                    <tr key={log.id} className="border-t">
+                                        <td className="p-2">{log.platform}</td>
+                                        <td className="p-2">{log.totalFetched}</td>
+                                        <td className="p-2 text-green-600">{log.newCreated}</td>
+                                        <td className="p-2 text-blue-600">{log.updated}</td>
+                                        <td className="p-2">
+                                            {log.errorMessage ? (
+                                                <span className="text-red-600 font-medium">Hata</span>
+                                            ) : (
+                                                <span className="text-green-600 font-medium">Başarılı</span>
+                                            )}
+                                        </td>
+                                        <td className="p-2">
+                                            {new Date(log.finishedAt).toLocaleString("tr-TR")}
+                                        </td>
+                                    </tr>
+                                ))}
+                                </tbody>
+                            </table>
+                        )}
                     </CardContent>
                 </Card>
             </div>
