@@ -404,7 +404,7 @@ export const getDashboardStats = async (): Promise<LeadStatsResponse | null> => 
 export const getLeadReports = async (
     startDate: string,
     endDate: string
-): Promise<any> => {
+): Promise<LeadReportResponse | null> => {
     const headers = getAuthHeaders();
     try {
         const res = await fetch(
@@ -419,3 +419,11 @@ export const getLeadReports = async (
         return null;
     }
 };
+
+export interface LeadReportResponse {
+    timeline: { date: string; leads: number }[];
+    statusBreakdown: { status: string; count: number }[];
+    userPerformance: { userName: string; sales: number; total: number }[];
+}
+
+
