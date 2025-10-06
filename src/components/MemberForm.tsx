@@ -28,10 +28,12 @@ export default function MemberForm({
                                        initialData,
                                        onSubmit,
                                        onCancel,
+                                       loading,
                                    }: {
     initialData?: MemberFormData;
     onSubmit: (data: MemberFormData) => void;
     onCancel: () => void;
+    loading?: boolean;
 }) {
     const [form, setForm] = useState<MemberFormData>(
         initialData || {
@@ -73,6 +75,7 @@ export default function MemberForm({
                     className="border rounded w-full p-2"
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    required
                 />
             </div>
 
@@ -84,6 +87,7 @@ export default function MemberForm({
                     className="border rounded w-full p-2"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
+                    required
                 />
             </div>
 
@@ -139,7 +143,7 @@ export default function MemberForm({
                 />
             </div>
 
-            {/* Aktif & Auto Assign */}
+            {/* Aktif & Auto-Assign */}
             <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2">
                     <input
@@ -161,10 +165,10 @@ export default function MemberForm({
 
             {/* Butonlar */}
             <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={onCancel}>
+                <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
                     İptal
                 </Button>
-                <Button type="submit" variant="primary">
+                <Button type="submit" variant="primary" isLoading={loading}>
                     Kaydet
                 </Button>
             </div>

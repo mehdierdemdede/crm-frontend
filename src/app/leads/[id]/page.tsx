@@ -5,94 +5,100 @@ import { useParams, useRouter } from "next/navigation";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
-import type { LeadResponse as Lead } from "@/lib/api";
-
-import {
-    Phone,
-    MessageCircle,
-    Facebook,
-    ArrowLeft,
-    Info,
-} from "lucide-react";
+import { Info, Phone, MessageCircle, Facebook, ArrowLeft } from "lucide-react";
 import {
     getLeadById,
-    getLeadLogs,
-    addLeadLog,
     updateLeadStatus,
+    getLeadActions,
+    addLeadAction,
+    LeadResponse as Lead,
 } from "@/lib/api";
 
+type LeadStatus =
+    | "UNCONTACTED"
+    | "HOT"
+    | "SOLD"
+    | "NOT_INTERESTED"
+    | "BLOCKED"
+    | "WRONG_INFO";
 
-interface LeadLog {
+const STATUS_COLORS: Record<LeadStatus, string> = {
+    UNCONTACTED: "bg-gray-300 text-gray-800",
+    HOT: "bg-yellow-100 text-yellow-800",
+    SOLD: "bg-green-100 text-green-800",
+    NOT_INTERESTED: "bg-gray-200 text-gray-700",
+    BLOCKED: "bg-red-100 text-red-700",
+    WRONG_INFO: "bg-amber-100 text-amber-800",
+};
+
+const STATUS_LABELS: Record<LeadStatus, string> = {
+    UNCONTACTED: "İlk Temas Yok",
+    HOT: "Sıcak Hasta",
+    SOLD: "Satış",
+    NOT_INTERESTED: "İlgisiz",
+    BLOCKED: "Engellendi",
+    WRONG_INFO: "Yanlış Bilgi",
+};
+
+interface LeadAction {
     id: string;
     actionType: string;
     message: string;
     createdAt: string;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-    NEW: "bg-gray-300 text-gray-800",
-    CONTACTED: "bg-blue-100 text-blue-800",
-    QUALIFIED: "bg-yellow-100 text-yellow-800",
-    PROPOSAL_SENT: "bg-indigo-100 text-indigo-800",
-    NEGOTIATION: "bg-amber-100 text-amber-800",
-    CLOSED_WON: "bg-green-100 text-green-800",
-    CLOSED_LOST: "bg-red-100 text-red-800",
-};
-
 export default function LeadDetailPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
 
     const [lead, setLead] = useState<Lead | null>(null);
-    const [logs, setLogs] = useState<LeadLog[]>([]);
+    const [actions, setActions] = useState<LeadAction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [status, setStatus] = useState("");
+    const [status, setStatus] = useState<LeadStatus>("UNCONTACTED");
     const [noteText, setNoteText] = useState("");
     const [infoMessage, setInfoMessage] = useState("");
 
-    // 📦 Lead & Logs yükleme
     useEffect(() => {
         if (!id) return;
         const fetchData = async () => {
             setLoading(true);
             const leadData = await getLeadById(id);
-            const logsData = await getLeadLogs(id);
+            const actionsData = await getLeadActions(id);
             if (leadData) {
                 setLead(leadData);
-                setStatus(leadData.status);
+                setStatus(leadData.status as LeadStatus);
             }
-            setLogs(logsData);
+            setActions(actionsData || []);
             setLoading(false);
         };
         fetchData();
     }, [id]);
 
-    // 🟢 Durum değişikliği
-    const handleStatusChange = async (newStatus: string) => {
+    const handleStatusChange = async (newStatus: LeadStatus) => {
         if (!lead) return;
-        const success = await updateLeadStatus(lead.id, newStatus);
-        if (success) {
+        const ok = await updateLeadStatus(lead.id, newStatus);
+        if (ok) {
             setStatus(newStatus);
             setLead((prev) => (prev ? { ...prev, status: newStatus } : prev));
-            setInfoMessage(`Durum "${newStatus}" olarak güncellendi ✅`);
+            setInfoMessage(`Durum "${STATUS_LABELS[newStatus]}" olarak güncellendi ✅`);
         } else {
             setInfoMessage("Durum güncellenemedi ❌");
         }
     };
 
-    // 📝 Log ekleme
-    const handleAddLog = async (actionType: string, message: string) => {
-        if (!lead) return;
-        const success = await addLeadLog(lead.id, actionType, message);
-        if (success) {
-            const newLog = {
-                id: Math.random().toString(36).substring(2, 9),
-                actionType,
-                message,
-                createdAt: new Date().toISOString(),
-            };
-            setLogs((prev) => [newLog, ...prev]);
+    const handleAddAction = async (actionType: string, message: string) => {
+        if (!lead || !message.trim()) return;
+        const ok = await addLeadAction(lead.id, actionType, message);
+        if (ok) {
+            setActions((prev) => [
+                {
+                    id: Math.random().toString(36).substring(2, 9),
+                    actionType,
+                    message,
+                    createdAt: new Date().toISOString(),
+                },
+                ...prev,
+            ]);
             setNoteText("");
         }
     };
@@ -109,50 +115,43 @@ export default function LeadDetailPage() {
 
     return (
         <Layout title={`Lead Detayı`} subtitle={lead.name}>
-            {/* Sol kolon */}
             <div className="col-span-12 lg:col-span-8 space-y-6">
                 <Card>
                     <CardHeader className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => router.push("/leads")}
-                            >
+                            <Button variant="outline" size="sm" onClick={() => router.push("/leads")}>
                                 <ArrowLeft className="h-4 w-4 mr-1" /> Geri
                             </Button>
                             <span className="font-semibold">{lead.name}</span>
                             <span
-                                className={`ml-2 px-2 py-0.5 rounded-full text-xs ${STATUS_COLORS[status]}`}
+                                className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                                    STATUS_COLORS[status]
+                                }`}
                             >
-                {status.replace("_", " ")}
+                {STATUS_LABELS[status]}
               </span>
                         </div>
+
                         <div className="flex items-center gap-2">
                             <Button
                                 size="sm"
                                 variant="outline"
-                                title="Telefon"
-                                onClick={() => handleAddLog("PHONE", "Telefon araması yapıldı.")}
+                                onClick={() => handleAddAction("PHONE", "Telefon araması yapıldı.")}
                             >
                                 <Phone className="h-4 w-4 text-green-600" />
                             </Button>
                             <Button
                                 size="sm"
                                 variant="outline"
-                                title="WhatsApp"
-                                onClick={() =>
-                                    handleAddLog("WHATSAPP", "WhatsApp mesajı gönderildi.")
-                                }
+                                onClick={() => handleAddAction("WHATSAPP", "WhatsApp mesajı gönderildi.")}
                             >
                                 <MessageCircle className="h-4 w-4 text-green-500" />
                             </Button>
                             <Button
                                 size="sm"
                                 variant="outline"
-                                title="Messenger"
                                 onClick={() =>
-                                    handleAddLog("MESSENGER", "Messenger üzerinden mesaj gönderildi.")
+                                    handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi.")
                                 }
                             >
                                 <Facebook className="h-4 w-4 text-blue-600" />
@@ -162,28 +161,17 @@ export default function LeadDetailPage() {
 
                     <CardContent className="space-y-4">
                         <div className="grid grid-cols-2 gap-4 text-sm">
-                            <p>
-                                <b>Email:</b> {lead.email || "-"}
-                            </p>
-                            <p>
-                                <b>Telefon:</b> {lead.phone || "-"}
-                            </p>
-                            <p>
-                                <b>Kampanya:</b> {lead.campaign?.name || "-"}
-                            </p>
-                            <p>
-                                <b>Dil:</b> {lead.language || "-"}
-                            </p>
+                            <p><b>Email:</b> {lead.email || "-"}</p>
+                            <p><b>Telefon:</b> {lead.phone || "-"}</p>
+                            <p><b>Kampanya:</b> {lead.campaign?.name || "-"}</p>
+                            <p><b>Dil:</b> {lead.language || "-"}</p>
                             <p>
                                 <b>Atanan Kullanıcı:</b>{" "}
                                 {lead.assignedToUser
                                     ? `${lead.assignedToUser.firstName} ${lead.assignedToUser.lastName}`
                                     : "-"}
                             </p>
-                            <p>
-                                <b>Oluşturulma:</b>{" "}
-                                {new Date(lead.createdAt).toLocaleString()}
-                            </p>
+                            <p><b>Oluşturulma:</b> {new Date(lead.createdAt).toLocaleString()}</p>
                         </div>
 
                         {infoMessage && (
@@ -197,11 +185,11 @@ export default function LeadDetailPage() {
                             <select
                                 className="border rounded-md p-2"
                                 value={status}
-                                onChange={(e) => handleStatusChange(e.target.value)}
+                                onChange={(e) => handleStatusChange(e.target.value as LeadStatus)}
                             >
-                                {Object.keys(STATUS_COLORS).map((s) => (
+                                {Object.keys(STATUS_LABELS).map((s) => (
                                     <option key={s} value={s}>
-                                        {s.replace("_", " ")}
+                                        {STATUS_LABELS[s as LeadStatus]}
                                     </option>
                                 ))}
                             </select>
@@ -210,46 +198,37 @@ export default function LeadDetailPage() {
                 </Card>
             </div>
 
-            {/* Sağ kolon - Aksiyon geçmişi */}
+            {/* Sağ kolon */}
             <div className="col-span-12 lg:col-span-4">
                 <Card>
                     <CardHeader>Aksiyon Geçmişi</CardHeader>
                     <CardContent>
                         <ul className="space-y-2 text-sm">
-                            {logs.map((log) => (
-                                <li key={log.id} className="border-b pb-2 flex items-start gap-2">
-                                    {log.actionType === "PHONE" && (
-                                        <Phone className="h-4 w-4 text-green-600 mt-0.5" />
-                                    )}
-                                    {log.actionType === "WHATSAPP" && (
-                                        <MessageCircle className="h-4 w-4 text-green-500 mt-0.5" />
-                                    )}
-                                    {log.actionType === "MESSENGER" && (
-                                        <Facebook className="h-4 w-4 text-blue-600 mt-0.5" />
-                                    )}
-                                    {log.actionType === "NOTE" && (
-                                        <Info className="h-4 w-4 text-gray-500 mt-0.5" />
-                                    )}
+                            {actions.map((a) => (
+                                <li key={a.id} className="border-b pb-2 flex items-start gap-2">
+                                    {a.actionType === "PHONE" && <Phone className="h-4 w-4 text-green-600" />}
+                                    {a.actionType === "WHATSAPP" && <MessageCircle className="h-4 w-4 text-green-500" />}
+                                    {a.actionType === "MESSENGER" && <Facebook className="h-4 w-4 text-blue-600" />}
+                                    {a.actionType === "NOTE" && <Info className="h-4 w-4 text-gray-500" />}
                                     <div>
-                                        <div>{log.message}</div>
-                                        <div className="text-xs text-gray-500">
-                                            {new Date(log.createdAt).toLocaleString()}
-                                        </div>
+                                        <div>{a.message}</div>
+                                        <div className="text-xs text-gray-500">{new Date(a.createdAt).toLocaleString()}</div>
                                     </div>
                                 </li>
                             ))}
-                            {logs.length === 0 && (
+                            {actions.length === 0 && (
                                 <div className="text-gray-500 text-center py-3 text-sm">
-                                    Henüz aksiyon geçmişi yok.
+                                    Henüz aksiyon yok.
                                 </div>
                             )}
                         </ul>
 
+                        {/* Not alanı */}
                         <form
                             onSubmit={(e) => {
                                 e.preventDefault();
                                 if (!noteText.trim()) return;
-                                handleAddLog("NOTE", noteText.trim());
+                                handleAddAction("NOTE", noteText.trim());
                             }}
                             className="mt-4 space-y-2"
                         >

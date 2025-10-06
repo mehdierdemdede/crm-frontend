@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useState } from "react";
-import {Home, Users, BarChart2, FileText, Settings, Menu, X, Plug} from "lucide-react"; // Shuffle kaldırıldı
+import {Home, Users, BarChart2, FileText, Settings, Menu, X, Plug, Activity} from "lucide-react"; // Shuffle kaldırıldı
 
 export default function Sidebar() {
     const pathname = usePathname() || "/dashboard";
@@ -43,6 +43,8 @@ export default function Sidebar() {
                     {item("/members", "Members", Users)}
                     {item("/integrations", "Integrations", Plug)} {/* yeni */}
                     {item("/reports", "Reports", BarChart2)}
+                    {item("/auto-assign", "Auto Assign", Activity)}
+
                 </ul>
             </aside>
 
@@ -76,6 +78,7 @@ export default function Sidebar() {
                             {item("/members", "Members", Users)}
                             {item("/integrations", "Integrations", Plug)} {/* yeni */}
                             {item("/reports", "Reports", BarChart2)}
+                            {item("/auto-assign", "Auto Assign", Activity)}
                         </ul>
                     </div>
                 </div>

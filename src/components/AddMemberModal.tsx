@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { inviteUser } from "@/lib/api"; // ✅ burayı ekle
+import { inviteUser, type ApiResponse, type UserResponse } from "@/lib/api";
 import MemberForm, { MemberFormData } from "./MemberForm";
 
 interface AddMemberModalProps {
@@ -11,12 +11,13 @@ interface AddMemberModalProps {
 
 export default function AddMemberModal({ isOpen, onClose, onSave }: AddMemberModalProps) {
     const [loading, setLoading] = useState(false);
-
     if (!isOpen) return null;
 
     const handleSubmit = async (data: MemberFormData) => {
         setLoading(true);
         try {
+            // Tip çıkarımı yeterli; istersen şu şekilde de yazabilirsin:
+            // const response: ApiResponse<UserResponse> = await inviteUser({...});
             const response = await inviteUser({
                 firstName: data.name.split(" ")[0],
                 lastName: data.name.split(" ")[1] || "",
@@ -28,15 +29,16 @@ export default function AddMemberModal({ isOpen, onClose, onSave }: AddMemberMod
                 autoAssignEnabled: data.autoAssign,
             });
 
-            if (response.status === 201 || response.status === 200) {
+            if (response.status >= 200 && response.status < 300 && response.data) {
                 console.log("✅ Kullanıcı davet edildi:", response.data);
-                onSave?.(data); // local state’e ekleme (isteğe bağlı)
+                onSave?.(data);
                 onClose();
             } else {
-                alert("Bir hata oluştu: " + response.message);
+                alert("❌ Davet başarısız: " + (response.message || "Bilinmeyen hata"));
             }
         } catch (err) {
             console.error("Invite error:", err);
+            alert("Beklenmeyen bir hata oluştu, lütfen tekrar deneyin.");
         } finally {
             setLoading(false);
         }

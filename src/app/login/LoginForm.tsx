@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import { useRouter } from 'next/navigation';
-import { Input } from '@/components/Input';
-import { Button } from '@/components/Button';
-import { Mail, Lock } from 'lucide-react';
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
+import { Input } from "@/components/Input";
+import { Button } from "@/components/Button";
+import { Mail, Lock } from "lucide-react";
 
 export default function LoginForm() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
     const [rememberMe, setRememberMe] = useState(false);
     const { login, isLoading, error } = useAuth();
     const router = useRouter();
@@ -17,7 +17,11 @@ export default function LoginForm() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const success = await login(email, password);
-        if (success) router.push('/dashboard');
+        if (success) {
+            // 🔹 Beni hatırla seçiliyse token süresini uzatabiliriz
+            if (rememberMe) localStorage.setItem("rememberMe", "true");
+            router.push("/dashboard");
+        }
     };
 
     return (
@@ -61,7 +65,9 @@ export default function LoginForm() {
                     />
                     Beni hatırla
                 </label>
-                <a href="#" className="text-blue-600 hover:underline">Şifremi unuttum?</a>
+                <a href="#" className="text-blue-600 hover:underline">
+                    Şifremi unuttum?
+                </a>
             </div>
 
             <Button type="submit" variant="primary" size="md" isLoading={isLoading}>
