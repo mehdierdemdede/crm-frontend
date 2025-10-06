@@ -4,15 +4,16 @@ import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import {createSale} from "@/lib/api";
 
 type Currency = "TRY" | "USD" | "EUR" | "GBP";
 
 export interface SalesPayload {
-    leadId: number;
+    leadId: string;
     operationDate: string;
     operationType: string;
     price: number | "";
-    currency: Currency;
+    currency: "TRY" | "USD" | "EUR" | "GBP";
     hotel: string;
     nights: number | "";
     transfer: string[];
@@ -78,15 +79,30 @@ export default function SalesForm({
     const next = () => validateStep() && setStep((s) => s + 1);
     const prev = () => setStep((s) => s - 1);
 
-    const submit = (e: React.FormEvent) => {
+    const submit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateStep()) return;
-        onSubmit({
-            ...form,
-            price: form.price === "" ? 0 : Number(form.price),
-            nights: form.nights === "" ? 0 : Number(form.nights),
-        });
+
+        const payload = {
+            leadId: String(leadId), // ✅ string'e çeviriyoruz (backend UUID istiyorsa)
+            operationDate: form.operationDate,
+            operationType: form.operationType,
+            price: Number(form.price) || 0,
+            currency: form.currency,
+            hotel: form.hotel,
+            nights: Number(form.nights) || 0,
+            transfer: form.transfer,
+        } as const;
+
+        const success = await createSale(payload, form.passportFile);
+        if (success) {
+            alert("✅ Satış başarıyla kaydedildi.");
+            onSubmit(payload);
+        } else {
+            alert("❌ Satış kaydedilemedi.");
+        }
     };
+
 
     const fullSelected = form.transfer.includes("Full");
 

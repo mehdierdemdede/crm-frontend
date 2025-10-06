@@ -23,6 +23,7 @@ export interface LoginResponse {
 }
 
 export interface UserResponse {
+    lastName: string;
     id: string;
     firstName: string;
     email: string;
@@ -30,6 +31,7 @@ export interface UserResponse {
 }
 
 export interface LeadResponse {
+    platform: string;
     id: string;
     name: string;
     email?: string | null;
@@ -145,20 +147,7 @@ export const getLeads = async (): Promise<LeadResponse[]> => {
     const headers = getAuthHeaders();
     try {
         const res = await fetch(`${BASE_URL}/leads`, { headers });
-
-        console.log("🟡 getLeads debug", {
-            url: `${BASE_URL}/leads`,
-            status: res.status,
-            ok: res.ok,
-            headers: Object.fromEntries(res.headers.entries()),
-        });
-
-        if (!res.ok) {
-            const text = await res.text();
-            console.error("🛑 Backend Response:", res.status, text);
-            throw new Error(`Lead listesi alınamadı (${res.status})`);
-        }
-
+        if (!res.ok) throw new Error("Lead listesi alınamadı");
         return await res.json();
     } catch (err) {
         console.error("getLeads error:", err);
@@ -205,6 +194,54 @@ export const deleteLead = async (leadId: string): Promise<boolean> => {
         return false;
     }
 };
+
+/**
+ * 🔹 Lead atama işlemi (tek lead)
+ */
+/**
+ * 🔹 Lead atama (veya kaldırma)
+ */
+export const patchLeadAssign = async (leadId: string, userId: string | null): Promise<boolean> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/leads/${leadId}/assign?userId=${userId ?? ""}`, {
+            method: "PATCH",
+            headers,
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Lead atama işlemi başarısız");
+        }
+        return true;
+    } catch (err) {
+        console.error("patchLeadAssign error:", err);
+        return false;
+    }
+};
+
+
+// 🔹 Organizasyondaki kullanıcı listesini getirir
+export interface SimpleUser {
+    id: string;
+    firstName: string;
+    lastName?: string | null;
+    email: string;
+    active: boolean;
+}
+
+export const getUsers = async (): Promise<SimpleUser[]> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/users`, { headers });
+        if (!res.ok) throw new Error("Kullanıcı listesi alınamadı");
+        return await res.json();
+    } catch (err) {
+        console.error("getUsers error:", err);
+        return [];
+    }
+};
+
+
 
 // ──────────────────────────────── LEAD ACTIONS (user actions) ────────────────────────────────
 
@@ -409,3 +446,49 @@ export const getDashboardStats = async (): Promise<DashboardStats | null> => {
     }
 };
 
+
+// 📦 Satış oluşturma
+export interface CreateSaleRequest {
+    leadId: string;
+    operationDate: string;
+    operationType: string;
+    price: number;
+    currency: "TRY" | "USD" | "EUR" | "GBP";
+    hotel: string;
+    nights: number;
+    transfer: string[];
+}
+
+export const createSale = async (
+    data: CreateSaleRequest,
+    passportFile?: File | null
+): Promise<boolean> => {
+    const token = localStorage.getItem("authToken");
+    const tokenType = localStorage.getItem("tokenType") || "Bearer";
+
+    const formData = new FormData();
+    Object.entries(data).forEach(([key, value]) => {
+        if (Array.isArray(value)) formData.append(key, JSON.stringify(value));
+        else formData.append(key, value.toString());
+    });
+
+    if (passportFile) formData.append("passportFile", passportFile);
+
+    try {
+        const res = await fetch(`${BASE_URL}/sales`, {
+            method: "POST",
+            headers: token ? { Authorization: `${tokenType} ${token}` } : undefined,
+            body: formData,
+        });
+
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Satış kaydı oluşturulamadı");
+        }
+
+        return true;
+    } catch (err) {
+        console.error("createSale error:", err);
+        return false;
+    }
+};
