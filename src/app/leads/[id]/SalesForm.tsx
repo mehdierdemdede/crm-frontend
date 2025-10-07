@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
-import {createSale} from "@/lib/api";
+import { createSale } from "@/lib/api";
 
 type Currency = "TRY" | "USD" | "EUR" | "GBP";
 
@@ -13,7 +13,7 @@ export interface SalesPayload {
     operationDate: string;
     operationType: string;
     price: number | "";
-    currency: "TRY" | "USD" | "EUR" | "GBP";
+    currency: Currency;
     hotel: string;
     nights: number | "";
     transfer: string[];
@@ -43,6 +43,7 @@ export default function SalesForm({
 }) {
     const [step, setStep] = useState(1);
     const [errors, setErrors] = useState<string[]>([]);
+    const [success, setSuccess] = useState(false);
     const [form, setForm] = useState<SalesPayload>({
         leadId,
         operationDate: "",
@@ -84,7 +85,7 @@ export default function SalesForm({
         if (!validateStep()) return;
 
         const payload = {
-            leadId: String(leadId), // ✅ string'e çeviriyoruz (backend UUID istiyorsa)
+            leadId: String(leadId),
             operationDate: form.operationDate,
             operationType: form.operationType,
             price: Number(form.price) || 0,
@@ -96,22 +97,36 @@ export default function SalesForm({
 
         const success = await createSale(payload, form.passportFile);
         if (success) {
-            alert("✅ Satış başarıyla kaydedildi.");
+            setSuccess(true);
+            setForm({
+                leadId,
+                operationDate: "",
+                operationType: "",
+                price: "",
+                currency: "TRY",
+                hotel: "",
+                nights: "",
+                transfer: [],
+                passportFile: null,
+            });
             onSubmit(payload);
         } else {
             alert("❌ Satış kaydedilemedi.");
         }
     };
 
-
     const fullSelected = form.transfer.includes("Full");
 
     return (
-        <Card>
-            <CardHeader>Satış / Operasyon</CardHeader>
-            <CardContent>
-                {/* Stepper */}
-                <ol className="mb-4 grid grid-cols-4 gap-2 text-xs">
+        <Card className="shadow-sm">
+            <CardHeader className="flex justify-between items-center">
+                <div className="font-semibold text-base">Satış / Operasyon</div>
+                <div className="text-xs text-gray-500">Adım {step} / {STEPS.length}</div>
+            </CardHeader>
+
+            <CardContent className="space-y-4">
+                {/* ✅ Stepper */}
+                <ol className="mb-3 grid grid-cols-4 gap-2 text-xs">
                     {STEPS.map((label, idx) => {
                         const num = idx + 1;
                         const active = step === num;
@@ -121,12 +136,14 @@ export default function SalesForm({
                                 key={label}
                                 className={`flex items-center gap-2 rounded-md border px-2 py-1 ${
                                     active ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
-                                }`}
+                                } transition-colors`}
                             >
                 <span
                     className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
-                        done ? "bg-green-500 text-white"
-                            : active ? "bg-blue-600 text-white"
+                        done
+                            ? "bg-green-500 text-white"
+                            : active
+                                ? "bg-blue-600 text-white"
                                 : "bg-gray-200 text-gray-700"
                     }`}
                 >
@@ -138,73 +155,96 @@ export default function SalesForm({
                     })}
                 </ol>
 
+                {/* ⚠️ Hata mesajları */}
                 {errors.length > 0 && (
-                    <div className="mb-4 bg-red-50 text-red-700 text-sm px-3 py-2 rounded">
+                    <div className="mb-3 bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md">
                         {errors.map((e, i) => (
                             <p key={i}>• {e}</p>
                         ))}
                     </div>
                 )}
 
-                {/* Adım 1 */}
+                {/* ✅ Başarı mesajı */}
+                {success && (
+                    <div className="bg-green-50 text-green-700 text-sm px-3 py-2 rounded-md">
+                        ✅ Satış başarıyla kaydedildi.
+                    </div>
+                )}
+
+                {/* 🧭 Step 1: Operasyon */}
                 {step === 1 && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 animate-fade-in">
                         <div>
                             <label className="block text-sm font-medium mb-1">Operasyon Tarihi</label>
                             <Input
                                 type="date"
                                 value={form.operationDate}
-                                onChange={(e) => setForm({ ...form, operationDate: e.target.value })}
+                                onChange={(e) =>
+                                    setForm({ ...form, operationDate: e.target.value })
+                                }
                             />
                         </div>
 
                         <div>
                             <label className="block text-sm font-medium mb-1">Operasyon Türü</label>
                             <select
-                                className="border rounded-md p-2 w-full"
+                                className="border rounded-lg p-2 w-full shadow-sm"
                                 value={form.operationType}
-                                onChange={(e) => setForm({ ...form, operationType: e.target.value })}
+                                onChange={(e) =>
+                                    setForm({ ...form, operationType: e.target.value })
+                                }
                             >
                                 <option value="">Seçiniz</option>
-                                {/* Saç */}
-                                <option value="Saç - FUE">Saç - FUE</option>
-                                <option value="Saç - DHI">Saç - DHI</option>
-                                <option value="Saç - Kök Hücre">Saç - Kök Hücre</option>
-                                {/* Estetik (özet) */}
-                                <option value="Burun Estetiği">Burun Estetiği</option>
-                                <option value="Liposuction">Liposuction</option>
-                                <option value="BBL (Brezilya Popo)">BBL (Brezilya Popo)</option>
-                                <option value="Meme Büyütme">Meme Büyütme</option>
-                                <option value="Mide Ameliyatları">Mide Ameliyatları</option>
+                                <optgroup label="Saç Ekim">
+                                    <option value="Saç - FUE">Saç - FUE</option>
+                                    <option value="Saç - DHI">Saç - DHI</option>
+                                    <option value="Saç - Kök Hücre">Saç - Kök Hücre</option>
+                                </optgroup>
+                                <optgroup label="Estetik">
+                                    <option value="Burun Estetiği">Burun Estetiği</option>
+                                    <option value="Liposuction">Liposuction</option>
+                                    <option value="BBL (Brezilya Popo)">BBL (Brezilya Popo)</option>
+                                    <option value="Meme Büyütme">Meme Büyütme</option>
+                                    <option value="Mide Ameliyatları">Mide Ameliyatları</option>
+                                </optgroup>
                             </select>
                         </div>
 
                         <div className="flex justify-end">
-                            <Button variant="primary" onClick={next}>Devam Et</Button>
+                            <Button variant="primary" onClick={next}>
+                                Devam Et
+                            </Button>
                         </div>
                     </div>
                 )}
 
-                {/* Adım 2 */}
+                {/* 💰 Step 2: Fiyat */}
                 {step === 2 && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 animate-fade-in">
                         <div>
                             <label className="block text-sm font-medium mb-1">Fiyat</label>
                             <div className="flex gap-2">
                                 <Input
                                     type="number"
+                                    placeholder="0"
                                     value={form.price}
                                     onChange={(e) =>
                                         setForm({
                                             ...form,
-                                            price: e.target.value === "" ? "" : Number(e.target.value),
+                                            price:
+                                                e.target.value === "" ? "" : Number(e.target.value),
                                         })
                                     }
                                 />
                                 <select
-                                    className="border rounded-md p-2"
+                                    className="border rounded-lg p-2 shadow-sm"
                                     value={form.currency}
-                                    onChange={(e) => setForm({ ...form, currency: e.target.value as Currency })}
+                                    onChange={(e) =>
+                                        setForm({
+                                            ...form,
+                                            currency: e.target.value as Currency,
+                                        })
+                                    }
                                 >
                                     <option value="TRY">₺</option>
                                     <option value="USD">$</option>
@@ -215,19 +255,23 @@ export default function SalesForm({
                         </div>
 
                         <div className="flex justify-between">
-                            <Button variant="outline" onClick={prev}>Geri</Button>
-                            <Button variant="primary" onClick={next}>Devam Et</Button>
+                            <Button variant="outline" onClick={prev}>
+                                Geri
+                            </Button>
+                            <Button variant="primary" onClick={next}>
+                                Devam Et
+                            </Button>
                         </div>
                     </div>
                 )}
 
-                {/* Adım 3 */}
+                {/* 🏨 Step 3: Konaklama */}
                 {step === 3 && (
-                    <div className="space-y-4">
+                    <div className="space-y-4 animate-fade-in">
                         <div>
                             <label className="block text-sm font-medium mb-1">Otel</label>
                             <select
-                                className="border rounded-md p-2 w-full"
+                                className="border rounded-lg p-2 w-full shadow-sm"
                                 value={form.hotel}
                                 onChange={(e) => setForm({ ...form, hotel: e.target.value })}
                             >
@@ -246,34 +290,28 @@ export default function SalesForm({
                                 onChange={(e) =>
                                     setForm({
                                         ...form,
-                                        nights: e.target.value === "" ? "" : Number(e.target.value),
+                                        nights:
+                                            e.target.value === "" ? "" : Number(e.target.value),
                                     })
                                 }
                             />
                         </div>
 
                         <div>
-                            <div className="flex items-center justify-between">
-                                <label className="block text-sm font-medium mb-1">Transfer</label>
-                                {fullSelected && (
-                                    <span className="text-xs text-gray-500">Full seçiliyken diğer seçenekler devre dışıdır.</span>
-                                )}
-                            </div>
-                            <div className="flex flex-col gap-1">
+                            <label className="block text-sm font-medium mb-1">Transfer</label>
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                                 {TRANSFER_OPTIONS.map((t) => (
-                                    <label key={t} className="text-sm">
+                                    <label key={t} className="flex items-center text-sm gap-2">
                                         <input
                                             type="checkbox"
                                             checked={form.transfer.includes(t)}
                                             disabled={fullSelected && t !== "Full"}
                                             onChange={(e) => {
                                                 const checked = e.target.checked;
-                                                // Full seçimi özel kural
                                                 if (t === "Full") {
                                                     setForm({ ...form, transfer: checked ? ["Full"] : [] });
                                                     return;
                                                 }
-                                                // Diğer seçenekler: Full seçiliyse önce Full'ü kaldır
                                                 const base = form.transfer.includes("Full")
                                                     ? []
                                                     : form.transfer;
@@ -284,7 +322,7 @@ export default function SalesForm({
                                                         : base.filter((x) => x !== t),
                                                 });
                                             }}
-                                        />{" "}
+                                        />
                                         {t}
                                     </label>
                                 ))}
@@ -292,28 +330,41 @@ export default function SalesForm({
                         </div>
 
                         <div className="flex justify-between">
-                            <Button variant="outline" onClick={prev}>Geri</Button>
-                            <Button variant="primary" onClick={next}>Devam Et</Button>
+                            <Button variant="outline" onClick={prev}>
+                                Geri
+                            </Button>
+                            <Button variant="primary" onClick={next}>
+                                Devam Et
+                            </Button>
                         </div>
                     </div>
                 )}
 
-                {/* Adım 4 */}
+                {/* 📎 Step 4: Belgeler */}
                 {step === 4 && (
-                    <form onSubmit={submit} className="space-y-4">
+                    <form onSubmit={submit} className="space-y-4 animate-fade-in">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Pasaport / Uçuş Belgeleri</label>
+                            <label className="block text-sm font-medium mb-1">
+                                Pasaport / Uçuş Belgeleri
+                            </label>
                             <Input
                                 type="file"
                                 onChange={(e) =>
-                                    setForm({ ...form, passportFile: e.target.files?.[0] || null })
+                                    setForm({
+                                        ...form,
+                                        passportFile: e.target.files?.[0] || null,
+                                    })
                                 }
                             />
                         </div>
 
                         <div className="flex justify-between">
-                            <Button variant="outline" onClick={prev}>Geri</Button>
-                            <Button type="submit" variant="primary">Kaydet</Button>
+                            <Button variant="outline" onClick={prev}>
+                                Geri
+                            </Button>
+                            <Button type="submit" variant="primary">
+                                Kaydet
+                            </Button>
                         </div>
                     </form>
                 )}

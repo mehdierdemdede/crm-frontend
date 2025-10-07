@@ -18,7 +18,6 @@ import {
 } from "@/lib/api";
 import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown } from "lucide-react";
 
-/** Türkçe karşılıklar */
 const STATUS_LABELS: Record<LeadStatus, string> = {
     UNCONTACTED: "İlk Temas Yok",
     HOT: "Sıcak Hasta",
@@ -29,10 +28,10 @@ const STATUS_LABELS: Record<LeadStatus, string> = {
 };
 
 const STATUS_COLORS: Record<LeadStatus, string> = {
-    UNCONTACTED: "bg-gray-300 text-gray-800",
+    UNCONTACTED: "bg-gray-200 text-gray-800",
     HOT: "bg-yellow-100 text-yellow-800",
     SOLD: "bg-green-100 text-green-800",
-    NOT_INTERESTED: "bg-gray-200 text-gray-700",
+    NOT_INTERESTED: "bg-gray-100 text-gray-600",
     BLOCKED: "bg-red-100 text-red-700",
     WRONG_INFO: "bg-orange-100 text-orange-800",
 };
@@ -77,22 +76,30 @@ export default function LeadsPage() {
     const [statusFilter, setStatusFilter] = useState("");
     const [sortBy, setSortBy] = useState<SortableColumn>("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-    const [page, setPage] = useState(1);
+    const [page, setPage] = useState(0);
+    const [totalPages, setTotalPages] = useState(1);
     const perPage = 10;
 
-    // 📦 verileri yükle
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
-            const [leadData, userData] = await Promise.all([getLeads(), getUsers()]);
-            setLeads(leadData ?? []);
-            setUsers(userData ?? []);
-            setLoading(false);
+            try {
+                const [leadPage, userData] = await Promise.all([
+                    getLeads(page, perPage, `${sortBy},${sortOrder}`),
+                    getUsers(),
+                ]);
+                setLeads(leadPage?.content ?? []);
+                setTotalPages(leadPage?.totalPages ?? 1);
+                setUsers(userData ?? []);
+            } catch (err) {
+                console.error("Lead listesi alınamadı:", err);
+            } finally {
+                setLoading(false);
+            }
         };
         fetchData();
-    }, []);
+    }, [page, sortBy, sortOrder]);
 
-    // 🔍 filtreleme
     const filtered = useMemo(() => {
         return leads.filter((l) => {
             const hay = search.toLowerCase();
@@ -105,7 +112,22 @@ export default function LeadsPage() {
         });
     }, [leads, search, statusFilter]);
 
-    // 🔼🔽 sıralama
+    const handleCall = (phone?: string | null | undefined) => {
+        if (!phone) return alert("Telefon numarası bulunamadı.");
+        window.open(`tel:${phone}`, "_self");
+    };
+
+    const handleWhatsApp = (phone?: string | null | undefined) => {
+        if (!phone) return alert("Telefon numarası bulunamadı.");
+        const formatted = phone.replace(/\D/g, "");
+        window.open(`https://wa.me/${formatted}`, "_blank");
+    };
+
+    const handleMessenger = (messengerId?: string | null | undefined) => {
+        if (!messengerId) return alert("Messenger bağlantısı bulunamadı.");
+        window.open(`https://m.me/${messengerId}`, "_blank");
+    };
+
     const handleSort = (field: SortableColumn) => {
         if (sortBy === field) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
         else {
@@ -122,14 +144,8 @@ export default function LeadsPage() {
         });
     }, [filtered, sortBy, sortOrder]);
 
-    // 📄 sayfalama
-    const totalPages = Math.ceil(sorted.length / perPage) || 1;
-    const paginated = useMemo(
-        () => sorted.slice((page - 1) * perPage, page * perPage),
-        [sorted, page]
-    );
+    const paginated = sorted;
 
-    // 🟢 durum değiştir
     const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
         const ok = await updateLeadStatus(leadId, newStatus);
         if (ok) {
@@ -139,7 +155,6 @@ export default function LeadsPage() {
         } else alert("Durum güncellenemedi.");
     };
 
-    // 👤 kullanıcı atama
     const handleAssign = async (leadId: string, userId: string | null) => {
         const ok = await patchLeadAssign(leadId, userId);
         if (ok) {
@@ -158,26 +173,36 @@ export default function LeadsPage() {
         } else alert("Atama başarısız!");
     };
 
-    // ❌ silme
+
     const handleDelete = async (leadId: string) => {
         if (!confirm("Bu lead'i silmek istediğine emin misin?")) return;
         const ok = await deleteLead(leadId);
-        if (ok) setLeads((prev) => prev.filter((l) => l.id !== leadId));
+        if (ok) {
+            // LeadActivityLog oluştur
+            await addLeadActivity({
+                leadId,
+                actionType: "DELETE",
+                message: "Lead silindi.",
+            });
+            setLeads((prev) => prev.filter((l) => l.id !== leadId));
+        }
     };
 
     return (
         <Layout title="Lead Yönetimi" subtitle="Tüm lead’leri görüntüle ve yönet">
+            {/* 🧭 Filtre ve üst bar */}
             <div className="col-span-12">
-                <Card>
-                    <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-                        <div className="flex flex-col sm:flex-row gap-2">
+                <Card className="shadow-md rounded-xl">
+                    <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                             <Input
-                                placeholder="İsim, email veya kampanya ara…"
+                                className="flex-1 sm:w-64"
+                                placeholder="İsim, email veya kampanya ara..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
                             />
                             <select
-                                className="border rounded-md p-2 text-sm"
+                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
                                 value={statusFilter}
                                 onChange={(e) => {
                                     setStatusFilter(e.target.value);
@@ -192,59 +217,172 @@ export default function LeadsPage() {
                                 ))}
                             </select>
                         </div>
+                        <div className="text-xs sm:text-sm text-gray-500 text-right sm:text-left">
+                            {leads.length} kayıt listeleniyor
+                        </div>
                     </CardHeader>
 
+                    {/* 📋 Tablo (masaüstü) */}
                     <CardContent>
                         {loading ? (
                             <div className="text-center text-gray-500 py-10">Yükleniyor...</div>
                         ) : paginated.length === 0 ? (
-                            <div className="text-center text-gray-500 py-10">Kayıt bulunamadı.</div>
+                            <div className="text-center text-gray-500 py-10">
+                                Kayıt bulunamadı.
+                            </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="min-w-full text-sm">
-                                    <thead>
-                                    <tr className="bg-gray-100 text-left">
-                                        {[
-                                            { key: "name", label: "Ad" },
-                                            { key: "email", label: "Email" },
-                                            { key: "language", label: "Dil" },
-                                            { key: "campaign", label: "Kampanya" },
-                                            { key: "status", label: "Durum" },
-                                            { key: "assignedToUser", label: "Atanan Kullanıcı" },
-                                            { key: "createdAt", label: "Tarih" },
-                                        ].map((c) => (
-                                            <th
-                                                key={c.key}
-                                                className="p-2 cursor-pointer select-none"
-                                                onClick={() => handleSort(c.key as SortableColumn)}
+                            <>
+                                {/* Masaüstü tablo */}
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="min-w-full text-sm border rounded-lg overflow-hidden">
+                                        <thead>
+                                        <tr className="bg-gray-50 text-left text-gray-700 font-medium">
+                                            {[
+                                                { key: "name", label: "Ad" },
+                                                { key: "email", label: "Email" },
+                                                { key: "language", label: "Dil" },
+                                                { key: "campaign", label: "Kampanya" },
+                                                { key: "status", label: "Durum" },
+                                                { key: "assignedToUser", label: "Atanan Kullanıcı" },
+                                                { key: "createdAt", label: "Tarih" },
+                                            ].map((c) => (
+                                                <th
+                                                    key={c.key}
+                                                    className="p-3 cursor-pointer select-none"
+                                                    onClick={() => handleSort(c.key as SortableColumn)}
+                                                >
+                                                    {c.label}{" "}
+                                                    <ArrowUpDown className="inline h-3 w-3 ml-1 text-gray-400" />
+                                                </th>
+                                            ))}
+                                            <th className="p-3 text-center">Aksiyonlar</th>
+                                        </tr>
+                                        </thead>
+                                        <tbody>
+                                        {paginated.map((lead) => (
+                                            <tr
+                                                key={lead.id}
+                                                className="border-t hover:bg-blue-50 transition-colors even:bg-gray-50"
                                             >
-                                                {c.label} <ArrowUpDown className="inline h-3 w-3 ml-1" />
-                                            </th>
+                                                <td className="p-3">
+                                                    <Link
+                                                        href={`/leads/${lead.id}`}
+                                                        className="text-blue-600 hover:underline"
+                                                    >
+                                                        {lead.name ?? "-"}
+                                                    </Link>
+                                                </td>
+                                                <td className="p-3">{lead.email ?? "-"}</td>
+                                                <td className="p-3">{lead.language ?? "-"}</td>
+                                                <td className="p-3">{lead.campaign?.name ?? "-"}</td>
+
+                                                <td className="p-3">
+                                                    <select
+                                                        className={`border rounded-lg p-1.5 text-xs font-medium ${STATUS_COLORS[lead.status as LeadStatus]} focus:ring-2 focus:ring-blue-200`}
+                                                        value={lead.status}
+                                                        onChange={(e) =>
+                                                            handleStatusChange(
+                                                                lead.id,
+                                                                e.target.value as LeadStatus
+                                                            )
+                                                        }
+                                                    >
+                                                        {Object.entries(STATUS_LABELS).map(
+                                                            ([val, label]) => (
+                                                                <option key={val} value={val}>
+                                                                    {label}
+                                                                </option>
+                                                            )
+                                                        )}
+                                                    </select>
+                                                </td>
+
+                                                <td className="p-3">
+                                                    <select
+                                                        className="border rounded-lg bg-white shadow-sm text-xs p-1.5"
+                                                        value={lead.assignedToUser?.id || ""}
+                                                        onChange={(e) =>
+                                                            handleAssign(
+                                                                lead.id,
+                                                                e.target.value ? e.target.value : null
+                                                            )
+                                                        }
+                                                    >
+                                                        <option value="">Atanmadı</option>
+                                                        {users.map((u) => (
+                                                            <option key={u.id} value={u.id}>
+                                                                {u.firstName} {u.lastName}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </td>
+
+                                                <td className="p-3 text-gray-700">
+                                                    {new Date(lead.createdAt).toLocaleString()}
+                                                </td>
+
+                                                <td className="p-3 text-center">
+                                                    <div className="flex justify-center gap-2">
+                                                        <Button size="icon" variant="outline" onClick={() => handleCall(lead.phone)}>
+                                                            <Phone className="h-4 w-4 text-blue-600" />
+                                                        </Button>
+                                                        <Button size="icon" variant="outline" onClick={() => handleWhatsApp(lead.phone)}>
+                                                            <MessageCircle className="h-4 w-4 text-green-600" />
+                                                        </Button>
+                                                        <Button size="icon" variant="outline" onClick={() => handleMessenger(lead.email)}>
+                                                            <Facebook className="h-4 w-4 text-indigo-600" />
+                                                        </Button>
+                                                        <Button
+                                                            size="icon"
+                                                            variant="outline"
+                                                            className="text-red-600 hover:bg-red-50"
+                                                            onClick={() => handleDelete(lead.id)}
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+
+                                                    </div>
+                                                </td>
+                                            </tr>
                                         ))}
-                                        <th className="p-2 text-center">Aksiyonlar</th>
-                                    </tr>
-                                    </thead>
-                                    <tbody>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* 📱 Mobil görünüm (kartlar) */}
+                                <div className="md:hidden flex flex-col gap-4">
                                     {paginated.map((lead) => (
-                                        <tr key={lead.id} className="border-t hover:bg-gray-50">
-                                            <td className="p-2">
+                                        <div
+                                            key={lead.id}
+                                            className="border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-2"
+                                        >
+                                            <div className="flex justify-between items-center">
                                                 <Link
                                                     href={`/leads/${lead.id}`}
-                                                    className="text-blue-600 hover:underline"
+                                                    className="font-semibold text-blue-600 text-base"
                                                 >
                                                     {lead.name ?? "-"}
                                                 </Link>
-                                            </td>
-                                            <td className="p-2">{lead.email ?? "-"}</td>
-                                            <td className="p-2">{lead.language ?? "-"}</td>
-                                            <td className="p-2">{lead.campaign?.name ?? "-"}</td>
+                                                <span className="text-xs text-gray-500">
+                        {new Date(lead.createdAt).toLocaleDateString()}
+                      </span>
+                                            </div>
 
-                                            <td className="p-2">
+                                            <div className="text-xs text-gray-600">
+                                                <div>Email: {lead.email ?? "-"}</div>
+                                                <div>Dil: {lead.language ?? "-"}</div>
+                                                <div>Kampanya: {lead.campaign?.name ?? "-"}</div>
+                                            </div>
+
+                                            <div className="flex justify-between items-center mt-2">
                                                 <select
-                                                    className={`border rounded-md p-1 text-xs ${STATUS_COLORS[lead.status as LeadStatus]}`}
+                                                    className={`border rounded-md p-1 text-xs font-medium ${STATUS_COLORS[lead.status as LeadStatus]}`}
                                                     value={lead.status}
                                                     onChange={(e) =>
-                                                        handleStatusChange(lead.id, e.target.value as LeadStatus)
+                                                        handleStatusChange(
+                                                            lead.id,
+                                                            e.target.value as LeadStatus
+                                                        )
                                                     }
                                                 >
                                                     {Object.entries(STATUS_LABELS).map(([val, label]) => (
@@ -253,12 +391,9 @@ export default function LeadsPage() {
                                                         </option>
                                                     ))}
                                                 </select>
-                                            </td>
 
-                                            {/* 🔹 Atama sütunu */}
-                                            <td className="p-2">
                                                 <select
-                                                    className="border rounded-md p-1 text-xs"
+                                                    className="border rounded-md text-xs p-1 bg-white"
                                                     value={lead.assignedToUser?.id || ""}
                                                     onChange={(e) =>
                                                         handleAssign(
@@ -274,41 +409,89 @@ export default function LeadsPage() {
                                                         </option>
                                                     ))}
                                                 </select>
-                                            </td>
+                                            </div>
 
-                                            <td className="p-2">
-                                                {new Date(lead.createdAt).toLocaleString()}
-                                            </td>
-
-                                            <td className="p-2 text-center">
-                                                <div className="flex justify-center gap-2">
-                                                    <Button size="sm" variant="outline" title="Telefon">
-                                                        <Phone className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button size="sm" variant="outline" title="WhatsApp">
-                                                        <MessageCircle className="h-4 w-4" />
-                                                    </Button>
-                                                    <Button size="sm" variant="outline" title="Messenger">
-                                                        <Facebook className="h-4 w-4" />
-                                                    </Button>
+                                            <div className="flex justify-end gap-2 mt-2">
+                                                <div className="flex justify-end gap-2 mt-2">
+                                                    {/* 📞 Telefon Araması */}
                                                     <Button
-                                                        size="sm"
-                                                        variant="danger"
-                                                        onClick={() => handleDelete(lead.id)}
+                                                        size="icon"
+                                                        variant="outline"
+                                                        onClick={() => handleCall(lead.phone)}
+                                                        title="Telefon ile ara"
                                                     >
-                                                        <Trash2 className="h-4 w-4" />
+                                                        <Phone className="h-4 w-4 text-blue-600"/>
+                                                    </Button>
+
+                                                    {/* 💬 WhatsApp */}
+                                                    <Button
+                                                        size="icon"
+                                                        variant="outline"
+                                                        onClick={() => handleWhatsApp(lead.phone)}
+                                                        title="WhatsApp ile mesaj gönder"
+                                                    >
+                                                        <MessageCircle className="h-4 w-4 text-green-600"/>
+                                                    </Button>
+
+                                                    {/* 💙 Messenger */}
+                                                    <Button
+                                                        size="icon"
+                                                        variant="outline"
+                                                        onClick={() => handleMessenger(lead.email)}
+                                                        title="Messenger üzerinden mesaj gönder"
+                                                    >
+                                                        <Facebook className="h-4 w-4 text-indigo-600"/>
+                                                    </Button>
+
+                                                    {/* 🗑️ Silme */}
+                                                    <Button
+                                                        size="icon"
+                                                        variant="outline"
+                                                        onClick={() => handleDelete(lead.id)}
+                                                        title="Lead'i sil"
+                                                    >
+                                                        <Trash2 className="h-4 w-4 text-red-600"/>
                                                     </Button>
                                                 </div>
-                                            </td>
-                                        </tr>
+
+                                            </div>
+                                        </div>
                                     ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                </div>
+                            </>
                         )}
                     </CardContent>
                 </Card>
             </div>
+
+            {/* 📄 Sayfalama */}
+            <div className="col-span-12 flex justify-start mt-6 mb-8">
+                <div
+                    className="flex items-center justify-center gap-4 bg-white border border-gray-200 rounded-lg px-6 py-2.5 shadow-sm w-full sm:w-auto">
+                    <Button
+                        disabled={page === 0}
+                        onClick={() => setPage((p) => Math.max(p - 1, 0))}
+                        variant="outline"
+                        className="min-w-[90px] h-9 flex items-center justify-center text-sm"
+                    >
+                        ← Önceki
+                    </Button>
+
+                    <span className="text-gray-700 font-medium text-sm min-w-[120px] text-center select-none">
+          Sayfa {page + 1} / {totalPages}
+        </span>
+
+                    <Button
+                        disabled={page + 1 >= totalPages}
+                        onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+                        variant="outline"
+                        className="min-w-[90px] h-9 flex items-center justify-center text-sm"
+                    >
+                        Sonraki →
+                    </Button>
+                </div>
+            </div>
         </Layout>
     );
+
 }

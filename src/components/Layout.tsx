@@ -11,22 +11,23 @@ interface LayoutProps {
 
 export default function Layout({ children, title, subtitle }: LayoutProps) {
     return (
-        <div className="flex min-h-screen bg-gray-50">
-            <Sidebar/>
+        <div className="min-h-screen bg-gray-50">
+            {/* Sidebar hem desktop (fixed) hem mobil navbar/drawer'ı içeriyor */}
+            <Sidebar />
 
-                {/* Sağ taraf */}
-            <div className="flex-1 flex flex-col h-screen overflow-y-auto min-w-0">
-                <Header title={title} subtitle={subtitle}/>
+            {/* Sağ taraf: Desktop'ta sidebar genişliği kadar soldan boşluk bırak */}
+            <div className="md:ml-64 flex min-h-screen flex-col">
+                {/* Header: mobilde gizli, desktop'ta görünür */}
+                <Header title={title} subtitle={subtitle} />
 
-                <main className="flex-1 p-6">
-                        {/* 🔹 max-w-* kaldırıldı */}
-                        <div className="w-full px-6">
-                            <div className="grid grid-cols-12 gap-6">
-                                {children}
-                            </div>
+                <main className="flex-1 px-3 sm:px-4 md:px-6 py-4 sm:py-6 overflow-y-auto">
+                    <div className="w-full mx-auto max-w-screen-2xl">
+                        <div className="grid grid-cols-12 gap-4 sm:gap-6">
+                            {children}
                         </div>
-                    </main>
-                </div>
+                    </div>
+                </main>
             </div>
-            );
-            }
+        </div>
+    );
+}

@@ -143,15 +143,30 @@ export const api = {
 
 // ──────────────────────────────── LEADS API ────────────────────────────────
 
-export const getLeads = async (): Promise<LeadResponse[]> => {
+export interface LeadPage {
+    content: LeadResponse[];
+    totalPages: number;
+    totalElements: number;
+    number: number; // current page index (0-based)
+    size: number;
+}
+
+export const getLeads = async (
+    page = 0,
+    size = 10,
+    sort = "createdAt,desc"
+): Promise<LeadPage | null> => {
     const headers = getAuthHeaders();
     try {
-        const res = await fetch(`${BASE_URL}/leads`, { headers });
+        const res = await fetch(
+            `${BASE_URL}/leads?page=${page}&size=${size}&sort=${sort}`,
+            { headers }
+        );
         if (!res.ok) throw new Error("Lead listesi alınamadı");
         return await res.json();
     } catch (err) {
         console.error("getLeads error:", err);
-        return [];
+        return null;
     }
 };
 
@@ -490,5 +505,29 @@ export const createSale = async (
     } catch (err) {
         console.error("createSale error:", err);
         return false;
+    }
+};
+
+export interface AuthUser {
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    role?: string;
+    organizationId?: string;
+}
+
+/** Giriş yapan kullanıcı bilgisi */
+export const getCurrentUser = async (): Promise<AuthUser | null> => {
+    try {
+        const res = await fetch(`${BASE_URL}/users/me`, {
+            headers: getAuthHeaders(),
+        });
+
+        if (!res.ok) throw new Error("Kullanıcı bilgisi alınamadı");
+        return await res.json();
+    } catch (err) {
+        console.error("getCurrentUser error:", err);
+        return null;
     }
 };

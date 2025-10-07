@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
-import { Info, Phone, MessageCircle, Facebook, ArrowLeft } from "lucide-react";
+import { Phone, MessageCircle, Facebook, ArrowLeft } from "lucide-react";
 import {
     getLeadById,
     updateLeadStatus,
@@ -53,7 +53,7 @@ export default function LeadDetailPage() {
     const [noteText, setNoteText] = useState("");
     const [showSalesForm, setShowSalesForm] = useState(false);
 
-    // 📦 Veriyi yükle
+    // 📦 verileri yükle
     useEffect(() => {
         if (!id) return;
         const fetchData = async () => {
@@ -63,7 +63,7 @@ export default function LeadDetailPage() {
             if (leadData) {
                 setLead(leadData);
                 setStatus(leadData.status);
-                if (leadData.status === "SOLD") setShowSalesForm(true);
+                setShowSalesForm(leadData.status === "SOLD");
             }
             setActions(actionsData || []);
             setLoading(false);
@@ -71,7 +71,7 @@ export default function LeadDetailPage() {
         fetchData();
     }, [id]);
 
-    // 🔁 Durum değiştir
+    // 🔁 durum değiştir
     const handleStatusChange = async (newStatus: LeadStatus) => {
         if (!lead) return;
         const success = await updateLeadStatus(lead.id, newStatus);
@@ -79,26 +79,17 @@ export default function LeadDetailPage() {
             setStatus(newStatus);
             setLead((prev) => (prev ? { ...prev, status: newStatus } : prev));
             setShowSalesForm(newStatus === "SOLD");
-        } else {
-            alert("Durum güncellenemedi!");
-        }
+
+            // Satışa geçtiyse logla
+            if (newStatus === "SOLD") {
+                handleAddAction("STATUS", "Lead durumu Satış olarak güncellendi");
+            }
+        } else alert("Durum güncellenemedi!");
     };
 
-    // 👤 Lead atama
-    const handleAssign = async (userId: string | null) => {
-        if (!lead) return;
-        const success = await patchLeadAssign(lead.id, userId);
-        if (success) {
-            alert("Lead ataması başarıyla güncellendi");
-        } else {
-            alert("Lead atama işlemi başarısız!");
-        }
-    };
-
-
-    // 📝 Yeni aksiyon
+    // 📝 aksiyon ekleme
     const handleAddAction = async (actionType: string, message: string) => {
-        if (!lead || !message.trim()) return;
+        if (!lead) return;
         const ok = await addLeadAction(lead.id, actionType, message);
         if (ok) {
             setActions((prev) => [
@@ -114,6 +105,26 @@ export default function LeadDetailPage() {
         }
     };
 
+    // ☎️ iletişim butonları
+    const handleCall = (phone?: string) => {
+        if (!phone) return alert("Telefon numarası bulunamadı.");
+        window.open(`tel:${phone}`, "_self");
+        handleAddAction("PHONE", "Telefon araması başlatıldı");
+    };
+
+    const handleWhatsApp = (phone?: string) => {
+        if (!phone) return alert("Telefon numarası bulunamadı.");
+        const formatted = phone.replace(/\D/g, "");
+        window.open(`https://wa.me/${formatted}`, "_blank");
+        handleAddAction("WHATSAPP", "WhatsApp mesajı gönderildi");
+    };
+
+    const handleMessenger = (pageId?: string) => {
+        if (!pageId) return alert("Messenger bağlantısı bulunamadı.");
+        window.open(`https://m.me/${pageId}`, "_blank");
+        handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi");
+    };
+
     if (loading || !lead) {
         return (
             <Layout title="Lead Detayı">
@@ -126,15 +137,15 @@ export default function LeadDetailPage() {
 
     return (
         <Layout title={`Lead Detayı - ${lead.name}`}>
-            {/* Sol taraf */}
+            {/* 🧱 Sol taraf */}
             <div className="col-span-12 lg:col-span-8 space-y-6">
-                <Card>
-                    <CardHeader className="flex justify-between items-center">
-                        <div className="flex items-center gap-2">
+                <Card className="shadow-sm">
+                    <CardHeader className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div className="flex items-center flex-wrap gap-2">
                             <Button variant="outline" size="sm" onClick={() => router.push("/leads")}>
                                 <ArrowLeft className="h-4 w-4 mr-1" /> Geri
                             </Button>
-                            <span className="font-semibold">{lead.name}</span>
+                            <span className="font-semibold text-base">{lead.name}</span>
                             <span
                                 className={`px-2 py-0.5 text-xs rounded-full ${STATUS_COLORS[status]}`}
                             >
@@ -142,29 +153,30 @@ export default function LeadDetailPage() {
               </span>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex gap-2">
                             <Button
-                                size="sm"
+                                size="icon"
                                 variant="outline"
-                                onClick={() => handleAddAction("PHONE", "Telefon araması yapıldı")}
+                                title="Telefon"
+                                onClick={() => handleCall(lead.phone)}
                             >
-                                <Phone className="h-4 w-4 text-green-600" />
+                                <Phone className="h-4 w-4 text-blue-600" />
                             </Button>
                             <Button
-                                size="sm"
+                                size="icon"
                                 variant="outline"
-                                onClick={() => handleAddAction("WHATSAPP", "WhatsApp mesajı gönderildi")}
+                                title="WhatsApp"
+                                onClick={() => handleWhatsApp(lead.phone)}
                             >
-                                <MessageCircle className="h-4 w-4 text-green-500" />
+                                <MessageCircle className="h-4 w-4 text-green-600" />
                             </Button>
                             <Button
-                                size="sm"
+                                size="icon"
                                 variant="outline"
-                                onClick={() =>
-                                    handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi")
-                                }
+                                title="Messenger"
+                                onClick={() => handleMessenger(lead.pageId)}
                             >
-                                <Facebook className="h-4 w-4 text-blue-600" />
+                                <Facebook className="h-4 w-4 text-indigo-600" />
                             </Button>
                         </div>
                     </CardHeader>
@@ -191,13 +203,13 @@ export default function LeadDetailPage() {
                     </CardContent>
                 </Card>
 
-                {/* 💵 Satış formu inline */}
+                {/* 💵 Satış formu */}
                 {showSalesForm && (
-                    <div className="mt-6">
+                    <div className="mt-4 animate-fade-in">
                         <SalesForm
                             leadId={Number(lead.id)}
                             onSubmit={(data) => {
-                                console.log("🧾 Satış kaydedildi:", data);
+                                handleAddAction("SALE", `Satış kaydedildi (${data.price} ${data.currency})`);
                                 setShowSalesForm(false);
                             }}
                         />
@@ -205,9 +217,9 @@ export default function LeadDetailPage() {
                 )}
             </div>
 
-            {/* Sağ taraf: Notlar */}
+            {/* 🗒️ Sağ taraf: Aksiyon geçmişi */}
             <div className="col-span-12 lg:col-span-4">
-                <Card>
+                <Card className="shadow-sm">
                     <CardHeader>Aksiyon Geçmişi</CardHeader>
                     <CardContent>
                         {actions.length === 0 ? (
@@ -240,7 +252,7 @@ export default function LeadDetailPage() {
                   value={noteText}
                   onChange={(e) => setNoteText(e.target.value)}
               />
-                            <Button type="submit" size="sm" variant="primary">
+                            <Button type="submit" size="sm" variant="primary" className="w-full">
                                 Kaydet
                             </Button>
                         </form>
