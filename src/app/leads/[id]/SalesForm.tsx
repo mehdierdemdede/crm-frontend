@@ -5,7 +5,8 @@ import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
-import { createSale } from "@/lib/api";
+import { createSale, type SaleResponse } from "@/lib/api";
+import { resolveDocumentUrl } from "@/lib/document";
 
 type Currency = "TRY" | "USD" | "EUR" | "GBP";
 
@@ -36,11 +37,14 @@ const TRANSFER_OPTIONS = [
 ];
 
 export default function SalesForm({
-                                      leadId,
-                                      onSubmit,
-                                  }: {
+    leadId,
+    onSubmit,
+}: {
     leadId: string; // ✅ UUID string olmalı
-    onSubmit: (payload: SalesPayload, saleId?: string | null) => void;
+    onSubmit: (
+        payload: SalesPayload,
+        result: { sale?: SaleResponse | null; saleId?: string | null }
+    ) => void;
 })
  {
     const [step, setStep] = useState(1);
@@ -103,15 +107,17 @@ export default function SalesForm({
             transfer: form.transfer,
         };
 
-        const { success: saleCreated, saleId } = await createSale(payload, form.passportFile);
+        const { success: saleCreated, sale, saleId } = await createSale(
+            payload,
+            form.passportFile
+        );
+
         if (saleCreated) {
             setSuccess(true);
-            onSubmit(payload, saleId ?? null);
+            onSubmit(payload, { sale: sale ?? null, saleId: saleId ?? null });
 
-            if (saleId) {
-                const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-                setDocumentUrl(`${apiUrl}/api/sales/document/${saleId}`);
-            }
+            const url = resolveDocumentUrl(sale?.documentPath, sale?.id ?? saleId ?? null);
+            setDocumentUrl(url);
         } else {
             setSubmitError("❌ Satış kaydedilemedi.");
         }

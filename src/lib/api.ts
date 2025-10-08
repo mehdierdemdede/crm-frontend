@@ -503,7 +503,7 @@ export interface CreateSaleRequest {
 export const createSale = async (
     payload: SalesPayload,
     file?: File | null
-): Promise<{ success: boolean; saleId?: string | null }> => {
+): Promise<{ success: boolean; sale?: SaleResponse | null; saleId?: string | null }> => {
     const headers = getAuthHeaders();
     delete headers["Content-Type"]; // FormData kendi Content-Type'ını belirler
 
@@ -519,11 +519,11 @@ export const createSale = async (
         });
 
         if (!res.ok) throw new Error(await res.text());
-        const data = await res.json();
-        return { success: true, saleId: data.id };
+        const data = (await res.json()) as SaleResponse | null;
+        return { success: true, sale: data, saleId: data?.id ?? null };
     } catch (err) {
         console.error("createSale error:", err);
-        return { success: false, saleId: null };
+        return { success: false, sale: null, saleId: null };
     }
 };
 
