@@ -1,4 +1,6 @@
 // src/lib/api.ts
+import {SalesPayload} from "@/app/leads/[id]/SalesForm";
+
 const BASE_URL = "http://localhost:8080/api";
 
 // ──────────────────────────────── TYPES ────────────────────────────────
@@ -31,21 +33,18 @@ export interface UserResponse {
 }
 
 export interface LeadResponse {
-    platform: string;
     id: string;
     name: string;
-    email?: string | null;
-    phone?: string | null;
-    language?: string | null;
-    status: LeadStatus;
-    createdAt: string;
+    email?: string;
+    phone?: string;
+    language?: string;
     campaign?: { id: string; name: string } | null;
-    assignedToUser?: {
-        id: string;
-        firstName: string;
-        lastName?: string | null;
-    } | null;
+    status: LeadStatus;
+    assignedToUser?: SimpleUser | null;
+    createdAt: string;
+    lastSaleId?: string | null; // ✅ eklendi
 }
+
 
 export interface LeadAction {
     id: string;
@@ -475,38 +474,32 @@ export interface CreateSaleRequest {
 }
 
 export const createSale = async (
-    data: CreateSaleRequest,
-    passportFile?: File | null
-): Promise<boolean> => {
-    const token = localStorage.getItem("authToken");
-    const tokenType = localStorage.getItem("tokenType") || "Bearer";
+    payload: SalesPayload,
+    file?: File | null
+): Promise<{ success: boolean; saleId?: string | null }> => {
+    const headers = getAuthHeaders();
+    delete headers["Content-Type"]; // FormData kendi Content-Type'ını belirler
 
     const formData = new FormData();
-    Object.entries(data).forEach(([key, value]) => {
-        if (Array.isArray(value)) formData.append(key, JSON.stringify(value));
-        else formData.append(key, value.toString());
-    });
-
-    if (passportFile) formData.append("passportFile", passportFile);
+    formData.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
+    if (file) formData.append("file", file);
 
     try {
         const res = await fetch(`${BASE_URL}/sales`, {
             method: "POST",
-            headers: token ? { Authorization: `${tokenType} ${token}` } : undefined,
+            headers,
             body: formData,
         });
 
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Satış kaydı oluşturulamadı");
-        }
-
-        return true;
+        if (!res.ok) throw new Error(await res.text());
+        const data = await res.json();
+        return { success: true, saleId: data.id };
     } catch (err) {
         console.error("createSale error:", err);
-        return false;
+        return { success: false, saleId: null };
     }
 };
+
 
 export interface AuthUser {
     id: string;

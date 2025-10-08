@@ -205,16 +205,33 @@ export default function LeadDetailPage() {
 
                 {/* 💵 Satış formu */}
                 {showSalesForm && (
-                    <div className="mt-4 animate-fade-in">
+                    <div className="mt-6">
                         <SalesForm
-                            leadId={Number(lead.id)}
+                            leadId={lead.id} // ✅ String olarak gidiyor
                             onSubmit={(data) => {
-                                handleAddAction("SALE", `Satış kaydedildi (${data.price} ${data.currency})`);
+                                console.log("🧾 Satış kaydedildi:", data);
                                 setShowSalesForm(false);
                             }}
                         />
+
+
                     </div>
                 )}
+
+                {/* 📎 Satış belgesi varsa görüntüleme linki */}
+                {lead?.lastSaleId && (
+                    <div className="mt-4 flex justify-end">
+                        <a
+                            href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/sales/document/${lead.lastSaleId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
+                        >
+                            📎 Satış Belgesini Görüntüle
+                        </a>
+                    </div>
+                )}
+
             </div>
 
             {/* 🗒️ Sağ taraf: Aksiyon geçmişi */}

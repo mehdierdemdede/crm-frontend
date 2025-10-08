@@ -9,11 +9,11 @@ import { createSale } from "@/lib/api";
 type Currency = "TRY" | "USD" | "EUR" | "GBP";
 
 export interface SalesPayload {
-    leadId: string;
+    leadId: string; // ✅ UUID string (number değil)
     operationDate: string;
     operationType: string;
     price: number | "";
-    currency: Currency;
+    currency: "TRY" | "USD" | "EUR" | "GBP";
     hotel: string;
     nights: number | "";
     transfer: string[];
@@ -38,9 +38,10 @@ export default function SalesForm({
                                       leadId,
                                       onSubmit,
                                   }: {
-    leadId: number;
+    leadId: string; // ✅ UUID string olmalı
     onSubmit: (payload: SalesPayload) => void;
-}) {
+})
+ {
     const [step, setStep] = useState(1);
     const [errors, setErrors] = useState<string[]>([]);
     const [success, setSuccess] = useState(false);
@@ -93,23 +94,18 @@ export default function SalesForm({
             hotel: form.hotel,
             nights: Number(form.nights) || 0,
             transfer: form.transfer,
-        } as const;
+        };
 
-        const success = await createSale(payload, form.passportFile);
+        const { success, saleId } = await createSale(payload, form.passportFile);
         if (success) {
-            setSuccess(true);
-            setForm({
-                leadId,
-                operationDate: "",
-                operationType: "",
-                price: "",
-                currency: "TRY",
-                hotel: "",
-                nights: "",
-                transfer: [],
-                passportFile: null,
-            });
+            alert("✅ Satış başarıyla kaydedildi.");
             onSubmit(payload);
+
+            // belge varsa göster
+            if (saleId) {
+                const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+                window.open(`${apiUrl}/api/sales/document/${saleId}`, "_blank");
+            }
         } else {
             alert("❌ Satış kaydedilemedi.");
         }
@@ -345,7 +341,7 @@ export default function SalesForm({
                     <form onSubmit={submit} className="space-y-4 animate-fade-in">
                         <div>
                             <label className="block text-sm font-medium mb-1">
-                                Pasaport / Uçuş Belgeleri
+                                Belge (Pasaport, uçuş, onay vb.)
                             </label>
                             <Input
                                 type="file"
@@ -366,6 +362,15 @@ export default function SalesForm({
                                 Kaydet
                             </Button>
                         </div>
+
+                        {/* ✅ belge yüklendiyse göster */}
+                        {form.passportFile && (
+                            <div className="mt-3 flex justify-end">
+                <span className="text-xs text-gray-500 mr-2">
+                    Seçilen belge: {form.passportFile.name}
+                </span>
+                            </div>
+                        )}
                     </form>
                 )}
             </CardContent>
