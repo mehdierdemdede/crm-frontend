@@ -23,40 +23,6 @@ import {
 } from "@/lib/document";
 import SalesForm from "./SalesForm";
 
-const SALE_CACHE_PREFIX = "lead-sale-cache:";
-
-const loadCachedSale = (leadId: string): SaleResponse | null => {
-    if (typeof window === "undefined") return null;
-    try {
-        const raw = window.localStorage.getItem(`${SALE_CACHE_PREFIX}${leadId}`);
-        return raw ? (JSON.parse(raw) as SaleResponse) : null;
-    } catch (error) {
-        console.error("loadCachedSale error:", error);
-        return null;
-    }
-};
-
-const saveCachedSale = (leadId: string, sale: SaleResponse) => {
-    if (typeof window === "undefined") return;
-    try {
-        window.localStorage.setItem(
-            `${SALE_CACHE_PREFIX}${leadId}`,
-            JSON.stringify(sale)
-        );
-    } catch (error) {
-        console.error("saveCachedSale error:", error);
-    }
-};
-
-const clearCachedSale = (leadId: string) => {
-    if (typeof window === "undefined") return;
-    try {
-        window.localStorage.removeItem(`${SALE_CACHE_PREFIX}${leadId}`);
-    } catch (error) {
-        console.error("clearCachedSale error:", error);
-    }
-};
-
 const STATUS_LABELS: Record<LeadStatus, string> = {
     UNCONTACTED: "İlk Temas Yok",
     HOT: "Sıcak Hasta",
@@ -105,11 +71,6 @@ export default function LeadDetailPage() {
         const fetchData = async () => {
             setLoading(true);
 
-            const cachedSale = loadCachedSale(leadId);
-            if (cachedSale) {
-                setSale(cachedSale);
-            }
-
             const [leadData, actionsData] = await Promise.all([
                 getLeadById(leadId),
                 getLeadActions(leadId),
@@ -121,7 +82,7 @@ export default function LeadDetailPage() {
                 setLead(leadData);
                 setStatus(leadData.status);
 
-                let resolvedSale: SaleResponse | null = leadData.lastSale ?? cachedSale ?? null;
+                let resolvedSale: SaleResponse | null = leadData.lastSale ?? null;
 
                 if (!resolvedSale && leadData.lastSaleId) {
                     const saleData = await getSaleById(leadData.lastSaleId);
@@ -133,16 +94,13 @@ export default function LeadDetailPage() {
 
                 if (resolvedSale) {
                     setSale(resolvedSale);
-                    saveCachedSale(leadId, resolvedSale);
                 } else {
                     setSale(null);
-                    clearCachedSale(leadId);
                 }
 
                 setShowSalesForm(leadData.status === "SOLD" && !resolvedSale);
-            } else if (!cachedSale) {
+            } else {
                 setSale(null);
-                clearCachedSale(leadId);
                 setShowSalesForm(false);
             }
 
