@@ -12,6 +12,7 @@ import {
     deleteLead,
     patchLeadAssign,
     getUsers,
+    addLeadAction,
     type LeadResponse,
     type LeadStatus,
     type SimpleUser,
@@ -147,10 +148,19 @@ export default function LeadsPage() {
     const paginated = sorted;
 
     const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
+        const targetLead = leads.find((l) => l.id === leadId);
+        if (!targetLead || targetLead.status === newStatus) return;
+
         const ok = await updateLeadStatus(leadId, newStatus);
         if (ok) {
             setLeads((prev) =>
                 prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l))
+            );
+            const statusLabel = STATUS_LABELS[newStatus] ?? newStatus;
+            await addLeadAction(
+                leadId,
+                "STATUS",
+                `Lead durumu ${statusLabel} olarak güncellendi`
             );
         } else alert("Durum güncellenemedi.");
     };
