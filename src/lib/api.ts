@@ -211,9 +211,10 @@ export const getSaleById = async (saleId: string): Promise<SaleResponse | null> 
 export const updateLeadStatus = async (leadId: string, status: string): Promise<boolean> => {
     const headers = getAuthHeaders();
     try {
-        const res = await fetch(`${BASE_URL}/leads/${leadId}/status?status=${status}`, {
+        const res = await fetch(`${BASE_URL}/leads/${leadId}/status`, {
             method: "PATCH",
             headers,
+            body: JSON.stringify({ status }),
         });
         return res.ok;
     } catch (err) {
