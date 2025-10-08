@@ -11,9 +11,10 @@ import {
     updateLeadStatus,
     getLeadActions,
     addLeadAction,
-    patchLeadAssign,
+    getSaleById,
     type LeadResponse,
     type LeadStatus,
+    type SaleResponse,
 } from "@/lib/api";
 import SalesForm from "./SalesForm";
 
@@ -52,6 +53,7 @@ export default function LeadDetailPage() {
     const [status, setStatus] = useState<LeadStatus>("UNCONTACTED");
     const [noteText, setNoteText] = useState("");
     const [showSalesForm, setShowSalesForm] = useState(false);
+    const [sale, setSale] = useState<SaleResponse | null>(null);
 
     // 📦 verileri yükle
     useEffect(() => {
@@ -63,7 +65,18 @@ export default function LeadDetailPage() {
             if (leadData) {
                 setLead(leadData);
                 setStatus(leadData.status);
-                setShowSalesForm(leadData.status === "SOLD");
+                let hasSale = false;
+                if (leadData.lastSale) {
+                    setSale(leadData.lastSale);
+                    hasSale = true;
+                } else if (leadData.lastSaleId) {
+                    const saleData = await getSaleById(leadData.lastSaleId);
+                    setSale(saleData);
+                    hasSale = Boolean(saleData);
+                } else {
+                    setSale(null);
+                }
+                setShowSalesForm(leadData.status === "SOLD" && !hasSale);
             }
             setActions(actionsData || []);
             setLoading(false);
@@ -78,7 +91,7 @@ export default function LeadDetailPage() {
         if (success) {
             setStatus(newStatus);
             setLead((prev) => (prev ? { ...prev, status: newStatus } : prev));
-            setShowSalesForm(newStatus === "SOLD");
+            setShowSalesForm(newStatus === "SOLD" && !sale);
 
             // Satışa geçtiyse logla
             if (newStatus === "SOLD") {
@@ -208,9 +221,25 @@ export default function LeadDetailPage() {
                     <div className="mt-6">
                         <SalesForm
                             leadId={lead.id} // ✅ String olarak gidiyor
-                            onSubmit={(data) => {
-                                console.log("🧾 Satış kaydedildi:", data);
+                            onSubmit={async (_data, saleId) => {
+                                console.log("🧾 Satış kaydedildi:", saleId);
                                 setShowSalesForm(false);
+                                if (saleId) {
+                                    const saleData = await getSaleById(saleId);
+                                    if (saleData) {
+                                        setSale(saleData);
+                                        setLead((prev) =>
+                                            prev
+                                                ? {
+                                                    ...prev,
+                                                    status: "SOLD",
+                                                    lastSaleId: saleId,
+                                                    lastSale: saleData,
+                                                }
+                                                : prev
+                                        );
+                                    }
+                                }
                             }}
                         />
 
@@ -218,18 +247,55 @@ export default function LeadDetailPage() {
                     </div>
                 )}
 
-                {/* 📎 Satış belgesi varsa görüntüleme linki */}
-                {lead?.lastSaleId && (
-                    <div className="mt-4 flex justify-end">
-                        <a
-                            href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/sales/document/${lead.lastSaleId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:underline flex items-center gap-1"
-                        >
-                            📎 Satış Belgesini Görüntüle
-                        </a>
-                    </div>
+                {/* 📄 Satış bilgileri */}
+                {sale && (
+                    <Card className="shadow-sm mt-6">
+                        <CardHeader className="font-semibold text-base">
+                            Satış Bilgileri
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm">
+                            <p>
+                                <b>Operasyon Tarihi:</b> {sale.operationDate
+                                    ? new Date(sale.operationDate).toLocaleDateString()
+                                    : "-"}
+                            </p>
+                            <p>
+                                <b>Operasyon Türü:</b> {sale.operationType ?? "-"}
+                            </p>
+                            <p>
+                                <b>Fiyat:</b> {sale.price != null
+                                    ? `${Number(sale.price).toLocaleString("tr-TR")} ${sale.currency || ""}`.trim()
+                                    : "-"}
+                            </p>
+                            <p>
+                                <b>Otel:</b> {sale.hotel ?? "-"}
+                            </p>
+                            <p>
+                                <b>Gece Sayısı:</b> {sale.nights ?? "-"}
+                            </p>
+                            <div>
+                                <b>Transfer:</b>{" "}
+                                {sale.transfer && sale.transfer.length > 0 ? (
+                                    <span>{sale.transfer.join(", ")}</span>
+                                ) : (
+                                    <span>-</span>
+                                )}
+                            </div>
+
+                            {(lead?.lastSaleId || sale.documentPath) && (
+                                <div className="pt-2">
+                                    <a
+                                        href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/sales/document/${lead?.lastSaleId ?? sale.id}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-sm text-blue-600 hover:underline"
+                                    >
+                                        📎 Satış Belgesini Görüntüle
+                                    </a>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
                 )}
 
             </div>

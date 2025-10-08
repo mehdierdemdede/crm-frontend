@@ -32,6 +32,20 @@ export interface UserResponse {
     role: Role;
 }
 
+export interface SaleResponse {
+    id: string;
+    leadId: string;
+    operationDate?: string;
+    operationType?: string;
+    price?: number;
+    currency?: "TRY" | "USD" | "EUR" | "GBP" | string;
+    hotel?: string;
+    nights?: number;
+    transfer?: string[];
+    documentPath?: string | null;
+    createdAt?: string;
+}
+
 export interface LeadResponse {
     id: string;
     name: string;
@@ -43,6 +57,7 @@ export interface LeadResponse {
     assignedToUser?: SimpleUser | null;
     createdAt: string;
     lastSaleId?: string | null; // ✅ eklendi
+    lastSale?: SaleResponse | null;
 }
 
 
@@ -177,6 +192,18 @@ export const getLeadById = async (leadId: string): Promise<LeadResponse | null> 
         return await res.json();
     } catch (err) {
         console.error("getLeadById error:", err);
+        return null;
+    }
+};
+
+export const getSaleById = async (saleId: string): Promise<SaleResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/sales/${saleId}`, { headers });
+        if (!res.ok) throw new Error("Satış bulunamadı");
+        return await res.json();
+    } catch (err) {
+        console.error("getSaleById error:", err);
         return null;
     }
 };
