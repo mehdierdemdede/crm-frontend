@@ -40,7 +40,7 @@ export default function SalesForm({
                                       onSubmit,
                                   }: {
     leadId: string; // ✅ UUID string olmalı
-    onSubmit: (payload: SalesPayload) => void;
+    onSubmit: (payload: SalesPayload, saleId?: string | null) => void;
 })
  {
     const [step, setStep] = useState(1);
@@ -106,7 +106,7 @@ export default function SalesForm({
         const { success: saleCreated, saleId } = await createSale(payload, form.passportFile);
         if (saleCreated) {
             setSuccess(true);
-            onSubmit(payload);
+            onSubmit(payload, saleId ?? null);
 
             if (saleId) {
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
