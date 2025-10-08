@@ -16,7 +16,11 @@ import {
     type LeadStatus,
     type SaleResponse,
 } from "@/lib/api";
-import { resolveDocumentUrl } from "@/lib/document";
+import {
+    resolveDocumentUrl,
+    inferDocumentFileName,
+    downloadDocumentWithAuth,
+} from "@/lib/document";
 import SalesForm from "./SalesForm";
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
@@ -55,6 +59,7 @@ export default function LeadDetailPage() {
     const [noteText, setNoteText] = useState("");
     const [showSalesForm, setShowSalesForm] = useState(false);
     const [sale, setSale] = useState<SaleResponse | null>(null);
+    const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
 
     // 📦 verileri yükle
     useEffect(() => {
@@ -295,8 +300,10 @@ export default function LeadDetailPage() {
                             </div>
 
                             {(() => {
+                                const documentPath =
+                                    sale.documentPath ?? lead?.lastSale?.documentPath ?? null;
                                 const documentUrl = resolveDocumentUrl(
-                                    sale.documentPath ?? lead?.lastSale?.documentPath ?? null,
+                                    documentPath,
                                     sale.id ?? lead?.lastSaleId ?? null
                                 );
 
@@ -304,16 +311,44 @@ export default function LeadDetailPage() {
                                     return null;
                                 }
 
+                                const fallbackFileName = inferDocumentFileName(documentPath);
+
+                                const handleDocumentView = async () => {
+                                    setIsDownloadingDocument(true);
+                                    try {
+                                        const result = await downloadDocumentWithAuth(
+                                            documentUrl,
+                                            fallbackFileName
+                                        );
+
+                                        if (!result.success) {
+                                            if (result.status === 401) {
+                                                alert(
+                                                    "Belgeyi görüntülemek için yeniden oturum açmanız gerekiyor."
+                                                );
+                                            } else {
+                                                alert(
+                                                    "Satış belgesi indirilemedi. Lütfen daha sonra tekrar deneyiniz."
+                                                );
+                                            }
+                                        }
+                                    } finally {
+                                        setIsDownloadingDocument(false);
+                                    }
+                                };
+
                                 return (
                                     <div className="pt-2">
-                                        <a
-                                            href={documentUrl}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-sm text-blue-600 hover:underline"
+                                        <button
+                                            type="button"
+                                            className="text-sm text-blue-600 hover:underline disabled:opacity-60"
+                                            onClick={handleDocumentView}
+                                            disabled={isDownloadingDocument}
                                         >
-                                            📎 Satış Belgesini Görüntüle
-                                        </a>
+                                            {isDownloadingDocument
+                                                ? "Belge indiriliyor..."
+                                                : "📎 Satış Belgesini Görüntüle"}
+                                        </button>
                                     </div>
                                 );
                             })()}

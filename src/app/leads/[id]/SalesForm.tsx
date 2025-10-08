@@ -6,7 +6,11 @@ import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { createSale, type SaleResponse } from "@/lib/api";
-import { resolveDocumentUrl } from "@/lib/document";
+import {
+    resolveDocumentUrl,
+    downloadDocumentWithAuth,
+    inferDocumentFileName,
+} from "@/lib/document";
 
 type Currency = "TRY" | "USD" | "EUR" | "GBP";
 
@@ -63,6 +67,8 @@ export default function SalesForm({
         transfer: [],
         passportFile: null,
     });
+    const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
+    const [documentFileName, setDocumentFileName] = useState<string>("satis-belgesi.pdf");
 
     const validateStep = () => {
         const errs: string[] = [];
@@ -118,6 +124,7 @@ export default function SalesForm({
 
             const url = resolveDocumentUrl(sale?.documentPath, sale?.id ?? saleId ?? null);
             setDocumentUrl(url);
+            setDocumentFileName(inferDocumentFileName(sale?.documentPath));
         } else {
             setSubmitError("❌ Satış kaydedilemedi.");
         }
@@ -178,18 +185,40 @@ export default function SalesForm({
                 )}
 
                 {/* ✅ Başarı mesajı */}
-                {success && (
+                        {success && (
                     <div className="bg-green-50 text-green-700 text-sm px-3 py-2 rounded-md flex flex-wrap items-center gap-2">
                         <span>✅ Satış başarıyla kaydedildi.</span>
                         {documentUrl && (
-                            <a
-                                href={documentUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="underline font-medium"
+                            <button
+                                type="button"
+                                className="underline font-medium disabled:opacity-60"
+                                onClick={async () => {
+                                    setIsDownloadingDocument(true);
+                                    try {
+                                        const result = await downloadDocumentWithAuth(
+                                            documentUrl,
+                                            documentFileName
+                                        );
+
+                                        if (!result.success) {
+                                            if (result.status === 401) {
+                                                alert(
+                                                    "Belgeyi görüntülemek için lütfen tekrar giriş yapınız."
+                                                );
+                                            } else {
+                                                alert(
+                                                    "Satış belgesi indirilemedi. Lütfen daha sonra tekrar deneyiniz."
+                                                );
+                                            }
+                                        }
+                                    } finally {
+                                        setIsDownloadingDocument(false);
+                                    }
+                                }}
+                                disabled={isDownloadingDocument}
                             >
-                                Satış belgesini görüntüle
-                            </a>
+                                {isDownloadingDocument ? "Belge indiriliyor..." : "Satış belgesini görüntüle"}
+                            </button>
                         )}
                     </div>
                 )}
