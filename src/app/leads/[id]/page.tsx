@@ -117,17 +117,18 @@ export default function LeadDetailPage() {
 
     // 🔁 durum değiştir
     const handleStatusChange = async (newStatus: LeadStatus) => {
-        if (!lead) return;
+        if (!lead || status === newStatus) return;
         const success = await updateLeadStatus(lead.id, newStatus);
         if (success) {
             setStatus(newStatus);
             setLead((prev) => (prev ? { ...prev, status: newStatus } : prev));
             setShowSalesForm(newStatus === "SOLD" && !sale);
 
-            // Satışa geçtiyse logla
-            if (newStatus === "SOLD") {
-                handleAddAction("STATUS", "Lead durumu Satış olarak güncellendi");
-            }
+            const statusLabel = STATUS_LABELS[newStatus] ?? newStatus;
+            await handleAddAction(
+                "STATUS",
+                `Lead durumu ${statusLabel} olarak güncellendi`
+            );
         } else alert("Durum güncellenemedi!");
     };
 
