@@ -1,11 +1,9 @@
 import * as React from "react";
 
+import { cn } from "@/lib/utils";
+
 type Variant = "primary" | "secondary" | "outline" | "danger" | "ghost";
 type Size = "sm" | "md" | "lg";
-
-function cn(...classes: Array<string | false | null | undefined>) {
-    return classes.filter(Boolean).join(" ");
-}
 
 export interface ButtonProps
     extends React.ButtonHTMLAttributes<HTMLButtonElement> {

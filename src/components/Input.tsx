@@ -1,8 +1,6 @@
 import * as React from "react";
 
-function cn(...classes: Array<string | false | null | undefined>) {
-    return classes.filter(Boolean).join(" ");
-}
+import { cn } from "@/lib/utils";
 
 export interface InputProps
     extends React.InputHTMLAttributes<HTMLInputElement> {
