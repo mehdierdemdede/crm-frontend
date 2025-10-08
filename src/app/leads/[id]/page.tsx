@@ -23,6 +23,40 @@ import {
 } from "@/lib/document";
 import SalesForm from "./SalesForm";
 
+const SALE_CACHE_PREFIX = "lead-sale-cache:";
+
+const loadCachedSale = (leadId: string): SaleResponse | null => {
+    if (typeof window === "undefined") return null;
+    try {
+        const raw = window.localStorage.getItem(`${SALE_CACHE_PREFIX}${leadId}`);
+        return raw ? (JSON.parse(raw) as SaleResponse) : null;
+    } catch (error) {
+        console.error("loadCachedSale error:", error);
+        return null;
+    }
+};
+
+const saveCachedSale = (leadId: string, sale: SaleResponse) => {
+    if (typeof window === "undefined") return;
+    try {
+        window.localStorage.setItem(
+            `${SALE_CACHE_PREFIX}${leadId}`,
+            JSON.stringify(sale)
+        );
+    } catch (error) {
+        console.error("saveCachedSale error:", error);
+    }
+};
+
+const clearCachedSale = (leadId: string) => {
+    if (typeof window === "undefined") return;
+    try {
+        window.localStorage.removeItem(`${SALE_CACHE_PREFIX}${leadId}`);
+    } catch (error) {
+        console.error("clearCachedSale error:", error);
+    }
+};
+
 const STATUS_LABELS: Record<LeadStatus, string> = {
     UNCONTACTED: "İlk Temas Yok",
     HOT: "Sıcak Hasta",
@@ -64,30 +98,63 @@ export default function LeadDetailPage() {
     // 📦 verileri yükle
     useEffect(() => {
         if (!id) return;
+
+        let ignore = false;
+        const leadId = id;
+
         const fetchData = async () => {
             setLoading(true);
-            const leadData = await getLeadById(id);
-            const actionsData = await getLeadActions(id);
+
+            const cachedSale = loadCachedSale(leadId);
+            if (cachedSale) {
+                setSale(cachedSale);
+            }
+
+            const [leadData, actionsData] = await Promise.all([
+                getLeadById(leadId),
+                getLeadActions(leadId),
+            ]);
+
+            if (ignore) return;
+
             if (leadData) {
                 setLead(leadData);
                 setStatus(leadData.status);
-                let hasSale = false;
-                if (leadData.lastSale) {
-                    setSale(leadData.lastSale);
-                    hasSale = true;
-                } else if (leadData.lastSaleId) {
+
+                let resolvedSale: SaleResponse | null = leadData.lastSale ?? cachedSale ?? null;
+
+                if (!resolvedSale && leadData.lastSaleId) {
                     const saleData = await getSaleById(leadData.lastSaleId);
-                    setSale(saleData);
-                    hasSale = Boolean(saleData);
+                    if (ignore) return;
+                    if (saleData) {
+                        resolvedSale = saleData;
+                    }
+                }
+
+                if (resolvedSale) {
+                    setSale(resolvedSale);
+                    saveCachedSale(leadId, resolvedSale);
                 } else {
                     setSale(null);
+                    clearCachedSale(leadId);
                 }
-                setShowSalesForm(leadData.status === "SOLD" && !hasSale);
+
+                setShowSalesForm(leadData.status === "SOLD" && !resolvedSale);
+            } else if (!cachedSale) {
+                setSale(null);
+                clearCachedSale(leadId);
+                setShowSalesForm(false);
             }
+
             setActions(actionsData || []);
             setLoading(false);
         };
+
         fetchData();
+
+        return () => {
+            ignore = true;
+        };
     }, [id]);
 
     // 🔁 durum değiştir
@@ -237,6 +304,7 @@ export default function LeadDetailPage() {
                                 if (fetchedSale) {
                                     const resolvedSaleId = fetchedSale.id ?? saleId ?? null;
                                     setSale(fetchedSale);
+                                    saveCachedSale(id, fetchedSale);
                                     setLead((prev) =>
                                         prev
                                             ? {
@@ -248,6 +316,7 @@ export default function LeadDetailPage() {
                                             : prev
                                     );
                                 } else {
+                                    clearCachedSale(id);
                                     setLead((prev) =>
                                         prev
                                             ? {
