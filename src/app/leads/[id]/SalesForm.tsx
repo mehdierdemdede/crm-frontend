@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -45,6 +46,8 @@ export default function SalesForm({
     const [step, setStep] = useState(1);
     const [errors, setErrors] = useState<string[]>([]);
     const [success, setSuccess] = useState(false);
+    const [submitError, setSubmitError] = useState<string | null>(null);
+    const [documentUrl, setDocumentUrl] = useState<string | null>(null);
     const [form, setForm] = useState<SalesPayload>({
         leadId,
         operationDate: "",
@@ -81,9 +84,13 @@ export default function SalesForm({
     const next = () => validateStep() && setStep((s) => s + 1);
     const prev = () => setStep((s) => s - 1);
 
-    const submit = async (e: React.FormEvent) => {
+    const submit = async (e: FormEvent) => {
         e.preventDefault();
         if (!validateStep()) return;
+
+        setSubmitError(null);
+        setSuccess(false);
+        setDocumentUrl(null);
 
         const payload = {
             leadId: String(leadId),
@@ -96,18 +103,17 @@ export default function SalesForm({
             transfer: form.transfer,
         };
 
-        const { success, saleId } = await createSale(payload, form.passportFile);
-        if (success) {
-            alert("✅ Satış başarıyla kaydedildi.");
+        const { success: saleCreated, saleId } = await createSale(payload, form.passportFile);
+        if (saleCreated) {
+            setSuccess(true);
             onSubmit(payload);
 
-            // belge varsa göster
             if (saleId) {
                 const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
-                window.open(`${apiUrl}/api/sales/document/${saleId}`, "_blank");
+                setDocumentUrl(`${apiUrl}/api/sales/document/${saleId}`);
             }
         } else {
-            alert("❌ Satış kaydedilemedi.");
+            setSubmitError("❌ Satış kaydedilemedi.");
         }
     };
 
@@ -159,11 +165,26 @@ export default function SalesForm({
                         ))}
                     </div>
                 )}
+                {submitError && (
+                    <div className="mb-3 bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md">
+                        {submitError}
+                    </div>
+                )}
 
                 {/* ✅ Başarı mesajı */}
                 {success && (
-                    <div className="bg-green-50 text-green-700 text-sm px-3 py-2 rounded-md">
-                        ✅ Satış başarıyla kaydedildi.
+                    <div className="bg-green-50 text-green-700 text-sm px-3 py-2 rounded-md flex flex-wrap items-center gap-2">
+                        <span>✅ Satış başarıyla kaydedildi.</span>
+                        {documentUrl && (
+                            <a
+                                href={documentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="underline font-medium"
+                            >
+                                Satış belgesini görüntüle
+                            </a>
+                        )}
                     </div>
                 )}
 
