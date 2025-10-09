@@ -89,6 +89,36 @@ export default function IntegrationsPage() {
 
     const isFacebookConnected = Boolean(facebookStatus?.connected);
 
+    useEffect(() => {
+        setAlert((prev) => {
+            if (isFacebookConnected) {
+                if (!prev) {
+                    return prev;
+                }
+
+                if (prev.type === "success") {
+                    return prev;
+                }
+
+                if (prev.type !== "info") {
+                    return prev;
+                }
+
+                return {
+                    type: "success",
+                    message:
+                        "Facebook bağlantısı başarıyla tamamlandı. Açılan pencereyi kapatabilirsiniz.",
+                };
+            }
+
+            if (prev?.type === "info") {
+                return null;
+            }
+
+            return prev;
+        });
+    }, [isFacebookConnected]);
+
     const facebookConnectionSubtitle = useMemo(() => {
         if (!isFacebookConnected) {
             return null;
