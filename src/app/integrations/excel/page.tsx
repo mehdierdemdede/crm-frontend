@@ -9,7 +9,7 @@ const CRM_COLUMNS = ["name", "email", "phone", "campaign", "lang", "status"];
 
 export default function ExcelImportPage() {
     const [step, setStep] = useState(1);
-    const [fileName, setFileName] = useState("");
+    const [, setFileName] = useState("");
     const [mapping, setMapping] = useState<{ [key: string]: string }>({});
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

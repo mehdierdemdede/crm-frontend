@@ -23,6 +23,14 @@ import { getLeadReports, LeadReportResponse } from "@/lib/api";
 import { Input } from "@/components/Input";
 
 const COLORS = ["#16a34a", "#f59e0b", "#dc2626", "#0ea5e9", "#9333ea"];
+const DEFAULT_RANGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+const getDateRange = (startValue: string, endValue: string) => {
+    const startDate = startValue || new Date(Date.now() - DEFAULT_RANGE_MS).toISOString();
+    const endDate = endValue || new Date().toISOString();
+
+    return { startDate, endDate };
+};
 
 export default function ReportsPage() {
     const [report, setReport] = useState<LeadReportResponse | null>(null);
@@ -30,14 +38,17 @@ export default function ReportsPage() {
     const [end, setEnd] = useState("");
 
     const fetchReport = async () => {
-        const startDate = start || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-        const endDate = end || new Date().toISOString();
+        const { startDate, endDate } = getDateRange(start, end);
         const data = await getLeadReports(startDate, endDate);
         setReport(data);
     };
 
     useEffect(() => {
-        fetchReport();
+        const { startDate, endDate } = getDateRange("", "");
+        void (async () => {
+            const data = await getLeadReports(startDate, endDate);
+            setReport(data);
+        })();
     }, []);
 
     return (

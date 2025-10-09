@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import {api, LoginResponse, getAuthHeaders, getCurrentUser} from "../lib/api";
+import {api, LoginResponse, getCurrentUser} from "../lib/api";
 
 export interface AuthUser {
     id: string;
@@ -45,10 +45,10 @@ export function useAuth() {
     };
 
     // 🔹 Mevcut kullanıcıyı getir
-    const fetchCurrentUser = async () => {
+    const fetchCurrentUser = useCallback(async () => {
         const data = await getCurrentUser();
         if (data) setUser(data);
-    };
+    }, []);
 
     // 🔹 Oturumdan çıkış (logout)
     const logout = () => {
@@ -62,9 +62,9 @@ export function useAuth() {
     useEffect(() => {
         const token = localStorage.getItem("authToken");
         if (token && !user) {
-            fetchCurrentUser();
+            void fetchCurrentUser();
         }
-    }, []);
+    }, [fetchCurrentUser, user]);
 
     return { login, logout, isLoading, error, user, fetchCurrentUser };
 }

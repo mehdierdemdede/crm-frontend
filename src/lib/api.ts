@@ -102,7 +102,7 @@ export const getAuthHeaders = (): HeadersInit => {
 };
 
 // Genel API yanıt tipi
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
     data?: T;
     message?: string;
     status: number;
@@ -126,7 +126,7 @@ export const api = {
                 body: JSON.stringify(data),
             });
 
-            let responseData: any;
+            let responseData: unknown;
             const contentType = response.headers.get("content-type");
 
             if (contentType?.includes("application/json")) {
@@ -405,7 +405,7 @@ export const inviteUser = async (
             body: JSON.stringify(data),
         });
 
-        let responseData: any;
+        let responseData: unknown;
         const contentType = res.headers.get("content-type");
 
         if (contentType?.includes("application/json")) {
@@ -480,15 +480,19 @@ export const getDashboardStats = async (): Promise<DashboardStats | null> => {
         );
         if (!res.ok) throw new Error("Dashboard verisi alınamadı");
 
-        const data = await res.json();
+        const data: LeadReportResponse = await res.json();
 
         // Backend’den gelen veriden özet metrikleri çıkaralım
-        const statusCounts = data.statusBreakdown || [];
+        const statusCounts: LeadReportResponse["statusBreakdown"] =
+            data.statusBreakdown || [];
         const findCount = (s: string) =>
-            statusCounts.find((x: any) => x.status === s)?.count || 0;
+            statusCounts.find((x) => x.status === s)?.count || 0;
 
         return {
-            totalLeads: statusCounts.reduce((a: number, b: any) => a + b.count, 0),
+            totalLeads: statusCounts.reduce(
+                (total, breakdown) => total + breakdown.count,
+                0
+            ),
             soldLeads: findCount("SOLD"),
             hotLeads: findCount("HOT"),
             notInterested: findCount("NOT_INTERESTED"),

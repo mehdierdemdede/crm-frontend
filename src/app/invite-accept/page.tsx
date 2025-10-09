@@ -48,8 +48,9 @@ export default function InviteAcceptPage() {
 
             setSuccess("Şifreniz başarıyla kaydedildi. Giriş sayfasına yönlendiriliyorsunuz...");
             setTimeout(() => router.push("/login"), 1500);
-        } catch (err: any) {
-            setError(err.message || "Bir hata oluştu");
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : "Bir hata oluştu";
+            setError(message);
         } finally {
             setBusy(false);
         }
