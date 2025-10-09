@@ -217,6 +217,7 @@ export const getFacebookIntegrationStatus = async (): Promise<
     try {
         const response = await fetch(`${BASE_URL}/integrations/facebook`, {
             headers,
+            cache: "no-store",
         });
 
         const body = await extractResponseBody(response);
