@@ -11,6 +11,7 @@ import {
     triggerFacebookLeadFetch,
     type FacebookIntegrationStatus,
 } from "@/lib/api";
+import { FACEBOOK_OAUTH_MESSAGE_TYPE } from "@/lib/facebookOAuth";
 
 type AlertType = "success" | "error" | "info";
 
@@ -117,6 +118,35 @@ export default function IntegrationsPage() {
 
         return details.join(" • ");
     }, [facebookStatus, isFacebookConnected]);
+
+    useEffect(() => {
+        const handleOAuthMessage = (event: MessageEvent) => {
+            if (typeof window === "undefined") {
+                return;
+            }
+
+            if (event.origin !== window.location.origin) {
+                return;
+            }
+
+            if (event.data?.type === FACEBOOK_OAUTH_MESSAGE_TYPE) {
+                clearOAuthTimers();
+                setConnectLoading(false);
+                setAlert({
+                    type: "success",
+                    message:
+                        "Facebook bağlantısı başarıyla tamamlandı. Açılan pencereyi kapatabilirsiniz.",
+                });
+                void refreshFacebookStatus();
+            }
+        };
+
+        window.addEventListener("message", handleOAuthMessage);
+
+        return () => {
+            window.removeEventListener("message", handleOAuthMessage);
+        };
+    }, [clearOAuthTimers, refreshFacebookStatus]);
 
     const handleConnectClick = useCallback(async () => {
         setConnectLoading(true);
