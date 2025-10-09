@@ -7,7 +7,7 @@ import { Button } from "@/components/Button";
 import AddMemberModal from "@/components/AddMemberModal";
 import Link from "next/link";
 import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api"; // ✅ yeni servis
-import { getLanguageDisplay } from "@/lib/languages";
+import { getLanguageOption } from "@/lib/languages";
 
 export default function MembersPage() {
     const [members, setMembers] = useState<AgentStatsResponse[]>([]);
@@ -80,15 +80,14 @@ export default function MembersPage() {
                                         <td className="p-2">
                                             <div className="flex flex-wrap gap-1">
                                                 {m.supportedLanguages.map((code) => {
-                                                    const { flag, label, value } =
-                                                        getLanguageDisplay(code);
+                                                    const option = getLanguageOption(code);
                                                     return (
                                                         <span
-                                                            key={value}
+                                                            key={code}
                                                             className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
                                                         >
-                                                            <span>{flag}</span>
-                                                            <span>{label}</span>
+                                                            <span>{option?.flag ?? "🏳️"}</span>
+                                                            <span>{option?.label ?? code}</span>
                                                         </span>
                                                     );
                                                 })}

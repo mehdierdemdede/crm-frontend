@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { getAgentStats, type AgentStatsResponse } from "@/lib/api";
-import { getLanguageDisplay } from "@/lib/languages";
+import { getLanguageOption } from "@/lib/languages";
 import { CheckCircle, XCircle, Activity } from "lucide-react";
 import {
     ResponsiveContainer,
@@ -185,15 +185,14 @@ export default function AutoAssignStatsPage() {
                                             {a.supportedLanguages.length > 0 ? (
                                                 <div className="flex flex-wrap gap-1">
                                                     {a.supportedLanguages.map((code) => {
-                                                        const { flag, label, value } =
-                                                            getLanguageDisplay(code);
+                                                        const option = getLanguageOption(code);
                                                         return (
                                                             <span
-                                                                key={value}
+                                                                key={code}
                                                                 className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
                                                             >
-                                                                <span>{flag}</span>
-                                                                <span>{label}</span>
+                                                                <span>{option?.flag ?? "🏳️"}</span>
+                                                                <span>{option?.label ?? code}</span>
                                                             </span>
                                                         );
                                                     })}

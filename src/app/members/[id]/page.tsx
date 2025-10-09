@@ -17,7 +17,7 @@ import {
     Tooltip,
 } from "recharts";
 import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api";
-import { getLanguageDisplay } from "@/lib/languages";
+import { getLanguageOption } from "@/lib/languages";
 
 export default function MemberDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -87,15 +87,14 @@ export default function MemberDetailPage() {
                             {member.supportedLanguages.length > 0 ? (
                                 <span className="inline-flex flex-wrap gap-1">
                                     {member.supportedLanguages.map((code) => {
-                                        const { flag, label, value } =
-                                            getLanguageDisplay(code);
+                                        const option = getLanguageOption(code);
                                         return (
                                             <span
-                                                key={value}
+                                                key={code}
                                                 className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
                                             >
-                                                <span>{flag}</span>
-                                                <span>{label}</span>
+                                                <span>{option?.flag ?? "🏳️"}</span>
+                                                <span>{option?.label ?? code}</span>
                                             </span>
                                         );
                                     })}
