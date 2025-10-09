@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import React, { useState } from "react";
 import {
     Home, Users, BarChart2, FileText, Plug, Activity,
@@ -11,14 +11,8 @@ import {useAuth} from "@/hooks/useAuth";
 
 export default function Sidebar() {
     const pathname = usePathname() || "/dashboard";
-    const router = useRouter();
     const [open, setOpen] = useState(false);
     const { user, isLoading, logout } = useAuth();
-
-    const handleLogout = () => {
-        localStorage.removeItem("authToken");
-        router.push("/login");
-    };
 
     const NavItem = (
         href: string,
