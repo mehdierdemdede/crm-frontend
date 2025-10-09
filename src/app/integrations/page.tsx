@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -44,6 +44,23 @@ export default function IntegrationsPage() {
     const [connectLoading, setConnectLoading] = useState(false);
     const [fetchLoading, setFetchLoading] = useState(false);
     const [alert, setAlert] = useState<AlertState | null>(null);
+
+    const oauthPopupTimers = useRef<{
+        popupCheck?: number;
+        statusPoll?: number;
+    }>({});
+
+    const clearOAuthTimers = useCallback(() => {
+        if (oauthPopupTimers.current.popupCheck) {
+            window.clearInterval(oauthPopupTimers.current.popupCheck);
+            oauthPopupTimers.current.popupCheck = undefined;
+        }
+
+        if (oauthPopupTimers.current.statusPoll) {
+            window.clearInterval(oauthPopupTimers.current.statusPoll);
+            oauthPopupTimers.current.statusPoll = undefined;
+        }
+    }, []);
 
     const refreshFacebookStatus = useCallback(async () => {
         setStatusLoading(true);
@@ -108,6 +125,47 @@ export default function IntegrationsPage() {
         const response = await getFacebookOAuthUrl();
 
         if (response.status === 200 && response.data?.url) {
+            const popup = window.open(
+                response.data.url,
+                "facebook-oauth",
+                "width=600,height=700"
+            );
+
+            if (popup) {
+                clearOAuthTimers();
+
+                setAlert({
+                    type: "info",
+                    message:
+                        "Facebook bağlantısını tamamlamak için açılan pencerede işlemi tamamlayın. İşlem tamamlandığında bu sayfa otomatik olarak güncellenecektir.",
+                });
+
+                oauthPopupTimers.current.statusPoll = window.setInterval(() => {
+                    void refreshFacebookStatus();
+                }, 5000);
+
+                oauthPopupTimers.current.popupCheck = window.setInterval(() => {
+                    if (popup.closed) {
+                        clearOAuthTimers();
+                        setConnectLoading(false);
+                        setAlert((prev) => {
+                            if (prev && prev.type !== "info") {
+                                return prev;
+                            }
+
+                            return {
+                                type: "info",
+                                message:
+                                    "Facebook bağlantı penceresi kapatıldı. Bağlantı durumunu kontrol etmek için sayfa güncellendi.",
+                            };
+                        });
+                        void refreshFacebookStatus();
+                    }
+                }, 500);
+
+                return;
+            }
+
             window.location.href = response.data.url;
             return;
         }
@@ -120,7 +178,7 @@ export default function IntegrationsPage() {
         });
 
         setConnectLoading(false);
-    }, []);
+    }, [clearOAuthTimers, refreshFacebookStatus]);
 
     const handleManualSync = useCallback(async () => {
         setFetchLoading(true);
@@ -165,6 +223,24 @@ export default function IntegrationsPage() {
 
         setFetchLoading(false);
     }, [refreshFacebookStatus]);
+
+    useEffect(() => {
+        if (connectLoading && facebookStatus?.connected) {
+            clearOAuthTimers();
+            setConnectLoading(false);
+            setAlert({
+                type: "success",
+                message:
+                    "Facebook bağlantısı başarıyla tamamlandı. Açılan pencereyi kapatabilirsiniz.",
+            });
+        }
+    }, [facebookStatus, connectLoading, clearOAuthTimers]);
+
+    useEffect(() => {
+        return () => {
+            clearOAuthTimers();
+        };
+    }, [clearOAuthTimers]);
 
     return (
         <Layout title="Integrations" subtitle="Facebook ve Google bağlantılarınızı yönetin">
