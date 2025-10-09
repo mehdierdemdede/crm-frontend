@@ -384,6 +384,11 @@ export interface InviteUserRequest {
     organizationId?: string;
 }
 
+export interface AcceptInviteRequest {
+    token: string;
+    password: string;
+}
+
 
 /**
  * Yeni kullanıcı daveti gönderir.
@@ -427,6 +432,12 @@ export const inviteUser = async (
             status: 0,
         };
     }
+};
+
+export const acceptInvite = async (
+    data: AcceptInviteRequest
+): Promise<ApiResponse<void>> => {
+    return api.post<void>("/users/invite/accept", data);
 };
 export const getAutoAssignStats = async () => {
     const headers = getAuthHeaders();
