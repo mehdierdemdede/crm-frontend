@@ -2,27 +2,38 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "./Button";
+import { LANGUAGE_OPTIONS } from "@/lib/languages";
 
 type Role = "USER" | "ADMIN" | "SUPER_ADMIN";
 
 export interface MemberFormData {
-    id?: number;
-    name: string;
+    id?: string | number;
+    firstName: string;
+    lastName: string;
     email: string;
     role: Role;
-    langs: string[];
-    capacityPerDay: number;
+    supportedLanguages: string[];
+    dailyCapacity: number;
     active: boolean;
-    autoAssign: boolean;
+    autoAssignEnabled: boolean;
 }
 
-const ALL_LANGS = [
-    { value: "TR", label: "Türkçe" },
-    { value: "EN", label: "İngilizce" },
-    { value: "DE", label: "Almanca" },
-    { value: "AR", label: "Arapça" },
-    { value: "AL", label: "Arnavutça" },
-];
+const defaultFormValues: MemberFormData = {
+    firstName: "",
+    lastName: "",
+    email: "",
+    role: "USER",
+    supportedLanguages: [],
+    dailyCapacity: 10,
+    active: true,
+    autoAssignEnabled: true,
+};
+
+const withDefaults = (data?: MemberFormData): MemberFormData => ({
+    ...defaultFormValues,
+    ...data,
+    supportedLanguages: data?.supportedLanguages ? [...data.supportedLanguages] : [],
+});
 
 export default function MemberForm({
                                        initialData,
@@ -35,28 +46,18 @@ export default function MemberForm({
     onCancel: () => void;
     loading?: boolean;
 }) {
-    const [form, setForm] = useState<MemberFormData>(
-        initialData || {
-            name: "",
-            email: "",
-            role: "USER",
-            langs: [],
-            capacityPerDay: 10,
-            active: true,
-            autoAssign: true,
-        }
-    );
+    const [form, setForm] = useState<MemberFormData>(withDefaults(initialData));
 
     useEffect(() => {
-        if (initialData) setForm(initialData);
+        setForm(withDefaults(initialData));
     }, [initialData]);
 
     const toggleLang = (lang: string) => {
         setForm((prev) => ({
             ...prev,
-            langs: prev.langs.includes(lang)
-                ? prev.langs.filter((l) => l !== lang)
-                : [...prev.langs, lang],
+            supportedLanguages: prev.supportedLanguages.includes(lang)
+                ? prev.supportedLanguages.filter((l) => l !== lang)
+                : [...prev.supportedLanguages, lang],
         }));
     };
 
@@ -66,104 +67,125 @@ export default function MemberForm({
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Ad Soyad */}
-            <div>
-                <label className="block text-sm font-medium">Ad Soyad</label>
-                <input
-                    type="text"
-                    className="border rounded w-full p-2"
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    required
-                />
-            </div>
-
-            {/* Email */}
-            <div>
-                <label className="block text-sm font-medium">Email</label>
-                <input
-                    type="email"
-                    className="border rounded w-full p-2"
-                    value={form.email}
-                    onChange={(e) => setForm({ ...form, email: e.target.value })}
-                    required
-                />
-            </div>
-
-            {/* Rol */}
-            <div>
-                <label className="block text-sm font-medium">Rol</label>
-                <select
-                    className="border rounded w-full p-2"
-                    value={form.role}
-                    onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-                >
-                    <option value="USER">User</option>
-                    <option value="ADMIN">Admin</option>
-                    <option value="SUPER_ADMIN">Super Admin</option>
-                </select>
-            </div>
-
-            {/* Diller */}
-            <div>
-                <label className="block text-sm font-medium mb-1">Diller</label>
-                <div className="flex flex-wrap gap-2">
-                    {ALL_LANGS.map((l) => (
-                        <label
-                            key={l.value}
-                            className={`px-2 py-1 border rounded cursor-pointer text-sm ${
-                                form.langs.includes(l.value)
-                                    ? "bg-blue-100 border-blue-400"
-                                    : "bg-white"
-                            }`}
-                        >
-                            <input
-                                type="checkbox"
-                                checked={form.langs.includes(l.value)}
-                                onChange={() => toggleLang(l.value)}
-                                className="hidden"
-                            />
-                            {l.label}
-                        </label>
-                    ))}
+        <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Ad</label>
+                    <input
+                        type="text"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                        value={form.firstName}
+                        onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Soyad</label>
+                    <input
+                        type="text"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                        value={form.lastName}
+                        onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+                        required
+                    />
                 </div>
             </div>
 
-            {/* Kapasite */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <input
+                        type="email"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                        value={form.email}
+                        onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        required
+                    />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">Rol</label>
+                    <select
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                        value={form.role}
+                        onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
+                    >
+                        <option value="USER">User</option>
+                        <option value="ADMIN">Admin</option>
+                        <option value="SUPER_ADMIN">Super Admin</option>
+                    </select>
+                </div>
+            </div>
+
             <div>
-                <label className="block text-sm font-medium">Günlük Kapasite</label>
-                <input
-                    type="number"
-                    className="border rounded w-full p-2"
-                    value={form.capacityPerDay}
-                    onChange={(e) =>
-                        setForm({ ...form, capacityPerDay: Number(e.target.value) })
-                    }
-                />
+                <label className="block text-sm font-medium text-gray-700">Diller</label>
+                <p className="mt-1 text-xs text-gray-500">
+                    Kullanıcının destekleyebileceği dilleri seçin.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                    {LANGUAGE_OPTIONS.map((option) => {
+                        const isSelected = form.supportedLanguages.includes(option.value);
+                        return (
+                            <button
+                                key={option.value}
+                                type="button"
+                                onClick={() => toggleLang(option.value)}
+                                className={`flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition ${
+                                    isSelected
+                                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                                }`}
+                            >
+                                <span className="text-base">{option.flag}</span>
+                                <span>{option.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
-            {/* Aktif & Auto-Assign */}
-            <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                        Günlük Kapasite
+                    </label>
                     <input
-                        type="checkbox"
-                        checked={form.active}
-                        onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                        type="number"
+                        min={0}
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                        value={form.dailyCapacity}
+                        onChange={(e) =>
+                            setForm({ ...form, dailyCapacity: Number(e.target.value) })
+                        }
+                        required
                     />
-                    Aktif
-                </label>
-                <label className="flex items-center gap-2">
-                    <input
-                        type="checkbox"
-                        checked={form.autoAssign}
-                        onChange={(e) => setForm({ ...form, autoAssign: e.target.checked })}
-                    />
-                    Auto-Assign
-                </label>
+                </div>
+                <div className="flex items-center gap-6">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                            type="checkbox"
+                            checked={form.active}
+                            onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                            className="h-4 w-4"
+                        />
+                        Aktif
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                            type="checkbox"
+                            checked={form.autoAssignEnabled}
+                            onChange={(e) =>
+                                setForm({
+                                    ...form,
+                                    autoAssignEnabled: e.target.checked,
+                                })
+                            }
+                            className="h-4 w-4"
+                        />
+                        Auto-Assign
+                    </label>
+                </div>
             </div>
 
-            {/* Butonlar */}
             <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
                     İptal
