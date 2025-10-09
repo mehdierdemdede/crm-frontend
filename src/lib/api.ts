@@ -108,6 +108,42 @@ export interface ApiResponse<T = unknown> {
     status: number;
 }
 
+const extractResponseBody = async (response: Response): Promise<unknown> => {
+    const contentType = response.headers.get("content-type");
+
+    if (contentType?.includes("application/json")) {
+        try {
+            return await response.json();
+        } catch (error) {
+            console.warn("JSON parse error", error);
+            return null;
+        }
+    }
+
+    if (contentType?.includes("text/")) {
+        return await response.text();
+    }
+
+    return null;
+};
+
+const resolveErrorMessage = (body: unknown, fallback = "Bir hata oluştu."): string => {
+    if (typeof body === "string" && body.trim().length > 0) {
+        return body;
+    }
+
+    if (
+        body &&
+        typeof body === "object" &&
+        "message" in body &&
+        typeof (body as { message?: unknown }).message === "string"
+    ) {
+        return (body as { message: string }).message;
+    }
+
+    return fallback;
+};
+
 // Ortak POST metodu (login, invite, vs için)
 export const api = {
     post: async <T>(
@@ -155,6 +191,131 @@ export const api = {
             };
         }
     },
+};
+
+// ──────────────────────────────── INTEGRATIONS ────────────────────────────────
+
+export interface FacebookIntegrationStatus {
+    connected: boolean;
+    pageId?: string | null;
+    pageName?: string | null;
+    connectedAt?: string | null;
+    lastSyncedAt?: string | null;
+}
+
+export interface FacebookLeadFetchSummary {
+    fetched: number;
+    created: number;
+    updated: number;
+}
+
+export const getFacebookIntegrationStatus = async (): Promise<
+    ApiResponse<FacebookIntegrationStatus | null>
+> => {
+    const headers = getAuthHeaders();
+
+    try {
+        const response = await fetch(`${BASE_URL}/integrations/facebook`, {
+            headers,
+        });
+
+        const body = await extractResponseBody(response);
+
+        if (response.ok) {
+            return {
+                status: response.status,
+                data: (body as FacebookIntegrationStatus) ?? null,
+            };
+        }
+
+        return {
+            status: response.status,
+            message: resolveErrorMessage(body),
+        };
+    } catch (error) {
+        return {
+            status: 0,
+            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
+        };
+    }
+};
+
+export const getFacebookOAuthUrl = async (): Promise<ApiResponse<{ url: string }>> => {
+    const headers = getAuthHeaders();
+
+    try {
+        const response = await fetch(
+            `${BASE_URL}/integrations/oauth2/authorize/facebook`,
+            {
+                headers,
+            }
+        );
+
+        const body = await extractResponseBody(response);
+
+        if (response.ok) {
+            const rawUrl =
+                typeof body === "string"
+                    ? body
+                    : body && typeof body === "object" && "url" in body
+                        ? (body as { url?: string }).url
+                        : null;
+
+            if (rawUrl && typeof rawUrl === "string") {
+                return { status: response.status, data: { url: rawUrl } };
+            }
+
+            return {
+                status: response.status,
+                message: "Beklenmedik OAuth yanıtı alındı.",
+            };
+        }
+
+        return {
+            status: response.status,
+            message: resolveErrorMessage(body),
+        };
+    } catch (error) {
+        return {
+            status: 0,
+            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
+        };
+    }
+};
+
+export const triggerFacebookLeadFetch = async (): Promise<
+    ApiResponse<FacebookLeadFetchSummary>
+> => {
+    const headers = getAuthHeaders();
+
+    try {
+        const response = await fetch(
+            `${BASE_URL}/integrations/fetch-leads/facebook`,
+            {
+                method: "POST",
+                headers,
+            }
+        );
+
+        const body = await extractResponseBody(response);
+
+        if (response.ok) {
+            return {
+                status: response.status,
+                data: body as FacebookLeadFetchSummary,
+            };
+        }
+
+        return {
+            status: response.status,
+            message: resolveErrorMessage(body),
+        };
+    } catch (error) {
+        return {
+            status: 0,
+            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
+        };
+    }
 };
 
 
