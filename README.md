@@ -20,6 +20,12 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## UI specifics
+
+### Language flag badges
+
+Language selections across the member management screens display flag icons by reusing the emoji flag characters that ship with Unicode. No additional npm package is required—flags are defined in [`src/lib/languages.ts`](./src/lib/languages.ts) alongside their language labels and ISO codes.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:
