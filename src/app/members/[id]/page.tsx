@@ -16,12 +16,13 @@ import {
     CartesianGrid,
     Tooltip,
 } from "recharts";
-import { getAutoAssignStats } from "@/lib/api";
+import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api";
+import { getLanguageDisplay } from "@/lib/languages";
 
 export default function MemberDetailPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
-    const [member, setMember] = useState<any>(null);
+    const [member, setMember] = useState<AgentStatsResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [openEdit, setOpenEdit] = useState(false);
 
@@ -81,7 +82,28 @@ export default function MemberDetailPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-2 text-sm">
-                        <p><b>Diller:</b> {member.supportedLanguages.join(", ")}</p>
+                        <p>
+                            <b>Diller:</b>{" "}
+                            {member.supportedLanguages.length > 0 ? (
+                                <span className="inline-flex flex-wrap gap-1">
+                                    {member.supportedLanguages.map((code) => {
+                                        const { flag, label, value } =
+                                            getLanguageDisplay(code);
+                                        return (
+                                            <span
+                                                key={value}
+                                                className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                                            >
+                                                <span>{flag}</span>
+                                                <span>{label}</span>
+                                            </span>
+                                        );
+                                    })}
+                                </span>
+                            ) : (
+                                <span>-</span>
+                            )}
+                        </p>
                         <p><b>Kapasite:</b> {member.assignedToday}/{member.dailyCapacity}</p>
                         <p>
                             <b>Durum:</b>{" "}

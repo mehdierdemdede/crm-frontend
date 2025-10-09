@@ -6,29 +6,11 @@ import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import AddMemberModal from "@/components/AddMemberModal";
 import Link from "next/link";
-import { getAutoAssignStats } from "@/lib/api"; // ✅ yeni servis
-
-interface Member {
-    userId: string;
-    fullName: string;
-    active: boolean;
-    autoAssignEnabled: boolean;
-    supportedLanguages: string[];
-    dailyCapacity: number;
-    assignedToday: number;
-    remainingCapacity: number;
-}
-
-const LANG_COLORS: Record<string, string> = {
-    TR: "bg-red-100 text-red-800",
-    EN: "bg-blue-100 text-blue-800",
-    DE: "bg-yellow-100 text-yellow-800",
-    AR: "bg-green-100 text-green-800",
-    AL: "bg-purple-100 text-purple-800",
-};
+import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api"; // ✅ yeni servis
+import { getLanguageDisplay } from "@/lib/languages";
 
 export default function MembersPage() {
-    const [members, setMembers] = useState<Member[]>([]);
+    const [members, setMembers] = useState<AgentStatsResponse[]>([]);
     const [openModal, setOpenModal] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -43,8 +25,16 @@ export default function MembersPage() {
         fetchData();
     }, []);
 
-    const handleSave = (newMember: any) => {
-        setMembers((prev) => [...prev, newMember]);
+    const handleSave = (newMember: AgentStatsResponse) => {
+        setMembers((prev) => {
+            const exists = prev.some((member) => member.userId === newMember.userId);
+            if (exists) {
+                return prev.map((member) =>
+                    member.userId === newMember.userId ? newMember : member
+                );
+            }
+            return [...prev, newMember];
+        });
     };
 
     return (
@@ -88,16 +78,21 @@ export default function MembersPage() {
                                             </Link>
                                         </td>
                                         <td className="p-2">
-                                            {m.supportedLanguages.map((l) => (
-                                                <span
-                                                    key={l}
-                                                    className={`inline-block text-xs rounded px-2 py-0.5 mr-1 ${
-                                                        LANG_COLORS[l] || "bg-gray-200 text-gray-700"
-                                                    }`}
-                                                >
-                            {l}
-                          </span>
-                                            ))}
+                                            <div className="flex flex-wrap gap-1">
+                                                {m.supportedLanguages.map((code) => {
+                                                    const { flag, label, value } =
+                                                        getLanguageDisplay(code);
+                                                    return (
+                                                        <span
+                                                            key={value}
+                                                            className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                                                        >
+                                                            <span>{flag}</span>
+                                                            <span>{label}</span>
+                                                        </span>
+                                                    );
+                                                })}
+                                            </div>
                                         </td>
                                         <td className="p-2">
                                             <div className="w-40 bg-gray-200 rounded-full h-3 mb-1">

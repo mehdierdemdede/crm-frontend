@@ -1,12 +1,17 @@
 "use client";
 import { useState } from "react";
-import { inviteUser, type ApiResponse, type UserResponse } from "@/lib/api";
+import {
+    inviteUser,
+    type ApiResponse,
+    type UserResponse,
+    type AgentStatsResponse,
+} from "@/lib/api";
 import MemberForm, { MemberFormData } from "./MemberForm";
 
 interface AddMemberModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave?: (member: MemberFormData) => void;
+    onSave?: (member: AgentStatsResponse) => void;
 }
 
 export default function AddMemberModal({ isOpen, onClose, onSave }: AddMemberModalProps) {
@@ -18,20 +23,32 @@ export default function AddMemberModal({ isOpen, onClose, onSave }: AddMemberMod
         try {
             // Tip çıkarımı yeterli; istersen şu şekilde de yazabilirsin:
             // const response: ApiResponse<UserResponse> = await inviteUser({...});
-            const response = await inviteUser({
-                firstName: data.name.split(" ")[0],
-                lastName: data.name.split(" ")[1] || "",
+            const response: ApiResponse<UserResponse> = await inviteUser({
+                firstName: data.firstName,
+                lastName: data.lastName,
                 email: data.email,
                 role: data.role,
-                supportedLanguages: data.langs,
-                dailyCapacity: data.capacityPerDay,
+                supportedLanguages: data.supportedLanguages,
+                dailyCapacity: data.dailyCapacity,
                 active: data.active,
-                autoAssignEnabled: data.autoAssign,
+                autoAssignEnabled: data.autoAssignEnabled,
             });
 
             if (response.status >= 200 && response.status < 300 && response.data) {
-                console.log("✅ Kullanıcı davet edildi:", response.data);
-                onSave?.(data);
+                const invitedUser = response.data;
+                const newMember: AgentStatsResponse = {
+                    userId: invitedUser.id,
+                    fullName: `${invitedUser.firstName} ${invitedUser.lastName}`.trim(),
+                    active: invitedUser.active,
+                    autoAssignEnabled: invitedUser.autoAssignEnabled,
+                    supportedLanguages: invitedUser.supportedLanguages,
+                    dailyCapacity: invitedUser.dailyCapacity,
+                    assignedToday: 0,
+                    remainingCapacity: invitedUser.dailyCapacity,
+                    lastAssignedAt: null,
+                };
+                console.log("✅ Kullanıcı davet edildi:", invitedUser);
+                onSave?.(newMember);
                 onClose();
             } else {
                 alert("❌ Davet başarısız: " + (response.message || "Bilinmeyen hata"));
