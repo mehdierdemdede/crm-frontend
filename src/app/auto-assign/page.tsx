@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
-import { getAgentStats, AgentStatsResponse } from "@/lib/api";
+import { getAgentStats, type AgentStatsResponse } from "@/lib/api";
+import { getLanguageOption } from "@/lib/languages";
 import { CheckCircle, XCircle, Activity } from "lucide-react";
 import {
     ResponsiveContainer,
@@ -181,7 +182,24 @@ export default function AutoAssignStatsPage() {
                                             )}
                                         </td>
                                         <td className="p-2">
-                                            {a.supportedLanguages.join(", ") || "-"}
+                                            {a.supportedLanguages.length > 0 ? (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {a.supportedLanguages.map((code) => {
+                                                        const option = getLanguageOption(code);
+                                                        return (
+                                                            <span
+                                                                key={code}
+                                                                className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                                                            >
+                                                                <span>{option?.flag ?? "🏳️"}</span>
+                                                                <span>{option?.label ?? code}</span>
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            ) : (
+                                                <span>-</span>
+                                            )}
                                         </td>
                                         <td className="p-2 text-center">{a.dailyCapacity}</td>
                                         <td className="p-2 text-center">{a.assignedToday}</td>

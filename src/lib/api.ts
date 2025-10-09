@@ -25,11 +25,15 @@ export interface LoginResponse {
 }
 
 export interface UserResponse {
-    lastName: string;
     id: string;
     firstName: string;
+    lastName: string;
     email: string;
     role: Role;
+    supportedLanguages: string[];
+    dailyCapacity: number;
+    active: boolean;
+    autoAssignEnabled: boolean;
 }
 
 export interface SaleResponse {
@@ -373,10 +377,10 @@ export interface InviteUserRequest {
     lastName: string;
     email: string;
     role: Role;
-    supportedLanguages?: string[];
-    dailyCapacity?: number;
-    active?: boolean;
-    autoAssignEnabled?: boolean;
+    supportedLanguages: string[];
+    dailyCapacity: number;
+    active: boolean;
+    autoAssignEnabled: boolean;
     organizationId?: string;
 }
 
