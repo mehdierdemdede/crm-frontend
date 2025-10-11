@@ -6,10 +6,10 @@ import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Facebook, Globe, PlugZap } from "lucide-react";
 import {
-    getFacebookIntegrationStatus,
+    getIntegrationStatuses,
     getFacebookOAuthUrl,
     triggerFacebookLeadFetch,
-    type FacebookIntegrationStatus,
+    type IntegrationStatus,
 } from "@/lib/api";
 import { FACEBOOK_OAUTH_MESSAGE_TYPE } from "@/lib/facebookOAuth";
 
@@ -38,7 +38,7 @@ const formatDateTime = (value?: string | null) => {
 };
 
 export default function IntegrationsPage() {
-    const [facebookStatus, setFacebookStatus] = useState<FacebookIntegrationStatus | null>(null);
+    const [integrationStatuses, setIntegrationStatuses] = useState<IntegrationStatus[]>([]);
     const [statusError, setStatusError] = useState<string | null>(null);
     const [statusLoading, setStatusLoading] = useState(true);
 
@@ -63,29 +63,35 @@ export default function IntegrationsPage() {
         }
     }, []);
 
-    const refreshFacebookStatus = useCallback(async () => {
+    const refreshIntegrationStatuses = useCallback(async () => {
         setStatusLoading(true);
         setStatusError(null);
 
-        const response = await getFacebookIntegrationStatus();
+        const response = await getIntegrationStatuses();
 
         if (response.status === 200) {
-            setFacebookStatus(response.data ?? null);
-        } else if (response.status === 404) {
-            setFacebookStatus(null);
+            setIntegrationStatuses(response.data ?? []);
         } else {
             setStatusError(
-                response.message ?? "Facebook entegrasyon durumu alınamadı."
+                response.message ?? "Entegrasyon durumları alınamadı."
             );
-            setFacebookStatus(null);
+            setIntegrationStatuses([]);
         }
 
         setStatusLoading(false);
     }, []);
 
     useEffect(() => {
-        void refreshFacebookStatus();
-    }, [refreshFacebookStatus]);
+        void refreshIntegrationStatuses();
+    }, [refreshIntegrationStatuses]);
+
+    const facebookStatus = useMemo(
+        () =>
+            integrationStatuses.find(
+                (status) => status.platform?.toLowerCase() === "facebook"
+            ) ?? null,
+        [integrationStatuses]
+    );
 
     const isFacebookConnected = Boolean(facebookStatus?.connected);
 
@@ -167,7 +173,7 @@ export default function IntegrationsPage() {
                     message:
                         "Facebook bağlantısı başarıyla tamamlandı. Açılan pencereyi kapatabilirsiniz.",
                 });
-                void refreshFacebookStatus();
+                void refreshIntegrationStatuses();
             }
         };
 
@@ -176,7 +182,7 @@ export default function IntegrationsPage() {
         return () => {
             window.removeEventListener("message", handleOAuthMessage);
         };
-    }, [clearOAuthTimers, refreshFacebookStatus]);
+    }, [clearOAuthTimers, refreshIntegrationStatuses]);
 
     const handleConnectClick = useCallback(async () => {
         setConnectLoading(true);
@@ -201,7 +207,7 @@ export default function IntegrationsPage() {
                 });
 
                 oauthPopupTimers.current.statusPoll = window.setInterval(() => {
-                    void refreshFacebookStatus();
+                    void refreshIntegrationStatuses();
                 }, 5000);
 
                 oauthPopupTimers.current.popupCheck = window.setInterval(() => {
@@ -219,7 +225,7 @@ export default function IntegrationsPage() {
                                     "Facebook bağlantı penceresi kapatıldı. Bağlantı durumunu kontrol etmek için sayfa güncellendi.",
                             };
                         });
-                        void refreshFacebookStatus();
+                        void refreshIntegrationStatuses();
                     }
                 }, 500);
 
@@ -238,7 +244,7 @@ export default function IntegrationsPage() {
         });
 
         setConnectLoading(false);
-    }, [clearOAuthTimers, refreshFacebookStatus]);
+    }, [clearOAuthTimers, refreshIntegrationStatuses]);
 
     const handleManualSync = useCallback(async () => {
         setFetchLoading(true);
@@ -261,7 +267,7 @@ export default function IntegrationsPage() {
                 });
             }
 
-            void refreshFacebookStatus();
+            void refreshIntegrationStatuses();
         } else if (response.status === 403) {
             setAlert({
                 type: "error",
@@ -282,7 +288,7 @@ export default function IntegrationsPage() {
         }
 
         setFetchLoading(false);
-    }, [refreshFacebookStatus]);
+    }, [refreshIntegrationStatuses]);
 
     useEffect(() => {
         if (connectLoading && facebookStatus?.connected) {
