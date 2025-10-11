@@ -203,11 +203,49 @@ export interface FacebookIntegrationStatus {
     lastSyncedAt?: string | null;
 }
 
+export interface IntegrationStatus extends FacebookIntegrationStatus {
+    platform: string;
+}
+
 export interface FacebookLeadFetchSummary {
     fetched: number;
     created: number;
     updated: number;
 }
+
+export const getIntegrationStatuses = async (): Promise<
+    ApiResponse<IntegrationStatus[]>
+> => {
+    const headers = getAuthHeaders();
+
+    try {
+        const response = await fetch(`${BASE_URL}/integrations/status`, {
+            headers,
+            cache: "no-store",
+        });
+
+        const body = await extractResponseBody(response);
+
+        if (response.ok) {
+            const data = Array.isArray(body) ? (body as IntegrationStatus[]) : [];
+
+            return {
+                status: response.status,
+                data,
+            };
+        }
+
+        return {
+            status: response.status,
+            message: resolveErrorMessage(body),
+        };
+    } catch (error) {
+        return {
+            status: 0,
+            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
+        };
+    }
+};
 
 export const getFacebookIntegrationStatus = async (): Promise<
     ApiResponse<FacebookIntegrationStatus | null>
