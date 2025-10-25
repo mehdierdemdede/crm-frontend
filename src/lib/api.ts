@@ -639,6 +639,165 @@ export const acceptInvite = async (
 ): Promise<ApiResponse<void>> => {
     return api.post<void>("/users/invite/accept", data);
 };
+
+// ──────────────────────────────── FACEBOOK LEAD DISTRIBUTION ────────────────────────────────
+
+export interface FacebookLeadAssignmentUser {
+    userId: string;
+    fullName: string;
+    email?: string | null;
+    active: boolean;
+    autoAssignEnabled: boolean;
+    frequency: number;
+    position: number;
+}
+
+export interface FacebookLeadRule {
+    id: string;
+    pageId: string;
+    pageName?: string | null;
+    campaignId: string;
+    campaignName?: string | null;
+    adsetId: string;
+    adsetName?: string | null;
+    adId: string;
+    adName?: string | null;
+    assignments: FacebookLeadAssignmentUser[];
+}
+
+export interface FacebookLeadTreeAd {
+    adId: string;
+    adName?: string | null;
+    rule: FacebookLeadRule | null;
+}
+
+export interface FacebookLeadTreeAdset {
+    adsetId: string;
+    adsetName?: string | null;
+    ads: FacebookLeadTreeAd[];
+}
+
+export interface FacebookLeadTreeCampaign {
+    campaignId: string;
+    campaignName?: string | null;
+    adsets: FacebookLeadTreeAdset[];
+}
+
+export interface FacebookLeadTreePage {
+    pageId: string;
+    pageName?: string | null;
+    campaigns: FacebookLeadTreeCampaign[];
+}
+
+export interface FacebookLeadTreeResponse {
+    pages: FacebookLeadTreePage[];
+}
+
+export interface SaveFacebookLeadRuleAssignmentRequest {
+    userId: string;
+    frequency: number;
+    position: number;
+}
+
+export interface SaveFacebookLeadRuleRequest {
+    pageId: string;
+    pageName?: string;
+    campaignId: string;
+    campaignName?: string;
+    adsetId: string;
+    adsetName?: string;
+    adId: string;
+    adName?: string;
+    assignments: SaveFacebookLeadRuleAssignmentRequest[];
+}
+
+export const getFacebookLeadTree = async (): Promise<FacebookLeadTreeResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const response = await fetch(`${BASE_URL}/lead-distribution/facebook/tree`, {
+            headers,
+        });
+        const body = await extractResponseBody(response);
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Facebook lead ağacı alınırken bir hata oluştu."),
+            );
+        }
+        return (body ?? null) as FacebookLeadTreeResponse | null;
+    } catch (error) {
+        console.error("getFacebookLeadTree error:", error);
+        return null;
+    }
+};
+
+export const getFacebookLeadRules = async (): Promise<FacebookLeadRule[] | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const response = await fetch(`${BASE_URL}/lead-distribution/facebook/rules`, {
+            headers,
+        });
+        const body = await extractResponseBody(response);
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Facebook lead kuralları alınırken bir hata oluştu."),
+            );
+        }
+        return (body ?? []) as FacebookLeadRule[];
+    } catch (error) {
+        console.error("getFacebookLeadRules error:", error);
+        return null;
+    }
+};
+
+export const saveFacebookLeadRule = async (
+    payload: SaveFacebookLeadRuleRequest,
+): Promise<FacebookLeadRule> => {
+    const headers = getAuthHeaders();
+    try {
+        const response = await fetch(`${BASE_URL}/lead-distribution/facebook/rules`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        const body = await extractResponseBody(response);
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Lead dağıtım kuralı kaydedilirken bir hata oluştu."),
+            );
+        }
+        return (body ?? null) as FacebookLeadRule;
+    } catch (error) {
+        console.error("saveFacebookLeadRule error:", error);
+        throw error instanceof Error
+            ? error
+            : new Error("Lead dağıtım kuralı kaydedilirken bir hata oluştu.");
+    }
+};
+
+export const deleteFacebookLeadRule = async (ruleId: string): Promise<void> => {
+    const headers = getAuthHeaders();
+    try {
+        const response = await fetch(
+            `${BASE_URL}/lead-distribution/facebook/rules/${ruleId}`,
+            {
+                method: "DELETE",
+                headers,
+            },
+        );
+        const body = await extractResponseBody(response);
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Lead dağıtım kuralı silinirken bir hata oluştu."),
+            );
+        }
+    } catch (error) {
+        console.error("deleteFacebookLeadRule error:", error);
+        throw error instanceof Error
+            ? error
+            : new Error("Lead dağıtım kuralı silinirken bir hata oluştu.");
+    }
+};
+
 export const getAutoAssignStats = async () => {
     const headers = getAuthHeaders();
     try {
