@@ -10,6 +10,7 @@ import {
     getFacebookOAuthUrl,
     triggerFacebookLeadFetch,
     type IntegrationStatus,
+    type IntegrationConnectionStatus,
 } from "@/lib/api";
 import { FACEBOOK_OAUTH_MESSAGE_TYPE } from "@/lib/facebookOAuth";
 
@@ -35,6 +36,132 @@ const formatDateTime = (value?: string | null) => {
         dateStyle: "medium",
         timeStyle: "short",
     });
+};
+
+const STATUS_CONFIG: Record<
+    IntegrationConnectionStatus,
+    { label: string; badgeClass: string }
+> = {
+    CONNECTED: {
+        label: "Bağlı",
+        badgeClass: "bg-green-100 text-green-700",
+    },
+    PENDING: {
+        label: "Beklemede",
+        badgeClass: "bg-blue-100 text-blue-700",
+    },
+    DISCONNECTED: {
+        label: "Bağlı Değil",
+        badgeClass: "bg-gray-100 text-gray-700",
+    },
+    ERROR: {
+        label: "Hata",
+        badgeClass: "bg-red-100 text-red-700",
+    },
+    EXPIRED: {
+        label: "Süresi Doldu",
+        badgeClass: "bg-amber-100 text-amber-700",
+    },
+};
+
+const DEFAULT_STATUS_CONFIG = {
+    label: "Durum Bekleniyor",
+    badgeClass: "bg-gray-100 text-gray-700",
+};
+
+const MESSAGE_TONE_CLASS: Record<
+    "muted" | "warning",
+    string
+> = {
+    muted: "border-gray-200 bg-gray-50 text-gray-700",
+    warning: "border-amber-200 bg-amber-50 text-amber-800",
+};
+
+const getStatusConfig = (status?: IntegrationConnectionStatus | null) => {
+    if (!status) {
+        return DEFAULT_STATUS_CONFIG;
+    }
+
+    return STATUS_CONFIG[status] ?? DEFAULT_STATUS_CONFIG;
+};
+
+const getIdentifierLabel = (platform?: string | null) => {
+    const normalized = platform?.toUpperCase();
+
+    switch (normalized) {
+        case "FACEBOOK":
+            return "Facebook Sayfa Kimliği";
+        case "GOOGLE":
+            return "Google Hesap Kimliği";
+        default:
+            return "Platform Kimliği";
+    }
+};
+
+const buildIntegrationDetails = (status: IntegrationStatus | null) => {
+    const details: { label: string; value: string }[] = [];
+
+    if (!status) {
+        return details;
+    }
+
+    const identifier =
+        status.pageName ?? status.platformPageId ?? status.pageId ?? null;
+    if (identifier) {
+        details.push({
+            label: getIdentifierLabel(status.platform),
+            value: identifier,
+        });
+    }
+
+    const connectedAtText = formatDateTime(status.connectedAt);
+    if (connectedAtText) {
+        details.push({ label: "Bağlanma Tarihi", value: connectedAtText });
+    }
+
+    const expiresAtText = formatDateTime(status.expiresAt);
+    if (expiresAtText) {
+        details.push({ label: "Token Bitiş Zamanı", value: expiresAtText });
+    }
+
+    const lastSyncedAtText = formatDateTime(status.lastSyncedAt);
+    if (lastSyncedAtText) {
+        details.push({ label: "Son Senkron", value: lastSyncedAtText });
+    }
+
+    if (status.lastErrorMessage) {
+        const lastErrorAtText = formatDateTime(status.lastErrorAt);
+        details.push({
+            label: "Son Hata",
+            value: lastErrorAtText
+                ? `${status.lastErrorMessage} (${lastErrorAtText})`
+                : status.lastErrorMessage,
+        });
+    }
+
+    return details;
+};
+
+const buildStatusMessage = (status: IntegrationStatus | null) => {
+    if (!status) {
+        return null;
+    }
+
+    if (status.statusMessage) {
+        return {
+            tone: status.requiresAction ? "warning" : "muted",
+            message: status.statusMessage,
+        } as const;
+    }
+
+    if (status.requiresAction) {
+        return {
+            tone: "warning" as const,
+            message: "Bu entegrasyon için kullanıcı aksiyonu gerekiyor.",
+        };
+    }
+
+    return null;
 };
 
 export default function IntegrationsPage() {
@@ -88,12 +215,45 @@ export default function IntegrationsPage() {
     const facebookStatus = useMemo(
         () =>
             integrationStatuses.find(
-                (status) => status.platform?.toLowerCase() === "facebook"
+                (status) => status.platform?.toUpperCase() === "FACEBOOK"
             ) ?? null,
         [integrationStatuses]
     );
 
-    const isFacebookConnected = Boolean(facebookStatus?.connected);
+    const googleStatus = useMemo(
+        () =>
+            integrationStatuses.find(
+                (status) => status.platform?.toUpperCase() === "GOOGLE"
+            ) ?? null,
+        [integrationStatuses]
+    );
+
+    const isFacebookConnected =
+        facebookStatus?.status === "CONNECTED" ||
+        (!facebookStatus?.status && Boolean(facebookStatus?.connected));
+
+    const facebookStatusConfig = getStatusConfig(facebookStatus?.status);
+    const googleStatusConfig = getStatusConfig(googleStatus?.status);
+
+    const facebookDetails = useMemo(
+        () => buildIntegrationDetails(facebookStatus),
+        [facebookStatus]
+    );
+
+    const googleDetails = useMemo(
+        () => buildIntegrationDetails(googleStatus),
+        [googleStatus]
+    );
+
+    const facebookStatusMessage = useMemo(
+        () => buildStatusMessage(facebookStatus),
+        [facebookStatus]
+    );
+
+    const googleStatusMessage = useMemo(
+        () => buildStatusMessage(googleStatus),
+        [googleStatus]
+    );
 
     useEffect(() => {
         setAlert((prev) => {
@@ -124,36 +284,6 @@ export default function IntegrationsPage() {
             return prev;
         });
     }, [isFacebookConnected]);
-
-    const facebookConnectionSubtitle = useMemo(() => {
-        if (!isFacebookConnected) {
-            return null;
-        }
-
-        const details: string[] = [];
-
-        if (facebookStatus?.pageName || facebookStatus?.pageId) {
-            details.push(
-                `Sayfa: ${facebookStatus.pageName ?? facebookStatus.pageId}`
-            );
-        }
-
-        const connectedAtText = formatDateTime(facebookStatus?.connectedAt);
-        if (connectedAtText) {
-            details.push(`Bağlantı tarihi: ${connectedAtText}`);
-        }
-
-        const lastSyncedAtText = formatDateTime(facebookStatus?.lastSyncedAt);
-        if (lastSyncedAtText) {
-            details.push(`Son manuel senkron: ${lastSyncedAtText}`);
-        }
-
-        if (details.length === 0) {
-            return null;
-        }
-
-        return details.join(" • ");
-    }, [facebookStatus, isFacebookConnected]);
 
     useEffect(() => {
         const handleOAuthMessage = (event: MessageEvent) => {
@@ -291,7 +421,7 @@ export default function IntegrationsPage() {
     }, [refreshIntegrationStatuses]);
 
     useEffect(() => {
-        if (connectLoading && facebookStatus?.connected) {
+        if (connectLoading && isFacebookConnected) {
             clearOAuthTimers();
             setConnectLoading(false);
             setAlert({
@@ -300,7 +430,7 @@ export default function IntegrationsPage() {
                     "Facebook bağlantısı başarıyla tamamlandı. Açılan pencereyi kapatabilirsiniz.",
             });
         }
-    }, [facebookStatus, connectLoading, clearOAuthTimers]);
+    }, [connectLoading, clearOAuthTimers, isFacebookConnected]);
 
     useEffect(() => {
         return () => {
@@ -346,13 +476,9 @@ export default function IntegrationsPage() {
                             <div className="flex flex-col gap-3">
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                                     <span
-                                        className={`text-sm font-medium ${
-                                            isFacebookConnected
-                                                ? "text-green-600"
-                                                : "text-red-600"
-                                        }`}
+                                        className={`inline-flex h-6 items-center rounded-full px-3 text-xs font-medium ${facebookStatusConfig.badgeClass}`}
                                     >
-                                        {isFacebookConnected ? "Bağlı" : "Bağlı Değil"}
+                                        {facebookStatusConfig.label}
                                     </span>
 
                                     <Button
@@ -367,10 +493,32 @@ export default function IntegrationsPage() {
                                     </Button>
                                 </div>
 
-                                {facebookConnectionSubtitle && (
-                                    <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-xs text-gray-600">
-                                        {facebookConnectionSubtitle}
+                                {facebookStatusMessage && (
+                                    <div
+                                        className={`rounded-md border px-3 py-2 text-xs ${
+                                            MESSAGE_TONE_CLASS[facebookStatusMessage.tone]
+                                        }`}
+                                    >
+                                        {facebookStatusMessage.message}
                                     </div>
+                                )}
+
+                                {facebookDetails.length > 0 && (
+                                    <dl className="grid gap-2 text-xs text-gray-600">
+                                        {facebookDetails.map((detail, index) => (
+                                            <div
+                                                key={`${detail.label}-${index}`}
+                                                className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"
+                                            >
+                                                <dt className="font-medium text-gray-500">
+                                                    {detail.label}
+                                                </dt>
+                                                <dd className="text-gray-700 sm:text-right">
+                                                    {detail.value}
+                                                </dd>
+                                            </div>
+                                        ))}
+                                    </dl>
                                 )}
 
                                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -403,14 +551,58 @@ export default function IntegrationsPage() {
                         <p>
                             Google Ads üzerinden gelen lead’leri CRM’e otomatik olarak aktarın.
                         </p>
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <span className="text-sm font-medium text-orange-500">
-                                Yakında
-                            </span>
-                            <Button variant="ghost" disabled>
-                                Çok Yakında
-                            </Button>
-                        </div>
+                        {statusLoading ? (
+                            <p className="text-sm text-gray-500">
+                                Google bağlantı durumu yükleniyor...
+                            </p>
+                        ) : statusError ? (
+                            <p className="text-sm text-red-600">{statusError}</p>
+                        ) : googleStatus ? (
+                            <div className="flex flex-col gap-3">
+                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                    <span
+                                        className={`inline-flex h-6 items-center rounded-full px-3 text-xs font-medium ${googleStatusConfig.badgeClass}`}
+                                    >
+                                        {googleStatusConfig.label}
+                                    </span>
+                                    <Button variant="ghost" disabled>
+                                        Yakında
+                                    </Button>
+                                </div>
+
+                                {googleStatusMessage && (
+                                    <div
+                                        className={`rounded-md border px-3 py-2 text-xs ${
+                                            MESSAGE_TONE_CLASS[googleStatusMessage.tone]
+                                        }`}
+                                    >
+                                        {googleStatusMessage.message}
+                                    </div>
+                                )}
+
+                                {googleDetails.length > 0 && (
+                                    <dl className="grid gap-2 text-xs text-gray-600">
+                                        {googleDetails.map((detail, index) => (
+                                            <div
+                                                key={`${detail.label}-${index}`}
+                                                className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"
+                                            >
+                                                <dt className="font-medium text-gray-500">
+                                                    {detail.label}
+                                                </dt>
+                                                <dd className="text-gray-700 sm:text-right">
+                                                    {detail.value}
+                                                </dd>
+                                            </div>
+                                        ))}
+                                    </dl>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-gray-500">
+                                Google entegrasyonu için durum bilgisi bulunamadı.
+                            </p>
+                        )}
                     </CardContent>
                 </Card>
             </div>
