@@ -195,17 +195,33 @@ export const api = {
 
 // ──────────────────────────────── INTEGRATIONS ────────────────────────────────
 
-export interface FacebookIntegrationStatus {
+export type IntegrationPlatform = "FACEBOOK" | "GOOGLE" | string;
+
+export type IntegrationConnectionStatus =
+    | "CONNECTED"
+    | "PENDING"
+    | "DISCONNECTED"
+    | "ERROR"
+    | "EXPIRED";
+
+export interface IntegrationStatus {
+    platform: IntegrationPlatform;
     connected: boolean;
+    connectedAt?: string | null;
+    expiresAt?: string | null;
+    lastSyncedAt?: string | null;
+    platformPageId?: string | null;
+    status?: IntegrationConnectionStatus;
+    statusMessage?: string | null;
+    lastErrorAt?: string | null;
+    lastErrorMessage?: string | null;
+    requiresAction?: boolean;
+    // Legacy fields kept for backward compatibility with older backend payloads
     pageId?: string | null;
     pageName?: string | null;
-    connectedAt?: string | null;
-    lastSyncedAt?: string | null;
 }
 
-export interface IntegrationStatus extends FacebookIntegrationStatus {
-    platform: string;
-}
+export type FacebookIntegrationStatus = Omit<IntegrationStatus, "platform">;
 
 export interface FacebookLeadFetchSummary {
     fetched: number;
