@@ -1,227 +1,243 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader } from "@/components/Card";
 import { Button } from "@/components/Button";
-import { Edit3, PlusCircle, Trash2 } from "lucide-react";
+import {
+    deleteFacebookLeadRule,
+    getAutoAssignStats,
+    getFacebookLeadRules,
+    getFacebookLeadTree,
+    saveFacebookLeadRule,
+    type AgentStatsResponse,
+    type FacebookLeadRule,
+    type FacebookLeadTreeAd,
+    type FacebookLeadTreeAdset,
+    type FacebookLeadTreeCampaign,
+    type FacebookLeadTreePage,
+    type SaveFacebookLeadRuleRequest,
+} from "@/lib/api";
+import { getLanguageOption } from "@/lib/languages";
+import { ChevronDown, ChevronUp, Edit3, Loader2, PlusCircle, Trash2 } from "lucide-react";
 
-interface AdItem {
-    id: string;
-    name: string;
+interface UserSelectionState {
+    selected: boolean;
+    frequency: number | "";
 }
 
-interface AdSetItem {
-    id: string;
-    name: string;
-    ads: AdItem[];
-}
+const sortRules = (items: FacebookLeadRule[]): FacebookLeadRule[] => {
+    const safeLabel = (value?: string | null, fallback?: string) =>
+        value && value.trim().length > 0 ? value : fallback ?? "";
 
-interface CampaignItem {
-    id: string;
-    name: string;
-    adSets: AdSetItem[];
-}
-
-interface FacebookPageItem {
-    id: string;
-    name: string;
-    campaigns: CampaignItem[];
-}
-
-interface UserItem {
-    id: string;
-    name: string;
-    languages: string[];
-    defaultFrequency?: number;
-}
-
-interface AssignmentUser {
-    userId: string;
-    name: string;
-    frequency: number;
-    languages: string[];
-}
-
-interface AssignmentRow {
-    id: string;
-    pageId: string;
-    pageName: string;
-    campaignId: string;
-    campaignName: string;
-    adSetId?: string;
-    adSetName?: string;
-    adId?: string;
-    adName?: string;
-    users: AssignmentUser[];
-}
-
-const FACEBOOK_PAGES: FacebookPageItem[] = [
-    {
-        id: "24621211450915346",
-        name: "THC",
-        campaigns: [
-            {
-                id: "120235617509050170",
-                name: "FRA/PCF/2.9.25",
-                adSets: [
-                    {
-                        id: "120235617509070170",
-                        name: "FRA/PCF/2.9.25",
-                        ads: [
-                            { id: "2024521051639148", name: "FRA/PCF/2.9.25 - Copy" },
-                            { id: "2024521051639149", name: "FRA/PCF/2.9.25 - Main" },
-                        ],
-                    },
-                ],
-            },
-            {
-                id: "120235617509051999",
-                name: "FRA/PCF/Lookalike",
-                adSets: [
-                    {
-                        id: "120235617509071999",
-                        name: "FRA/PCF/Remarketing",
-                        ads: [
-                            { id: "2024521051639200", name: "Remarketing - Carousel" },
-                            { id: "2024521051639201", name: "Remarketing - Video" },
-                        ],
-                    },
-                ],
-            },
-        ],
-    },
-    {
-        id: "24621211450919999",
-        name: "BABA",
-        campaigns: [
-            {
-                id: "120235617500000001",
-                name: "TR/Brand Awareness",
-                adSets: [
-                    {
-                        id: "120235617500000101",
-                        name: "Genç Kitle",
-                        ads: [
-                            { id: "2024521051639300", name: "Awareness - 18/24" },
-                            { id: "2024521051639301", name: "Awareness - 25/34" },
-                        ],
-                    },
-                ],
-            },
-        ],
-    },
-    {
-        id: "24621211450928888",
-        name: "KANZAKI",
-        campaigns: [
-            {
-                id: "120235617500100100",
-                name: "DE/Lead",
-                adSets: [
-                    {
-                        id: "120235617500100200",
-                        name: "DE/Lead/Retargeting",
-                        ads: [
-                            { id: "2024521051639400", name: "Lead - Form" },
-                        ],
-                    },
-                ],
-            },
-        ],
-    },
-];
-
-const USERS: UserItem[] = [
-    { id: "user-1", name: "Erdem", languages: ["TR"], defaultFrequency: 0 },
-    { id: "user-2", name: "Mert", languages: ["TR", "EN"], defaultFrequency: 1 },
-    { id: "user-3", name: "Hüseyin", languages: ["TR", "AR"], defaultFrequency: 2 },
-    { id: "user-4", name: "Ayşe", languages: ["EN"], defaultFrequency: undefined },
-    { id: "user-5", name: "Deniz", languages: ["FR", "TR"], defaultFrequency: undefined },
-];
-
-type UserSelectionMap = Record<string, { selected: boolean; frequency: number | null }>;
-
-const createInitialUserSelections = (): UserSelectionMap => {
-    return USERS.reduce<UserSelectionMap>((acc, user) => {
-        acc[user.id] = {
-            selected: typeof user.defaultFrequency === "number",
-            frequency:
-                typeof user.defaultFrequency === "number" ? user.defaultFrequency : null,
-        };
-        return acc;
-    }, {});
+    return [...items].sort((a, b) => {
+        const keyA = `${safeLabel(a.pageName, a.pageId)}|${safeLabel(
+            a.campaignName,
+            a.campaignId,
+        )}|${safeLabel(a.adsetName, a.adsetId)}|${safeLabel(a.adName, a.adId)}`;
+        const keyB = `${safeLabel(b.pageName, b.pageId)}|${safeLabel(
+            b.campaignName,
+            b.campaignId,
+        )}|${safeLabel(b.adsetName, b.adsetId)}|${safeLabel(b.adName, b.adId)}`;
+        return keyA.localeCompare(keyB, "tr");
+    });
 };
 
-const getNextAvailableFrequency = (map: UserSelectionMap): number => {
-    const used = Object.values(map)
-        .filter((item) => item.selected && item.frequency !== null)
-        .map((item) => item.frequency as number);
-    let candidate = 0;
-    while (used.includes(candidate)) {
-        candidate += 1;
-    }
-    return candidate;
-};
+const formatLabel = (name?: string | null, id?: string) =>
+    name && name.trim().length > 0 ? name : id ?? "-";
 
 export default function LeadAssignmentPage() {
+    const [pages, setPages] = useState<FacebookLeadTreePage[]>([]);
+    const [rules, setRules] = useState<FacebookLeadRule[]>([]);
+    const [agents, setAgents] = useState<AgentStatsResponse[]>([]);
+
     const [selectedPageId, setSelectedPageId] = useState<string>("");
     const [selectedCampaignId, setSelectedCampaignId] = useState<string>("");
     const [selectedAdSetId, setSelectedAdSetId] = useState<string>("");
     const [selectedAdId, setSelectedAdId] = useState<string>("");
-    const [userSelections, setUserSelections] = useState<UserSelectionMap>(
-        createInitialUserSelections,
-    );
-    const [assignments, setAssignments] = useState<AssignmentRow[]>([
-        {
-            id: "assignment-initial",
-            pageId: "24621211450915346",
-            pageName: "THC",
-            campaignId: "120235617509050170",
-            campaignName: "FRA/PCF/2.9.25",
-            adSetId: "120235617509070170",
-            adSetName: "FRA/PCF/2.9.25",
-            adId: "2024521051639148",
-            adName: "FRA/PCF/2.9.25 - Copy",
-            users: [
-                { userId: "user-1", name: "Erdem", frequency: 0, languages: ["TR"] },
-                { userId: "user-2", name: "Mert", frequency: 1, languages: ["TR", "EN"] },
-                { userId: "user-3", name: "Hüseyin", frequency: 2, languages: ["TR", "AR"] },
-            ],
-        },
-    ]);
+
+    const [userSelections, setUserSelections] = useState<Record<string, UserSelectionState>>({});
+    const [selectedUserOrder, setSelectedUserOrder] = useState<string[]>([]);
+    const [currentRuleId, setCurrentRuleId] = useState<string | null>(null);
+
+    const [isLoading, setIsLoading] = useState<boolean>(true);
+    const [isSaving, setIsSaving] = useState<boolean>(false);
+    const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
+
     const [formError, setFormError] = useState<string | null>(null);
     const [formSuccess, setFormSuccess] = useState<string | null>(null);
 
-    const selectedPage = useMemo(
-        () => FACEBOOK_PAGES.find((page) => page.id === selectedPageId) ?? null,
-        [selectedPageId],
+    const refreshTree = useCallback(async () => {
+        try {
+            const response = await getFacebookLeadTree();
+            setPages(response?.pages ?? []);
+        } catch (error) {
+            console.error("facebook lead tree refresh error", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        const loadData = async () => {
+            setIsLoading(true);
+            try {
+                const [treeResponse, ruleResponse, agentResponse] = await Promise.all([
+                    getFacebookLeadTree(),
+                    getFacebookLeadRules(),
+                    getAutoAssignStats(),
+                ]);
+
+                setPages(treeResponse?.pages ?? []);
+                setRules(sortRules(ruleResponse ?? []));
+                setAgents(agentResponse ?? []);
+            } catch (error) {
+                console.error("lead-assignment load error", error);
+                setFormError(
+                    error instanceof Error
+                        ? error.message
+                        : "Veriler yüklenirken bir hata oluştu."
+                );
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        loadData();
+    }, []);
+
+    useEffect(() => {
+        if (agents.length === 0) {
+            setUserSelections({});
+            setSelectedUserOrder([]);
+            return;
+        }
+
+        setUserSelections((prev) => {
+            const next: Record<string, UserSelectionState> = {};
+            agents.forEach((agent) => {
+                const existing = prev[agent.userId];
+                next[agent.userId] = existing
+                    ? { ...existing }
+                    : { selected: false, frequency: 1 };
+            });
+            return next;
+        });
+
+        setSelectedUserOrder((prevOrder) =>
+            prevOrder.filter((id) => agents.some((agent) => agent.userId === id)),
+        );
+    }, [agents]);
+
+    const selectedPage: FacebookLeadTreePage | null = useMemo(
+        () => pages.find((page) => page.pageId === selectedPageId) ?? null,
+        [pages, selectedPageId],
     );
-    const selectedCampaign = useMemo(
-        () => selectedPage?.campaigns.find((c) => c.id === selectedCampaignId) ?? null,
+
+    const selectedCampaign: FacebookLeadTreeCampaign | null = useMemo(
+        () =>
+            selectedPage?.campaigns.find(
+                (campaign) => campaign.campaignId === selectedCampaignId,
+            ) ?? null,
         [selectedPage, selectedCampaignId],
     );
-    const selectedAdSet = useMemo(
-        () => selectedCampaign?.adSets.find((a) => a.id === selectedAdSetId) ?? null,
+
+    const selectedAdSet: FacebookLeadTreeAdset | null = useMemo(
+        () =>
+            selectedCampaign?.adsets.find((adset) => adset.adsetId === selectedAdSetId) ??
+            null,
         [selectedCampaign, selectedAdSetId],
     );
-    const selectedAd = useMemo(
-        () => selectedAdSet?.ads.find((ad) => ad.id === selectedAdId) ?? null,
+
+    const selectedAd: FacebookLeadTreeAd | null = useMemo(
+        () => selectedAdSet?.ads.find((ad) => ad.adId === selectedAdId) ?? null,
         [selectedAdSet, selectedAdId],
     );
 
-    const orderedSelectedUsers = useMemo(() => {
-        return USERS.filter((user) => userSelections[user.id]?.selected)
-            .map((user) => ({
-                ...user,
-                frequency: userSelections[user.id]?.frequency ?? null,
-            }))
-            .sort((a, b) => {
-                const freqA = a.frequency ?? Number.MAX_SAFE_INTEGER;
-                const freqB = b.frequency ?? Number.MAX_SAFE_INTEGER;
-                return freqA - freqB;
+    useEffect(() => {
+        if (
+            !selectedPageId ||
+            !selectedCampaignId ||
+            !selectedAdSetId ||
+            !selectedAdId ||
+            agents.length === 0
+        ) {
+            setCurrentRuleId(null);
+            setSelectedUserOrder([]);
+            setUserSelections((prev) => {
+                const next: Record<string, UserSelectionState> = {};
+                Object.entries(prev).forEach(([id, state]) => {
+                    next[id] = { ...state, selected: false };
+                });
+                return next;
             });
-    }, [userSelections]);
+            return;
+        }
+
+        const existingRule = rules.find(
+            (rule) =>
+                rule.pageId === selectedPageId &&
+                rule.campaignId === selectedCampaignId &&
+                rule.adsetId === selectedAdSetId &&
+                rule.adId === selectedAdId,
+        );
+
+        if (!existingRule) {
+            setCurrentRuleId(null);
+            setSelectedUserOrder([]);
+            setUserSelections((prev) => {
+                const next: Record<string, UserSelectionState> = {};
+                Object.entries(prev).forEach(([id, state]) => {
+                    next[id] = { ...state, selected: false };
+                });
+                return next;
+            });
+            return;
+        }
+
+        const orderedAssignments = [...existingRule.assignments].sort(
+            (a, b) => a.position - b.position,
+        );
+        setCurrentRuleId(existingRule.id);
+        setSelectedUserOrder(orderedAssignments.map((assignment) => assignment.userId));
+        setUserSelections((prev) => {
+            const next: Record<string, UserSelectionState> = { ...prev };
+            const assignedIds = new Set(orderedAssignments.map((assignment) => assignment.userId));
+
+            Object.keys(next).forEach((id) => {
+                if (assignedIds.has(id)) {
+                    const assignment = orderedAssignments.find((item) => item.userId === id);
+                    next[id] = {
+                        selected: true,
+                        frequency: assignment ? assignment.frequency : 1,
+                    };
+                } else {
+                    next[id] = { ...next[id], selected: false };
+                }
+            });
+
+            orderedAssignments.forEach((assignment) => {
+                if (!next[assignment.userId]) {
+                    next[assignment.userId] = {
+                        selected: true,
+                        frequency: assignment.frequency,
+                    };
+                }
+            });
+
+            return next;
+        });
+    }, [
+        agents.length,
+        rules,
+        selectedAdId,
+        selectedAdSetId,
+        selectedCampaignId,
+        selectedPageId,
+    ]);
+
+    const sortedAgents = useMemo(
+        () => [...agents].sort((a, b) => a.fullName.localeCompare(b.fullName, "tr")),
+        [agents],
+    );
 
     const resetSelections = () => {
         setSelectedCampaignId("");
@@ -230,121 +246,262 @@ export default function LeadAssignmentPage() {
     };
 
     const handlePageChange = (value: string) => {
+        setFormError(null);
+        setFormSuccess(null);
         setSelectedPageId(value);
         resetSelections();
     };
 
     const handleCampaignChange = (value: string) => {
+        setFormError(null);
+        setFormSuccess(null);
         setSelectedCampaignId(value);
         setSelectedAdSetId("");
         setSelectedAdId("");
     };
 
     const handleAdSetChange = (value: string) => {
+        setFormError(null);
+        setFormSuccess(null);
         setSelectedAdSetId(value);
         setSelectedAdId("");
     };
 
-    const handleToggleUser = (userId: string) => {
+    const handleAdChange = (value: string) => {
         setFormError(null);
         setFormSuccess(null);
+        setSelectedAdId(value);
+    };
+
+    const handleToggleUser = (userId: string) => {
+        const currentState = userSelections[userId];
+        const currentlySelected = currentState?.selected ?? false;
+
+        setFormError(null);
+        setFormSuccess(null);
+
         setUserSelections((prev) => {
             const next = { ...prev };
-            const current = next[userId];
-            if (!current) {
+            const existing = next[userId] ?? { selected: false, frequency: 1 };
+            next[userId] = currentlySelected
+                ? { ...existing, selected: false }
+                : {
+                      selected: true,
+                      frequency:
+                          typeof existing.frequency === "number" && existing.frequency >= 1
+                              ? existing.frequency
+                              : 1,
+                  };
+            return next;
+        });
+
+        setSelectedUserOrder((prev) => {
+            if (currentlySelected) {
+                return prev.filter((id) => id !== userId);
+            }
+            if (prev.includes(userId)) {
                 return prev;
             }
-            if (current.selected) {
-                next[userId] = { selected: false, frequency: null };
-            } else {
-                next[userId] = {
-                    selected: true,
-                    frequency: getNextAvailableFrequency(prev),
-                };
-            }
-            return next;
+            return [...prev, userId];
         });
     };
 
     const handleFrequencyChange = (userId: string, value: string) => {
         setFormError(null);
         setFormSuccess(null);
-        let nextFrequency: number | null = null;
-        if (value !== "") {
+
+        setUserSelections((prev) => {
+            const next = { ...prev };
+            const existing = next[userId] ?? { selected: false, frequency: 1 };
+            if (value === "") {
+                next[userId] = { ...existing, frequency: "" };
+                return next;
+            }
+
             const numericValue = Number(value);
-            nextFrequency = Number.isNaN(numericValue) ? null : numericValue;
-        }
-        setUserSelections((prev) => ({
-            ...prev,
-            [userId]: {
-                selected: prev[userId].selected,
-                frequency: nextFrequency,
-            },
-        }));
+            if (Number.isNaN(numericValue)) {
+                return next;
+            }
+
+            next[userId] = {
+                ...existing,
+                frequency: numericValue,
+            };
+            return next;
+        });
     };
 
-    const handleCreateAssignment = () => {
+    const handleMoveUser = (userId: string, direction: "up" | "down") => {
         setFormError(null);
         setFormSuccess(null);
 
-        if (!selectedPageId || !selectedCampaignId) {
-            setFormError("Facebook sayfası ve kampanya seçimi zorunludur.");
+        setSelectedUserOrder((prev) => {
+            const index = prev.indexOf(userId);
+            if (index === -1) {
+                return prev;
+            }
+
+            const nextIndex = direction === "up" ? index - 1 : index + 1;
+            if (nextIndex < 0 || nextIndex >= prev.length) {
+                return prev;
+            }
+
+            const next = [...prev];
+            const [removed] = next.splice(index, 1);
+            next.splice(nextIndex, 0, removed);
+            return next;
+        });
+    };
+
+    const selectedAssignmentsForPayload = useMemo(
+        () =>
+            selectedUserOrder
+                .map((userId, index) => {
+                    const selection = userSelections[userId];
+                    if (!selection?.selected) {
+                        return null;
+                    }
+                    if (typeof selection.frequency !== "number" || selection.frequency < 1) {
+                        return null;
+                    }
+                    return {
+                        userId,
+                        frequency: selection.frequency,
+                        position: index,
+                    };
+                })
+                .filter(Boolean) as Array<{ userId: string; frequency: number; position: number }>,
+        [selectedUserOrder, userSelections],
+    );
+
+    const canSaveRule = useMemo(() => {
+        if (
+            !selectedPageId ||
+            !selectedCampaignId ||
+            !selectedAdSetId ||
+            !selectedAdId ||
+            selectedAssignmentsForPayload.length === 0
+        ) {
+            return false;
+        }
+
+        return selectedAssignmentsForPayload.every(
+            (assignment) => assignment.frequency && assignment.frequency >= 1,
+        );
+    }, [
+        selectedPageId,
+        selectedCampaignId,
+        selectedAdSetId,
+        selectedAdId,
+        selectedAssignmentsForPayload,
+    ]);
+
+    const handleSaveRule = async () => {
+        setFormError(null);
+        setFormSuccess(null);
+
+        if (!selectedPageId || !selectedCampaignId || !selectedAdSetId || !selectedAdId) {
+            setFormError("Sayfa, kampanya, reklam seti ve reklam seçimleri zorunludur.");
             return;
         }
 
-        const selectedUsers = orderedSelectedUsers.filter(
-            (user) => user.frequency !== null,
-        ) as Array<UserItem & { frequency: number }>;
-
-        if (selectedUsers.length === 0) {
+        if (selectedAssignmentsForPayload.length === 0) {
             setFormError("En az bir kullanıcıyı frekans ile birlikte seçmelisiniz.");
             return;
         }
 
-        const frequencyValues = selectedUsers.map((user) => user.frequency);
-        const hasDuplicateFrequencies = new Set(frequencyValues).size !== frequencyValues.length;
-        if (hasDuplicateFrequencies) {
-            setFormError("Her kullanıcı için benzersiz bir frekans belirleyin (0, 1, 2 ...).");
+        const invalidFrequency = selectedAssignmentsForPayload.some(
+            (assignment) => assignment.frequency < 1,
+        );
+        if (invalidFrequency) {
+            setFormError("Frekans değeri 1 veya daha büyük olmalıdır.");
             return;
         }
 
-        const newAssignment: AssignmentRow = {
-            id: `assignment-${Date.now()}`,
+        const payload: SaveFacebookLeadRuleRequest = {
             pageId: selectedPageId,
-            pageName: selectedPage?.name ?? "-",
             campaignId: selectedCampaignId,
-            campaignName: selectedCampaign?.name ?? "-",
-            adSetId: selectedAdSetId || undefined,
-            adSetName: selectedAdSet?.name,
-            adId: selectedAdId || undefined,
-            adName: selectedAd?.name,
-            users: selectedUsers.map((user) => ({
-                userId: user.id,
-                name: user.name,
-                frequency: user.frequency,
-                languages: user.languages,
-            })),
+            adsetId: selectedAdSetId,
+            adId: selectedAdId,
+            ...(selectedPage?.pageName ? { pageName: selectedPage.pageName } : {}),
+            ...(selectedCampaign?.campaignName ? { campaignName: selectedCampaign.campaignName } : {}),
+            ...(selectedAdSet?.adsetName ? { adsetName: selectedAdSet.adsetName } : {}),
+            ...(selectedAd?.adName ? { adName: selectedAd.adName } : {}),
+            assignments: selectedAssignmentsForPayload,
         };
 
-        setAssignments((prev) => [...prev, newAssignment]);
-        setFormSuccess("Atama listesine başarıyla eklendi.");
+        const updatingExisting = currentRuleId !== null;
+
+        setIsSaving(true);
+        try {
+            const savedRule = await saveFacebookLeadRule(payload);
+            if (!savedRule) {
+                throw new Error("Kural kaydedilemedi.");
+            }
+
+            setRules((prev) =>
+                sortRules([...prev.filter((rule) => rule.id !== savedRule.id), savedRule]),
+            );
+            setCurrentRuleId(savedRule.id);
+            setFormSuccess(
+                updatingExisting
+                    ? "Kural başarıyla güncellendi."
+                    : "Kural başarıyla oluşturuldu.",
+            );
+            await refreshTree();
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Kural kaydedilirken bir hata oluştu.";
+            setFormError(message);
+        } finally {
+            setIsSaving(false);
+        }
     };
 
-    const handleDeleteAssignment = (assignmentId: string) => {
-        setAssignments((prev) => prev.filter((assignment) => assignment.id !== assignmentId));
+    const handleDeleteRule = async (ruleId: string) => {
+        setFormError(null);
+        setFormSuccess(null);
+        setDeletingRuleId(ruleId);
+
+        try {
+            await deleteFacebookLeadRule(ruleId);
+            setRules((prev) => prev.filter((rule) => rule.id !== ruleId));
+            if (currentRuleId === ruleId) {
+                setCurrentRuleId(null);
+                setSelectedUserOrder([]);
+                setUserSelections((prev) => {
+                    const next: Record<string, UserSelectionState> = {};
+                    Object.entries(prev).forEach(([id, state]) => {
+                        next[id] = { ...state, selected: false };
+                    });
+                    return next;
+                });
+            }
+            setFormSuccess("Kural başarıyla silindi.");
+            await refreshTree();
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Kural silinirken bir hata oluştu.";
+            setFormError(message);
+        } finally {
+            setDeletingRuleId(null);
+        }
     };
 
-    const canCreateAssignment = useMemo(() => {
-        if (!selectedPageId || !selectedCampaignId) {
-            return false;
-        }
-        const validUsers = orderedSelectedUsers.filter((user) => user.frequency !== null);
-        if (validUsers.length === 0) {
-            return false;
-        }
-        const frequencies = validUsers.map((user) => user.frequency as number);
-        return new Set(frequencies).size === frequencies.length;
-    }, [orderedSelectedUsers, selectedCampaignId, selectedPageId]);
+    const handleEditRule = (rule: FacebookLeadRule) => {
+        setFormError(null);
+        setFormSuccess(null);
+        setSelectedPageId(rule.pageId);
+        setSelectedCampaignId(rule.campaignId);
+        setSelectedAdSetId(rule.adsetId);
+        setSelectedAdId(rule.adId);
+    };
+
+    const ruleList = rules;
 
     return (
         <Layout
@@ -363,11 +520,14 @@ export default function LeadAssignmentPage() {
                                 value={selectedPageId}
                                 onChange={(event) => handlePageChange(event.target.value)}
                                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                                disabled={isLoading || pages.length === 0}
                             >
-                                <option value="">Sayfa seçiniz</option>
-                                {FACEBOOK_PAGES.map((page) => (
-                                    <option key={page.id} value={page.id}>
-                                        {page.name}
+                                <option value="">
+                                    {isLoading ? "Yükleniyor..." : "Sayfa seçiniz"}
+                                </option>
+                                {pages.map((page) => (
+                                    <option key={page.pageId} value={page.pageId}>
+                                        {formatLabel(page.pageName, page.pageId)}
                                     </option>
                                 ))}
                             </select>
@@ -380,66 +540,65 @@ export default function LeadAssignmentPage() {
                                 value={selectedCampaignId}
                                 onChange={(event) => handleCampaignChange(event.target.value)}
                                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                                disabled={!selectedPage}
+                                disabled={isLoading || !selectedPage}
                             >
                                 <option value="">
-                                    {selectedPage ? "Kampanya seçiniz" : "Önce Facebook sayfasını seçin"}
+                                    {selectedPage
+                                        ? "Kampanya seçiniz"
+                                        : "Önce Facebook sayfasını seçin"}
                                 </option>
                                 {selectedPage?.campaigns.map((campaign) => (
-                                    <option key={campaign.id} value={campaign.id}>
-                                        {campaign.name}
+                                    <option key={campaign.campaignId} value={campaign.campaignId}>
+                                        {formatLabel(campaign.campaignName, campaign.campaignId)}
                                     </option>
                                 ))}
                             </select>
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                Reklam Seti Seçiniz
+                                Reklam Seti Seçiniz <span className="text-red-500">*</span>
                             </label>
                             <select
                                 value={selectedAdSetId}
                                 onChange={(event) => handleAdSetChange(event.target.value)}
                                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                                disabled={!selectedCampaign}
+                                disabled={isLoading || !selectedCampaign}
                             >
                                 <option value="">
                                     {selectedCampaign
-                                        ? "Reklam seti seçiniz (opsiyonel)"
+                                        ? "Reklam seti seçiniz"
                                         : "Önce kampanya seçin"}
                                 </option>
-                                {selectedCampaign?.adSets.map((adSet) => (
-                                    <option key={adSet.id} value={adSet.id}>
-                                        {adSet.name}
+                                {selectedCampaign?.adsets.map((adset) => (
+                                    <option key={adset.adsetId} value={adset.adsetId}>
+                                        {formatLabel(adset.adsetName, adset.adsetId)}
                                     </option>
                                 ))}
                             </select>
                         </div>
                         <div>
                             <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">
-                                Reklam Seçiniz
+                                Reklam Seçiniz <span className="text-red-500">*</span>
                             </label>
                             <select
                                 value={selectedAdId}
-                                onChange={(event) => setSelectedAdId(event.target.value)}
+                                onChange={(event) => handleAdChange(event.target.value)}
                                 className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                                disabled={!selectedAdSet}
+                                disabled={isLoading || !selectedAdSet}
                             >
                                 <option value="">
-                                    {selectedAdSet
-                                        ? "Reklam seçiniz (opsiyonel)"
-                                        : "Önce reklam seti seçin"}
+                                    {selectedAdSet ? "Reklam seçiniz" : "Önce reklam seti seçin"}
                                 </option>
                                 {selectedAdSet?.ads.map((ad) => (
-                                    <option key={ad.id} value={ad.id}>
-                                        {ad.name}
+                                    <option key={ad.adId} value={ad.adId}>
+                                        {formatLabel(ad.adName, ad.adId)}
                                     </option>
                                 ))}
                             </select>
                         </div>
                         <p className="rounded-md bg-blue-50 px-3 py-2 text-xs text-blue-700">
-                            Sayfa ve kampanya seçimleri zorunludur. Reklam seti ve reklam seçenekleri
-                            opsiyoneldir; seçtiğiniz takdirde atamalar sadece bu filtrelere özel
-                            çalışacaktır.
+                            Tüm seçimler zorunludur. Seçili kombinasyon için kural kaydettiğinizde aynı
+                            reklamdan gelen lead&apos;ler burada tanımlanan sırayla dağıtılır.
                         </p>
                     </CardContent>
                 </Card>
@@ -448,65 +607,168 @@ export default function LeadAssignmentPage() {
                     <CardHeader>Auto Assign Kullanıcıları</CardHeader>
                     <CardContent className="space-y-4">
                         <p className="text-xs text-gray-600">
-                            Frequency değeri, gelen lead sıralamasını belirler. Örneğin frekansı 0 olan
-                            kullanıcı ilk lead&apos;i alır, 1 ve 2 olan kullanıcılar sıradaki lead&apos;leri alır ve
-                            sıra tekrar başa döner.
+                            Frekans değeri, kullanıcıya arka arkaya kaç lead verileceğini; sıra değeri
+                            ise rotasyondaki konumunu belirler. Tüm frekanslar 1 veya daha büyük
+                            olmalıdır.
                         </p>
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full text-sm">
-                                <thead>
-                                <tr className="bg-gray-100 text-left text-xs uppercase tracking-wide text-gray-600">
-                                    <th className="px-2 py-2">İsim</th>
-                                    <th className="px-2 py-2">Diller</th>
-                                    <th className="px-2 py-2">Frequency</th>
-                                    <th className="px-2 py-2 text-center">Auto Assign</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {USERS.map((user) => {
-                                    const state = userSelections[user.id];
-                                    return (
-                                        <tr key={user.id} className="border-t">
-                                            <td className="px-2 py-2 font-medium text-gray-800">{user.name}</td>
-                                            <td className="px-2 py-2 text-gray-600">
-                                                {user.languages.join(", ")}
-                                            </td>
-                                            <td className="px-2 py-2">
-                                                <input
-                                                    type="number"
-                                                    min={0}
-                                                    value={state.frequency ?? ""}
-                                                    onChange={(event) =>
-                                                        handleFrequencyChange(user.id, event.target.value)
-                                                    }
-                                                    className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
-                                                    disabled={!state.selected}
-                                                />
-                                            </td>
-                                            <td className="px-2 py-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={state.selected}
-                                                    onChange={() => handleToggleUser(user.id)}
-                                                    className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                />
-                                            </td>
+                        {isLoading ? (
+                            <div className="flex items-center justify-center py-6 text-gray-500">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Veriler yükleniyor...
+                            </div>
+                        ) : sortedAgents.length === 0 ? (
+                            <p className="text-sm text-gray-500">
+                                Auto-assign özelliği açık kullanıcı bulunamadı. Kullanıcı ekledikten sonra
+                                kuralları yapılandırabilirsiniz.
+                            </p>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full text-sm">
+                                    <thead>
+                                        <tr className="bg-gray-100 text-left text-xs uppercase tracking-wide text-gray-600">
+                                            <th className="px-2 py-2">İsim</th>
+                                            <th className="px-2 py-2">Diller</th>
+                                            <th className="px-2 py-2">Frekans</th>
+                                            <th className="px-2 py-2">Sıra</th>
+                                            <th className="px-2 py-2 text-center">Kurala Dahil</th>
                                         </tr>
-                                    );
-                                })}
-                                </tbody>
-                            </table>
-                        </div>
+                                    </thead>
+                                    <tbody>
+                                        {sortedAgents.map((agent) => {
+                                            const selection = userSelections[agent.userId];
+                                            const isSelected = selection?.selected ?? false;
+                                            const orderIndex = selectedUserOrder.indexOf(agent.userId);
+                                            const isSelectable = agent.active && agent.autoAssignEnabled;
+                                            const disableCheckbox = !isSelectable && !isSelected;
+                                            const checkboxTitle = !agent.active
+                                                ? "Kullanıcı pasif olduğu için otomatik atamaya dahil edilemez."
+                                                : !agent.autoAssignEnabled
+                                                ? "Auto-assign özelliği kapalı."
+                                                : undefined;
+
+                                            return (
+                                                <tr key={agent.userId} className="border-t align-top">
+                                                    <td className="px-2 py-2">
+                                                        <div className="font-medium text-gray-800">
+                                                            {agent.fullName}
+                                                        </div>
+                                                        <div className="mt-1 flex flex-wrap gap-1 text-xs">
+                                                            <span
+                                                                className={`rounded-full px-2 py-0.5 ${
+                                                                    agent.active
+                                                                        ? "bg-green-100 text-green-700"
+                                                                        : "bg-red-100 text-red-700"
+                                                                }`}
+                                                            >
+                                                                {agent.active ? "Aktif" : "Pasif"}
+                                                            </span>
+                                                            <span
+                                                                className={`rounded-full px-2 py-0.5 ${
+                                                                    agent.autoAssignEnabled
+                                                                        ? "bg-blue-100 text-blue-700"
+                                                                        : "bg-gray-200 text-gray-600"
+                                                                }`}
+                                                            >
+                                                                {agent.autoAssignEnabled
+                                                                    ? "Auto-Assign Açık"
+                                                                    : "Auto-Assign Kapalı"}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-2 py-2 text-gray-600">
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {agent.supportedLanguages.map((code) => {
+                                                                const option = getLanguageOption(code);
+                                                                return (
+                                                                    <span
+                                                                        key={`${agent.userId}-${code}`}
+                                                                        className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                                                                    >
+                                                                        <span>{option?.flag ?? "🏳️"}</span>
+                                                                        <span>{option?.label ?? code}</span>
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        <input
+                                                            type="number"
+                                                            min={1}
+                                                            value={selection?.frequency ?? ""}
+                                                            onChange={(event) =>
+                                                                handleFrequencyChange(
+                                                                    agent.userId,
+                                                                    event.target.value,
+                                                                )
+                                                            }
+                                                            className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none disabled:bg-gray-100"
+                                                            disabled={!isSelected}
+                                                        />
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        {isSelected ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="text-sm font-medium text-gray-800">
+                                                                    {orderIndex + 1}.
+                                                                </span>
+                                                                <div className="flex flex-col gap-1">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleMoveUser(agent.userId, "up")
+                                                                        }
+                                                                        disabled={orderIndex <= 0}
+                                                                        className="flex h-6 w-6 items-center justify-center rounded border border-gray-300 text-gray-600 transition hover:bg-gray-100 disabled:opacity-40"
+                                                                    >
+                                                                        <ChevronUp className="h-3 w-3" />
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() =>
+                                                                            handleMoveUser(agent.userId, "down")
+                                                                        }
+                                                                        disabled={
+                                                                            orderIndex ===
+                                                                            selectedUserOrder.length - 1
+                                                                        }
+                                                                        className="flex h-6 w-6 items-center justify-center rounded border border-gray-300 text-gray-600 transition hover:bg-gray-100 disabled:opacity-40"
+                                                                    >
+                                                                        <ChevronDown className="h-3 w-3" />
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <span className="text-xs text-gray-500">-</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-2 py-2 text-center">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => handleToggleUser(agent.userId)}
+                                                            disabled={disableCheckbox}
+                                                            title={checkboxTitle}
+                                                            className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                         {formError && <p className="text-xs text-red-600">{formError}</p>}
                         {formSuccess && <p className="text-xs text-green-600">{formSuccess}</p>}
                         <Button
                             type="button"
                             variant="primary"
                             className="w-full justify-center"
-                            onClick={handleCreateAssignment}
-                            disabled={!canCreateAssignment}
+                            onClick={handleSaveRule}
+                            disabled={!canSaveRule || isSaving || sortedAgents.length === 0}
+                            isLoading={isSaving}
                         >
-                            <PlusCircle className="mr-2 h-4 w-4" /> Atamayı Kaydet
+                            <PlusCircle className="mr-2 h-4 w-4" /> Kuralı Kaydet
                         </Button>
                     </CardContent>
                 </Card>
@@ -516,91 +778,143 @@ export default function LeadAssignmentPage() {
                 <Card>
                     <CardHeader>Atama Özeti</CardHeader>
                     <CardContent>
-                        {assignments.length === 0 ? (
+                        {isLoading ? (
+                            <div className="flex items-center justify-center py-10 text-gray-500">
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Veriler yükleniyor...
+                            </div>
+                        ) : ruleList.length === 0 ? (
                             <p className="text-sm text-gray-500">
                                 Henüz tanımlanmış bir auto-assign kuralı yok. Soldaki formu kullanarak ilk
-                                atamanızı ekleyin.
+                                kuralınızı oluşturabilirsiniz.
                             </p>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="min-w-full text-sm">
                                     <thead>
-                                    <tr className="bg-gray-100 text-left text-xs uppercase tracking-wide text-gray-600">
-                                        <th className="px-3 py-2">Facebook Kanalı</th>
-                                        <th className="px-3 py-2">Kampanya</th>
-                                        <th className="px-3 py-2">Reklam Seti</th>
-                                        <th className="px-3 py-2">Reklam</th>
-                                        <th className="px-3 py-2">Sorumlular</th>
-                                        <th className="px-3 py-2 text-right">İşlem</th>
-                                    </tr>
+                                        <tr className="bg-gray-100 text-left text-xs uppercase tracking-wide text-gray-600">
+                                            <th className="px-3 py-2">Facebook Kanalı</th>
+                                            <th className="px-3 py-2">Kampanya</th>
+                                            <th className="px-3 py-2">Reklam Seti</th>
+                                            <th className="px-3 py-2">Reklam</th>
+                                            <th className="px-3 py-2">Sorumlular</th>
+                                            <th className="px-3 py-2 text-right">İşlem</th>
+                                        </tr>
                                     </thead>
                                     <tbody>
-                                    {assignments.map((assignment) => (
-                                        <tr key={assignment.id} className="border-t align-top">
-                                            <td className="px-3 py-2 font-medium text-gray-800">
-                                                <div>{assignment.pageName}</div>
-                                                <div className="text-xs text-gray-500">ID: {assignment.pageId}</div>
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <div className="font-medium text-gray-800">{assignment.campaignName}</div>
-                                                <div className="text-xs text-gray-500">ID: {assignment.campaignId}</div>
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                {assignment.adSetName ? (
-                                                    <>
-                                                        <div className="font-medium text-gray-800">{assignment.adSetName}</div>
-                                                        <div className="text-xs text-gray-500">
-                                                            ID: {assignment.adSetId}
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <span className="text-xs text-gray-500">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                {assignment.adName ? (
-                                                    <>
-                                                        <div className="font-medium text-gray-800">{assignment.adName}</div>
-                                                        <div className="text-xs text-gray-500">
-                                                            ID: {assignment.adId}
-                                                        </div>
-                                                    </>
-                                                ) : (
-                                                    <span className="text-xs text-gray-500">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-3 py-2">
-                                                <ul className="space-y-1">
-                                                    {[...assignment.users]
-                                                        .sort((a, b) => a.frequency - b.frequency)
-                                                        .map((user) => (
-                                                            <li key={`${assignment.id}-${user.userId}-${user.frequency}`}>
-                                                                <span className="font-medium text-gray-800">
-                                                                    {user.frequency}
-                                                                </span>{" "}
-                                                                <span className="text-gray-700">{user.name}</span>
-                                                                <span className="ml-2 text-xs text-gray-500">
-                                                                    ({user.languages.join(", ")})
-                                                                </span>
-                                                            </li>
-                                                        ))}
-                                                </ul>
-                                            </td>
-                                            <td className="px-3 py-2 text-right space-x-2 whitespace-nowrap">
-                                                <Button variant="ghost" size="sm" className="inline-flex items-center gap-1 text-gray-600" disabled>
-                                                    <Edit3 className="h-4 w-4" /> Edit
-                                                </Button>
-                                                <Button
-                                                    variant="danger"
-                                                    size="sm"
-                                                    className="inline-flex items-center gap-1"
-                                                    onClick={() => handleDeleteAssignment(assignment.id)}
+                                        {ruleList.map((rule) => {
+                                            const isActiveRule = rule.id === currentRuleId;
+                                            const orderedAssignments = [...rule.assignments].sort(
+                                                (a, b) => a.position - b.position,
+                                            );
+
+                                            return (
+                                                <tr
+                                                    key={rule.id}
+                                                    className={`border-t align-top ${
+                                                        isActiveRule ? "bg-blue-50" : ""
+                                                    }`}
                                                 >
-                                                    <Trash2 className="h-4 w-4" /> Delete
-                                                </Button>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                    <td className="px-3 py-2 font-medium text-gray-800">
+                                                        <div>{formatLabel(rule.pageName, rule.pageId)}</div>
+                                                        <div className="text-xs text-gray-500">
+                                                            ID: {rule.pageId}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <div className="font-medium text-gray-800">
+                                                            {formatLabel(rule.campaignName, rule.campaignId)}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            ID: {rule.campaignId}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <div className="font-medium text-gray-800">
+                                                            {formatLabel(rule.adsetName, rule.adsetId)}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            ID: {rule.adsetId}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <div className="font-medium text-gray-800">
+                                                            {formatLabel(rule.adName, rule.adId)}
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            ID: {rule.adId}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        {orderedAssignments.length === 0 ? (
+                                                            <span className="text-xs text-gray-500">
+                                                                Kullanıcı tanımlı değil.
+                                                            </span>
+                                                        ) : (
+                                                            <ul className="space-y-2">
+                                                                {orderedAssignments.map((assignment) => (
+                                                                    <li key={`${rule.id}-${assignment.userId}`}>
+                                                                        <div className="flex flex-col gap-1">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="font-medium text-gray-800">
+                                                                                    {assignment.position + 1}.
+                                                                                </span>
+                                                                                <span className="text-gray-800">
+                                                                                    {assignment.fullName}
+                                                                                </span>
+                                                                                <span className="text-xs text-gray-500">
+                                                                                    Frekans: {assignment.frequency}
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="flex flex-wrap gap-1 text-xs">
+                                                                                {!assignment.active && (
+                                                                                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-red-700">
+                                                                                        Pasif
+                                                                                    </span>
+                                                                                )}
+                                                                                {!assignment.autoAssignEnabled && (
+                                                                                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-gray-600">
+                                                                                        Auto-Assign Kapalı
+                                                                                    </span>
+                                                                                )}
+                                                                                {assignment.email && (
+                                                                                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-gray-600">
+                                                                                        {assignment.email}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-right space-x-2 whitespace-nowrap">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="inline-flex items-center gap-1 text-gray-600"
+                                                            onClick={() => handleEditRule(rule)}
+                                                        >
+                                                            <Edit3 className="h-4 w-4" /> Düzenle
+                                                        </Button>
+                                                        <Button
+                                                            variant="danger"
+                                                            size="sm"
+                                                            className="inline-flex items-center gap-1"
+                                                            onClick={() => handleDeleteRule(rule.id)}
+                                                            disabled={deletingRuleId === rule.id}
+                                                        >
+                                                            {deletingRuleId === rule.id ? (
+                                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                            ) : (
+                                                                <Trash2 className="h-4 w-4" />
+                                                            )}
+                                                            Sil
+                                                        </Button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
                                     </tbody>
                                 </table>
                             </div>
@@ -611,4 +925,3 @@ export default function LeadAssignmentPage() {
         </Layout>
     );
 }
-
