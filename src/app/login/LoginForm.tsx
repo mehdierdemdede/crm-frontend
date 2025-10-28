@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/Input";
@@ -14,12 +14,33 @@ export default function LoginForm() {
     const { login, isLoading, error } = useAuth();
     const router = useRouter();
 
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+
+        const storedRemember = window.localStorage.getItem("rememberMe") === "true";
+        const storedEmail = window.localStorage.getItem("rememberedEmail");
+
+        if (storedRemember) {
+            setRememberMe(true);
+            if (storedEmail) {
+                setEmail(storedEmail);
+            }
+        }
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const success = await login(email, password);
+        const success = await login(email, password, rememberMe);
         if (success) {
-            // 🔹 Beni hatırla seçiliyse token süresini uzatabiliriz
-            if (rememberMe) localStorage.setItem("rememberMe", "true");
+            if (typeof window !== "undefined") {
+                if (rememberMe) {
+                    window.localStorage.setItem("rememberMe", "true");
+                    window.localStorage.setItem("rememberedEmail", email);
+                } else {
+                    window.localStorage.removeItem("rememberMe");
+                    window.localStorage.removeItem("rememberedEmail");
+                }
+            }
             router.push("/dashboard");
         }
     };
@@ -59,7 +80,15 @@ export default function LoginForm() {
                     <input
                         type="checkbox"
                         checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
+                        onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setRememberMe(isChecked);
+
+                            if (typeof window !== "undefined" && !isChecked) {
+                                window.localStorage.removeItem("rememberMe");
+                                window.localStorage.removeItem("rememberedEmail");
+                            }
+                        }}
                         disabled={isLoading}
                         className="rounded border-gray-300"
                     />

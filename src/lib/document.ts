@@ -7,8 +7,13 @@ const isWindowsFilesystemPath = (value: string) => /^[a-zA-Z]:\//.test(value);
 const buildAuthHeader = (): Record<string, string> => {
     if (typeof window === "undefined") return {} as Record<string, string>;
 
-    const token = window.localStorage.getItem("authToken");
-    const tokenType = window.localStorage.getItem("tokenType") || "Bearer";
+    const token =
+        window.localStorage.getItem("authToken") ??
+        window.sessionStorage.getItem("authToken");
+    const tokenType =
+        window.localStorage.getItem("tokenType") ??
+        window.sessionStorage.getItem("tokenType") ??
+        "Bearer";
 
     return token ? { Authorization: `${tokenType} ${token}` } : {};
 };
