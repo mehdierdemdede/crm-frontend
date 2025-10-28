@@ -117,19 +117,8 @@ export default function LeadsPage() {
                 setLoading(false);
             }
         };
-        fetchLeads();
-    }, [
-        assignedFilter,
-        campaignFilter,
-        languageFilter,
-        page,
-        perPage,
-        search,
-        sortBy,
-        sortOrder,
-        statusFilter,
-        user?.id,
-    ]);
+        fetchData();
+    }, [page, sortBy, sortOrder]);
 
     const languageOptions = useMemo(() => {
         const langs = new Set<string>();
@@ -140,17 +129,45 @@ export default function LeadsPage() {
     }, [leads]);
 
     const campaignOptions = useMemo(() => {
-        const campaigns = new Map<string, string>();
+        const campaigns = new Set<string>();
         leads.forEach((lead) => {
-            const key = lead.campaign?.id ?? lead.campaign?.name ?? null;
-            if (key) {
-                campaigns.set(key, lead.campaign?.name ?? "İsimsiz Kampanya");
-            }
+            if (lead.campaign?.name) campaigns.add(lead.campaign.name);
         });
-        return Array.from(campaigns.entries())
-            .map(([id, name]) => ({ id, name }))
-            .sort((a, b) => a.name.localeCompare(b.name));
+        return Array.from(campaigns).sort((a, b) => a.localeCompare(b));
     }, [leads]);
+
+    const filtered = useMemo(() => {
+        return leads.filter((l) => {
+            const hay = search.toLowerCase();
+            const byText =
+                l.name?.toLowerCase().includes(hay) ||
+                l.email?.toLowerCase().includes(hay) ||
+                l.campaign?.name?.toLowerCase().includes(hay);
+            const byStatus = statusFilter ? l.status === statusFilter : true;
+            const byLanguage = languageFilter ? l.language === languageFilter : true;
+            const byCampaign = campaignFilter
+                ? l.campaign?.name === campaignFilter
+                : true;
+            const byAssigned = (() => {
+                if (!assignedFilter) return true;
+                if (assignedFilter === "__me__")
+                    return l.assignedToUser?.id === user?.id;
+                if (assignedFilter === "__unassigned__")
+                    return !l.assignedToUser;
+                return l.assignedToUser?.id === assignedFilter;
+            })();
+
+            return byText && byStatus && byLanguage && byCampaign && byAssigned;
+        });
+    }, [
+        assignedFilter,
+        campaignFilter,
+        languageFilter,
+        leads,
+        search,
+        statusFilter,
+        user?.id,
+    ]);
 
     const handleCall = (phone?: string | null | undefined) => {
         if (!phone) return alert("Telefon numarası bulunamadı.");
@@ -280,8 +297,8 @@ export default function LeadsPage() {
                             >
                                 <option value="">Tüm Kampanyalar</option>
                                 {campaignOptions.map((campaign) => (
-                                    <option key={campaign.id} value={campaign.id}>
-                                        {campaign.name}
+                                    <option key={campaign} value={campaign}>
+                                        {campaign}
                                     </option>
                                 ))}
                             </select>
@@ -304,7 +321,7 @@ export default function LeadsPage() {
                             </select>
                         </div>
                         <div className="text-xs sm:text-sm text-gray-500 text-right sm:text-left">
-                            {totalElements} kayıt listeleniyor
+                            {filtered.length} kayıt listeleniyor
                         </div>
                     </CardHeader>
 
