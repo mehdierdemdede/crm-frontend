@@ -1,11 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { Mail, Lock } from "lucide-react";
+import {
+    clearRememberedCredentials,
+    persistRememberedEmail,
+    persistRememberPreference,
+    readRememberedCredentials,
+} from "@/lib/rememberMeStorage";
 
 export default function LoginForm() {
     const [email, setEmail] = useState("");
@@ -14,12 +20,28 @@ export default function LoginForm() {
     const { login, isLoading, error } = useAuth();
     const router = useRouter();
 
+    useEffect(() => {
+        const { rememberMe: rememberStored, email: storedEmail } =
+            readRememberedCredentials();
+
+        if (!rememberStored) return;
+
+        setRememberMe(true);
+        if (storedEmail) {
+            setEmail(storedEmail);
+        }
+    }, []);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        const success = await login(email, password);
+        const success = await login(email, password, rememberMe);
         if (success) {
-            // 🔹 Beni hatırla seçiliyse token süresini uzatabiliriz
-            if (rememberMe) localStorage.setItem("rememberMe", "true");
+            if (rememberMe) {
+                persistRememberPreference(true);
+                persistRememberedEmail(email);
+            } else {
+                clearRememberedCredentials();
+            }
             router.push("/dashboard");
         }
     };
@@ -59,7 +81,11 @@ export default function LoginForm() {
                     <input
                         type="checkbox"
                         checked={rememberMe}
-                        onChange={(e) => setRememberMe(e.target.checked)}
+                        onChange={(e) => {
+                            const isChecked = e.target.checked;
+                            setRememberMe(isChecked);
+                            persistRememberPreference(isChecked);
+                        }}
                         disabled={isLoading}
                         className="rounded border-gray-300"
                     />
