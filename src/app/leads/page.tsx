@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
 import {
     getLeads,
     updateLeadStatus,
@@ -46,72 +47,110 @@ type SortableColumn =
     | "assignedToUser"
     | "createdAt";
 
-function getSortValue(l: LeadResponse, col: SortableColumn): string {
-    switch (col) {
-        case "name":
-            return l.name ?? "";
-        case "email":
-            return l.email ?? "";
-        case "language":
-            return l.language ?? "";
-        case "campaign":
-            return l.campaign?.name ?? "";
-        case "status":
-            return l.status ?? "";
-        case "assignedToUser":
-            return l.assignedToUser
-                ? `${l.assignedToUser.firstName ?? ""} ${l.assignedToUser.lastName ?? ""}`.trim()
-                : "";
-        case "createdAt":
-            return l.createdAt ? new Date(l.createdAt).toISOString() : "";
-        default:
-            return "";
-    }
-}
-
 export default function LeadsPage() {
     const [leads, setLeads] = useState<LeadResponse[]>([]);
     const [users, setUsers] = useState<SimpleUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
+    const [languageFilter, setLanguageFilter] = useState("");
+    const [campaignFilter, setCampaignFilter] = useState("");
+    const [assignedFilter, setAssignedFilter] = useState("");
     const [sortBy, setSortBy] = useState<SortableColumn>("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
     const perPage = 10;
+    const { user } = useAuth();
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchUsers = async () => {
+            try {
+                const userData = await getUsers();
+                setUsers(userData ?? []);
+            } catch (err) {
+                console.error("Kullanıcı listesi alınamadı:", err);
+            }
+        };
+        fetchUsers();
+    }, []);
+
+    useEffect(() => {
+        if (assignedFilter === "__me__" && !user?.id) {
+            return;
+        }
+        const fetchLeads = async () => {
             setLoading(true);
             try {
-                const [leadPage, userData] = await Promise.all([
-                    getLeads(page, perPage, `${sortBy},${sortOrder}`),
-                    getUsers(),
-                ]);
+                const assignedUserId = (() => {
+                    if (assignedFilter === "__me__") return user?.id ?? undefined;
+                    if (
+                        assignedFilter &&
+                        assignedFilter !== "__me__" &&
+                        assignedFilter !== "__unassigned__"
+                    )
+                        return assignedFilter;
+                    return undefined;
+                })();
+
+                const leadPage = await getLeads({
+                    page,
+                    size: perPage,
+                    sort: `${sortBy},${sortOrder}`,
+                    search: search.trim() || undefined,
+                    status: statusFilter || undefined,
+                    language: languageFilter || undefined,
+                    campaignId: campaignFilter || undefined,
+                    assignedUserId,
+                    unassigned: assignedFilter === "__unassigned__",
+                });
+
                 setLeads(leadPage?.content ?? []);
                 setTotalPages(leadPage?.totalPages ?? 1);
-                setUsers(userData ?? []);
+                setTotalElements(
+                    leadPage?.totalElements ?? leadPage?.content?.length ?? 0
+                );
             } catch (err) {
                 console.error("Lead listesi alınamadı:", err);
             } finally {
                 setLoading(false);
             }
         };
-        fetchData();
-    }, [page, sortBy, sortOrder]);
+        fetchLeads();
+    }, [
+        assignedFilter,
+        campaignFilter,
+        languageFilter,
+        page,
+        perPage,
+        search,
+        sortBy,
+        sortOrder,
+        statusFilter,
+        user?.id,
+    ]);
 
-    const filtered = useMemo(() => {
-        return leads.filter((l) => {
-            const hay = search.toLowerCase();
-            const byText =
-                l.name?.toLowerCase().includes(hay) ||
-                l.email?.toLowerCase().includes(hay) ||
-                l.campaign?.name?.toLowerCase().includes(hay);
-            const byStatus = statusFilter ? l.status === statusFilter : true;
-            return byText && byStatus;
+    const languageOptions = useMemo(() => {
+        const langs = new Set<string>();
+        leads.forEach((lead) => {
+            if (lead.language) langs.add(lead.language);
         });
-    }, [leads, search, statusFilter]);
+        return Array.from(langs).sort((a, b) => a.localeCompare(b));
+    }, [leads]);
+
+    const campaignOptions = useMemo(() => {
+        const campaigns = new Map<string, string>();
+        leads.forEach((lead) => {
+            const key = lead.campaign?.id ?? lead.campaign?.name ?? null;
+            if (key) {
+                campaigns.set(key, lead.campaign?.name ?? "İsimsiz Kampanya");
+            }
+        });
+        return Array.from(campaigns.entries())
+            .map(([id, name]) => ({ id, name }))
+            .sort((a, b) => a.name.localeCompare(b.name));
+    }, [leads]);
 
     const handleCall = (phone?: string | null | undefined) => {
         if (!phone) return alert("Telefon numarası bulunamadı.");
@@ -135,17 +174,8 @@ export default function LeadsPage() {
             setSortBy(field);
             setSortOrder("asc");
         }
+        setPage(0);
     };
-
-    const sorted = useMemo(() => {
-        return [...filtered].sort((a, b) => {
-            const av = getSortValue(a, sortBy);
-            const bv = getSortValue(b, sortBy);
-            return sortOrder === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-        });
-    }, [filtered, sortBy, sortOrder]);
-
-    const paginated = sorted;
 
     const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
         const targetLead = leads.find((l) => l.id === leadId);
@@ -188,13 +218,9 @@ export default function LeadsPage() {
         if (!confirm("Bu lead'i silmek istediğine emin misin?")) return;
         const ok = await deleteLead(leadId);
         if (ok) {
-            // LeadActivityLog oluştur
-            await addLeadActivity({
-                leadId,
-                actionType: "DELETE",
-                message: "Lead silindi.",
-            });
+            await addLeadAction(leadId, "DELETE", "Lead silindi.");
             setLeads((prev) => prev.filter((l) => l.id !== leadId));
+            setTotalElements((prev) => Math.max(prev - 1, 0));
         }
     };
 
@@ -204,19 +230,22 @@ export default function LeadsPage() {
             <div className="col-span-12">
                 <Card className="shadow-md rounded-xl">
                     <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto flex-wrap">
                             <Input
                                 className="flex-1 sm:w-64"
                                 placeholder="İsim, email veya kampanya ara..."
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setPage(0);
+                                }}
                             />
                             <select
                                 className="border rounded-md p-2 text-sm bg-white shadow-sm"
                                 value={statusFilter}
                                 onChange={(e) => {
                                     setStatusFilter(e.target.value);
-                                    setPage(1);
+                                    setPage(0);
                                 }}
                             >
                                 <option value="">Tüm Durumlar</option>
@@ -226,9 +255,56 @@ export default function LeadsPage() {
                                     </option>
                                 ))}
                             </select>
+                            <select
+                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
+                                value={languageFilter}
+                                onChange={(e) => {
+                                    setLanguageFilter(e.target.value);
+                                    setPage(0);
+                                }}
+                            >
+                                <option value="">Tüm Diller</option>
+                                {languageOptions.map((lang) => (
+                                    <option key={lang} value={lang}>
+                                        {lang}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
+                                value={campaignFilter}
+                                onChange={(e) => {
+                                    setCampaignFilter(e.target.value);
+                                    setPage(0);
+                                }}
+                            >
+                                <option value="">Tüm Kampanyalar</option>
+                                {campaignOptions.map((campaign) => (
+                                    <option key={campaign.id} value={campaign.id}>
+                                        {campaign.name}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
+                                value={assignedFilter}
+                                onChange={(e) => {
+                                    setAssignedFilter(e.target.value);
+                                    setPage(0);
+                                }}
+                            >
+                                <option value="">Tüm Kullanıcılar</option>
+                                <option value="__unassigned__">Atanmamış</option>
+                                {user && <option value="__me__">Bana Atananlar</option>}
+                                {users.map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.firstName} {u.lastName}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className="text-xs sm:text-sm text-gray-500 text-right sm:text-left">
-                            {leads.length} kayıt listeleniyor
+                            {totalElements} kayıt listeleniyor
                         </div>
                     </CardHeader>
 
@@ -236,7 +312,7 @@ export default function LeadsPage() {
                     <CardContent>
                         {loading ? (
                             <div className="text-center text-gray-500 py-10">Yükleniyor...</div>
-                        ) : paginated.length === 0 ? (
+                        ) : leads.length === 0 ? (
                             <div className="text-center text-gray-500 py-10">
                                 Kayıt bulunamadı.
                             </div>
@@ -269,7 +345,7 @@ export default function LeadsPage() {
                                         </tr>
                                         </thead>
                                         <tbody>
-                                        {paginated.map((lead) => (
+                                        {leads.map((lead) => (
                                             <tr
                                                 key={lead.id}
                                                 className="border-t hover:bg-blue-50 transition-colors even:bg-gray-50"
@@ -361,7 +437,7 @@ export default function LeadsPage() {
 
                                 {/* 📱 Mobil görünüm (kartlar) */}
                                 <div className="md:hidden flex flex-col gap-4">
-                                    {paginated.map((lead) => (
+                                    {leads.map((lead) => (
                                         <div
                                             key={lead.id}
                                             className="border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-2"
