@@ -117,8 +117,18 @@ export default function LeadsPage() {
                 setLoading(false);
             }
         };
-        fetchData();
-    }, [page, sortBy, sortOrder]);
+        fetchLeads();
+    }, [
+        assignedFilter,
+        campaignFilter,
+        languageFilter,
+        page,
+        search,
+        sortBy,
+        sortOrder,
+        statusFilter,
+        user?.id,
+    ]);
 
     const languageOptions = useMemo(() => {
         const langs = new Set<string>();
@@ -321,7 +331,7 @@ export default function LeadsPage() {
                             </select>
                         </div>
                         <div className="text-xs sm:text-sm text-gray-500 text-right sm:text-left">
-                            {filtered.length} kayıt listeleniyor
+                            Toplam {totalElements} kayıttan {filtered.length} kayıt listeleniyor
                         </div>
                     </CardHeader>
 
