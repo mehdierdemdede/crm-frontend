@@ -21,16 +21,12 @@ export default function LoginForm() {
     const router = useRouter();
 
     useEffect(() => {
-        if (typeof window === "undefined") return;
-
-        const storedRemember = window.localStorage.getItem("rememberMe") === "true";
-        const storedEmail = window.localStorage.getItem("rememberedEmail");
+        const { rememberMe: storedRemember, email: storedEmail } =
+            readRememberedCredentials();
 
         if (storedRemember) {
             setRememberMe(true);
-            if (storedEmail) {
-                setEmail(storedEmail);
-            }
+            setEmail(storedEmail);
         }
     }, []);
 
@@ -38,14 +34,11 @@ export default function LoginForm() {
         e.preventDefault();
         const success = await login(email, password, rememberMe);
         if (success) {
-            if (typeof window !== "undefined") {
-                if (rememberMe) {
-                    window.localStorage.setItem("rememberMe", "true");
-                    window.localStorage.setItem("rememberedEmail", email);
-                } else {
-                    window.localStorage.removeItem("rememberMe");
-                    window.localStorage.removeItem("rememberedEmail");
-                }
+            if (rememberMe) {
+                persistRememberPreference(true);
+                persistRememberedEmail(email);
+            } else {
+                clearRememberedCredentials();
             }
             router.push("/dashboard");
         }
@@ -90,9 +83,10 @@ export default function LoginForm() {
                             const isChecked = e.target.checked;
                             setRememberMe(isChecked);
 
-                            if (typeof window !== "undefined" && !isChecked) {
-                                window.localStorage.removeItem("rememberMe");
-                                window.localStorage.removeItem("rememberedEmail");
+                            if (!isChecked) {
+                                clearRememberedCredentials();
+                            } else {
+                                persistRememberPreference(true);
                             }
                         }}
                         disabled={isLoading}
