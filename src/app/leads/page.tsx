@@ -47,29 +47,6 @@ type SortableColumn =
     | "assignedToUser"
     | "createdAt";
 
-function getSortValue(l: LeadResponse, col: SortableColumn): string {
-    switch (col) {
-        case "name":
-            return l.name ?? "";
-        case "email":
-            return l.email ?? "";
-        case "language":
-            return l.language ?? "";
-        case "campaign":
-            return l.campaign?.name ?? "";
-        case "status":
-            return l.status ?? "";
-        case "assignedToUser":
-            return l.assignedToUser
-                ? `${l.assignedToUser.firstName ?? ""} ${l.assignedToUser.lastName ?? ""}`.trim()
-                : "";
-        case "createdAt":
-            return l.createdAt ? new Date(l.createdAt).toISOString() : "";
-        default:
-            return "";
-    }
-}
-
 export default function LeadsPage() {
     const [leads, setLeads] = useState<LeadResponse[]>([]);
     const [users, setUsers] = useState<SimpleUser[]>([]);
@@ -83,20 +60,57 @@ export default function LeadsPage() {
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
+    const [totalElements, setTotalElements] = useState(0);
     const perPage = 10;
     const { user } = useAuth();
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchUsers = async () => {
+            try {
+                const userData = await getUsers();
+                setUsers(userData ?? []);
+            } catch (err) {
+                console.error("Kullanıcı listesi alınamadı:", err);
+            }
+        };
+        fetchUsers();
+    }, []);
+
+    useEffect(() => {
+        if (assignedFilter === "__me__" && !user?.id) {
+            return;
+        }
+        const fetchLeads = async () => {
             setLoading(true);
             try {
-                const [leadPage, userData] = await Promise.all([
-                    getLeads(page, perPage, `${sortBy},${sortOrder}`),
-                    getUsers(),
-                ]);
+                const assignedUserId = (() => {
+                    if (assignedFilter === "__me__") return user?.id ?? undefined;
+                    if (
+                        assignedFilter &&
+                        assignedFilter !== "__me__" &&
+                        assignedFilter !== "__unassigned__"
+                    )
+                        return assignedFilter;
+                    return undefined;
+                })();
+
+                const leadPage = await getLeads({
+                    page,
+                    size: perPage,
+                    sort: `${sortBy},${sortOrder}`,
+                    search: search.trim() || undefined,
+                    status: statusFilter || undefined,
+                    language: languageFilter || undefined,
+                    campaignId: campaignFilter || undefined,
+                    assignedUserId,
+                    unassigned: assignedFilter === "__unassigned__",
+                });
+
                 setLeads(leadPage?.content ?? []);
                 setTotalPages(leadPage?.totalPages ?? 1);
-                setUsers(userData ?? []);
+                setTotalElements(
+                    leadPage?.totalElements ?? leadPage?.content?.length ?? 0
+                );
             } catch (err) {
                 console.error("Lead listesi alınamadı:", err);
             } finally {
@@ -177,17 +191,8 @@ export default function LeadsPage() {
             setSortBy(field);
             setSortOrder("asc");
         }
+        setPage(0);
     };
-
-    const sorted = useMemo(() => {
-        return [...filtered].sort((a, b) => {
-            const av = getSortValue(a, sortBy);
-            const bv = getSortValue(b, sortBy);
-            return sortOrder === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
-        });
-    }, [filtered, sortBy, sortOrder]);
-
-    const paginated = sorted;
 
     const handleStatusChange = async (leadId: string, newStatus: LeadStatus) => {
         const targetLead = leads.find((l) => l.id === leadId);
@@ -230,13 +235,9 @@ export default function LeadsPage() {
         if (!confirm("Bu lead'i silmek istediğine emin misin?")) return;
         const ok = await deleteLead(leadId);
         if (ok) {
-            // LeadActivityLog oluştur
-            await addLeadActivity({
-                leadId,
-                actionType: "DELETE",
-                message: "Lead silindi.",
-            });
+            await addLeadAction(leadId, "DELETE", "Lead silindi.");
             setLeads((prev) => prev.filter((l) => l.id !== leadId));
+            setTotalElements((prev) => Math.max(prev - 1, 0));
         }
     };
 
@@ -251,7 +252,10 @@ export default function LeadsPage() {
                                 className="flex-1 sm:w-64"
                                 placeholder="İsim, email veya kampanya ara..."
                                 value={search}
-                                onChange={(e) => setSearch(e.target.value)}
+                                onChange={(e) => {
+                                    setSearch(e.target.value);
+                                    setPage(0);
+                                }}
                             />
                             <select
                                 className="border rounded-md p-2 text-sm bg-white shadow-sm"
@@ -325,7 +329,7 @@ export default function LeadsPage() {
                     <CardContent>
                         {loading ? (
                             <div className="text-center text-gray-500 py-10">Yükleniyor...</div>
-                        ) : paginated.length === 0 ? (
+                        ) : leads.length === 0 ? (
                             <div className="text-center text-gray-500 py-10">
                                 Kayıt bulunamadı.
                             </div>
@@ -358,7 +362,7 @@ export default function LeadsPage() {
                                         </tr>
                                         </thead>
                                         <tbody>
-                                        {paginated.map((lead) => (
+                                        {leads.map((lead) => (
                                             <tr
                                                 key={lead.id}
                                                 className="border-t hover:bg-blue-50 transition-colors even:bg-gray-50"
@@ -450,7 +454,7 @@ export default function LeadsPage() {
 
                                 {/* 📱 Mobil görünüm (kartlar) */}
                                 <div className="md:hidden flex flex-col gap-4">
-                                    {paginated.map((lead) => (
+                                    {leads.map((lead) => (
                                         <div
                                             key={lead.id}
                                             className="border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-2"

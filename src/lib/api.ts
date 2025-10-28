@@ -393,17 +393,46 @@ export interface LeadPage {
     size: number;
 }
 
-export const getLeads = async (
+export interface LeadListParams {
+    page?: number;
+    size?: number;
+    sort?: string;
+    search?: string;
+    status?: string;
+    language?: string;
+    campaignId?: string;
+    assignedUserId?: string;
+    unassigned?: boolean;
+}
+
+export const getLeads = async ({
     page = 0,
     size = 10,
-    sort = "createdAt,desc"
-): Promise<LeadPage | null> => {
+    sort = "createdAt,desc",
+    search,
+    status,
+    language,
+    campaignId,
+    assignedUserId,
+    unassigned,
+}: LeadListParams = {}): Promise<LeadPage | null> => {
     const headers = getAuthHeaders();
     try {
-        const res = await fetch(
-            `${BASE_URL}/leads?page=${page}&size=${size}&sort=${sort}`,
-            { headers }
-        );
+        const params = new URLSearchParams({
+            page: String(page),
+            size: String(size),
+            sort,
+        });
+
+        if (search?.trim()) params.append("search", search.trim());
+        if (status) params.append("status", status);
+        if (language) params.append("language", language);
+        if (campaignId) params.append("campaignId", campaignId);
+        if (assignedUserId) params.append("assignedUserId", assignedUserId);
+        if (unassigned) params.append("unassigned", "true");
+
+        const query = params.toString();
+        const res = await fetch(`${BASE_URL}/leads?${query}`, { headers });
         if (!res.ok) throw new Error("Lead listesi alınamadı");
         return await res.json();
     } catch (err) {

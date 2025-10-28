@@ -80,3 +80,15 @@ curl -X GET "https://<backend-host>/api/sales/<saleId>" \
 ---
 
 Bu taslak üzerinden backend ekibinden talepte bulunabilirsin; gerektiğinde ürün/alan adlarını kendi sistemine göre uyarlamayı unutma.
+
+## Lead Listeleme Filtreleri (Yeni Gereksinim)
+- `GET /api/leads` endpoint'i aşağıdaki opsiyonel query parametrelerini desteklemeli ve filtreleri sayfalama öncesinde uygulamalı:
+  - `search`: İsim, email veya kampanya adı gibi metin alanlarında case-insensitive arama.
+  - `status`: Lead durumuna göre filtreleme (`UNCONTACTED`, `HOT`, vb.).
+  - `language`: Lead'in dil koduna göre filtreleme.
+  - `campaignId`: İlgili kampanyaya ait lead'leri getirme (kampanya kimliği string).
+  - `assignedUserId`: Belirli kullanıcıya atanmış lead'leri getirme.
+  - `unassigned`: `true` olduğunda yalnızca kullanıcıya atanmamış lead'leri döndürme.
+- `page`, `size` ve `sort` parametreleri mevcut davranışını korumalı; `sort` değeri `field,direction` formatında iletilecek.
+- Response içindeki `totalElements` değeri, uygulanan filtreler sonucunda bulunan toplam kayıt sayısını yansıtmalı.
+- Endpoint aynı anda birden fazla filtre parametresinin gönderilmesini desteklemeli (örneğin `status=HOT` ve `language=EN`).
