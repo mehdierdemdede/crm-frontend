@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/Input";
 import { Button } from "@/components/Button";
 import { Mail, Lock } from "lucide-react";
+import {
+    clearRememberedCredentials,
+    persistRememberedEmail,
+    persistRememberPreference,
+    readRememberedCredentials,
+} from "@/lib/rememberMeStorage";
 
 export default function LoginForm() {
     const [email, setEmail] = useState("");
