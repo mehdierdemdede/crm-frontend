@@ -21,14 +21,16 @@ export default function LoginForm() {
     const router = useRouter();
 
     useEffect(() => {
-        const { rememberMe: rememberStored, email: storedEmail } =
-            readRememberedCredentials();
+        if (typeof window === "undefined") return;
 
-        if (!rememberStored) return;
+        const storedRemember = window.localStorage.getItem("rememberMe") === "true";
+        const storedEmail = window.localStorage.getItem("rememberedEmail");
 
-        setRememberMe(true);
-        if (storedEmail) {
-            setEmail(storedEmail);
+        if (storedRemember) {
+            setRememberMe(true);
+            if (storedEmail) {
+                setEmail(storedEmail);
+            }
         }
     }, []);
 
@@ -36,11 +38,14 @@ export default function LoginForm() {
         e.preventDefault();
         const success = await login(email, password, rememberMe);
         if (success) {
-            if (rememberMe) {
-                persistRememberPreference(true);
-                persistRememberedEmail(email);
-            } else {
-                clearRememberedCredentials();
+            if (typeof window !== "undefined") {
+                if (rememberMe) {
+                    window.localStorage.setItem("rememberMe", "true");
+                    window.localStorage.setItem("rememberedEmail", email);
+                } else {
+                    window.localStorage.removeItem("rememberMe");
+                    window.localStorage.removeItem("rememberedEmail");
+                }
             }
             router.push("/dashboard");
         }
@@ -84,7 +89,11 @@ export default function LoginForm() {
                         onChange={(e) => {
                             const isChecked = e.target.checked;
                             setRememberMe(isChecked);
-                            persistRememberPreference(isChecked);
+
+                            if (typeof window !== "undefined" && !isChecked) {
+                                window.localStorage.removeItem("rememberMe");
+                                window.localStorage.removeItem("rememberedEmail");
+                            }
                         }}
                         disabled={isLoading}
                         className="rounded border-gray-300"
