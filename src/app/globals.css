@@ -19,18 +19,23 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
 }
 
+/* 🔹 Login page wrapper */
+.login-page {
+  @apply min-h-screen w-full flex items-center justify-center px-6 py-12;
+}
+
 /* 🔹 Sadece login için container */
 .login-container {
-  @apply flex w-full max-w-[1000px] min-h-[600px] bg-white rounded-2xl shadow-2xl overflow-hidden;
+  @apply flex w-full max-w-[1050px] min-h-[620px] bg-white/95 backdrop-blur shadow-2xl rounded-3xl overflow-hidden border border-white/60;
 }
 
 .left-panel {
-  @apply flex-1 text-white p-10 flex flex-col justify-between relative overflow-hidden;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  @apply flex-1 text-white px-12 py-12 flex flex-col justify-between relative overflow-hidden;
+  background: linear-gradient(160deg, #2563eb 0%, #1e40af 100%);
 }
 
 .right-panel {
-  @apply flex-1 p-10 flex flex-col justify-center;
+  @apply flex-1 px-12 py-12 flex flex-col justify-center bg-white;
 }
 
 /* Logo & feature */
@@ -52,6 +57,31 @@ body {
 
 .security-badge {
   @apply flex items-center gap-3 bg-white/10 p-4 rounded-lg mt-6;
+}
+
+.left-panel::before,
+.left-panel::after {
+  content: '';
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(0px);
+  opacity: 0.2;
+}
+
+.left-panel::before {
+  width: 280px;
+  height: 280px;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.45) 0%, rgba(37, 99, 235, 0) 70%);
+  top: -80px;
+  right: -60px;
+}
+
+.left-panel::after {
+  width: 240px;
+  height: 240px;
+  background: radial-gradient(circle, rgba(59, 130, 246, 0.6) 0%, rgba(30, 64, 175, 0) 70%);
+  bottom: -70px;
+  left: -60px;
 }
 
 /* Form header */
@@ -108,7 +138,7 @@ body {
 /* Responsive */
 @media (max-width: 768px) {
   .login-container {
-    @apply flex-col max-w-sm;
+    @apply flex-col max-w-lg shadow-xl;
   }
   .left-panel {
     display: none;
