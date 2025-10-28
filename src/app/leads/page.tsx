@@ -6,6 +6,7 @@ import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import Link from "next/link";
+import { useAuth } from "@/hooks/useAuth";
 import {
     getLeads,
     updateLeadStatus,
@@ -75,11 +76,15 @@ export default function LeadsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState("");
+    const [languageFilter, setLanguageFilter] = useState("");
+    const [campaignFilter, setCampaignFilter] = useState("");
+    const [assignedFilter, setAssignedFilter] = useState("");
     const [sortBy, setSortBy] = useState<SortableColumn>("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const perPage = 10;
+    const { user } = useAuth();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -101,6 +106,22 @@ export default function LeadsPage() {
         fetchData();
     }, [page, sortBy, sortOrder]);
 
+    const languageOptions = useMemo(() => {
+        const langs = new Set<string>();
+        leads.forEach((lead) => {
+            if (lead.language) langs.add(lead.language);
+        });
+        return Array.from(langs).sort((a, b) => a.localeCompare(b));
+    }, [leads]);
+
+    const campaignOptions = useMemo(() => {
+        const campaigns = new Set<string>();
+        leads.forEach((lead) => {
+            if (lead.campaign?.name) campaigns.add(lead.campaign.name);
+        });
+        return Array.from(campaigns).sort((a, b) => a.localeCompare(b));
+    }, [leads]);
+
     const filtered = useMemo(() => {
         return leads.filter((l) => {
             const hay = search.toLowerCase();
@@ -109,9 +130,30 @@ export default function LeadsPage() {
                 l.email?.toLowerCase().includes(hay) ||
                 l.campaign?.name?.toLowerCase().includes(hay);
             const byStatus = statusFilter ? l.status === statusFilter : true;
-            return byText && byStatus;
+            const byLanguage = languageFilter ? l.language === languageFilter : true;
+            const byCampaign = campaignFilter
+                ? l.campaign?.name === campaignFilter
+                : true;
+            const byAssigned = (() => {
+                if (!assignedFilter) return true;
+                if (assignedFilter === "__me__")
+                    return l.assignedToUser?.id === user?.id;
+                if (assignedFilter === "__unassigned__")
+                    return !l.assignedToUser;
+                return l.assignedToUser?.id === assignedFilter;
+            })();
+
+            return byText && byStatus && byLanguage && byCampaign && byAssigned;
         });
-    }, [leads, search, statusFilter]);
+    }, [
+        assignedFilter,
+        campaignFilter,
+        languageFilter,
+        leads,
+        search,
+        statusFilter,
+        user?.id,
+    ]);
 
     const handleCall = (phone?: string | null | undefined) => {
         if (!phone) return alert("Telefon numarası bulunamadı.");
@@ -204,7 +246,7 @@ export default function LeadsPage() {
             <div className="col-span-12">
                 <Card className="shadow-md rounded-xl">
                     <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto flex-wrap">
                             <Input
                                 className="flex-1 sm:w-64"
                                 placeholder="İsim, email veya kampanya ara..."
@@ -216,7 +258,7 @@ export default function LeadsPage() {
                                 value={statusFilter}
                                 onChange={(e) => {
                                     setStatusFilter(e.target.value);
-                                    setPage(1);
+                                    setPage(0);
                                 }}
                             >
                                 <option value="">Tüm Durumlar</option>
@@ -226,9 +268,56 @@ export default function LeadsPage() {
                                     </option>
                                 ))}
                             </select>
+                            <select
+                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
+                                value={languageFilter}
+                                onChange={(e) => {
+                                    setLanguageFilter(e.target.value);
+                                    setPage(0);
+                                }}
+                            >
+                                <option value="">Tüm Diller</option>
+                                {languageOptions.map((lang) => (
+                                    <option key={lang} value={lang}>
+                                        {lang}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
+                                value={campaignFilter}
+                                onChange={(e) => {
+                                    setCampaignFilter(e.target.value);
+                                    setPage(0);
+                                }}
+                            >
+                                <option value="">Tüm Kampanyalar</option>
+                                {campaignOptions.map((campaign) => (
+                                    <option key={campaign} value={campaign}>
+                                        {campaign}
+                                    </option>
+                                ))}
+                            </select>
+                            <select
+                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
+                                value={assignedFilter}
+                                onChange={(e) => {
+                                    setAssignedFilter(e.target.value);
+                                    setPage(0);
+                                }}
+                            >
+                                <option value="">Tüm Kullanıcılar</option>
+                                <option value="__unassigned__">Atanmamış</option>
+                                {user && <option value="__me__">Bana Atananlar</option>}
+                                {users.map((u) => (
+                                    <option key={u.id} value={u.id}>
+                                        {u.firstName} {u.lastName}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <div className="text-xs sm:text-sm text-gray-500 text-right sm:text-left">
-                            {leads.length} kayıt listeleniyor
+                            {filtered.length} kayıt listeleniyor
                         </div>
                     </CardHeader>
 
