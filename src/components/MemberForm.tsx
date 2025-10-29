@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "./Button";
+import { LanguageFlagIcon } from "./LanguageFlagIcon";
 import { DEFAULT_LANGUAGE_OPTIONS } from "@/lib/languages";
 import { useLanguages } from "@/contexts/LanguageContext";
 
@@ -149,7 +150,7 @@ export default function MemberForm({
                                             : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
                                     }`}
                                 >
-                                    <span className="text-base">{option.flag ?? "🏳️"}</span>
+                                    <LanguageFlagIcon option={option} size={18} />
                                     <span>{option.label}</span>
                                 </button>
                             );
