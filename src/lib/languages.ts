@@ -1,10 +1,12 @@
 export interface LanguageOption {
+    id?: string;
     value: string;
     label: string;
-    flag: string;
+    flag?: string;
+    active?: boolean;
 }
 
-export const LANGUAGE_OPTIONS: LanguageOption[] = [
+export const DEFAULT_LANGUAGE_OPTIONS: LanguageOption[] = [
     { value: "TR", label: "Türkçe", flag: "🇹🇷" },
     { value: "EN", label: "İngilizce", flag: "🇬🇧" },
     { value: "DE", label: "Almanca", flag: "🇩🇪" },
@@ -12,5 +14,14 @@ export const LANGUAGE_OPTIONS: LanguageOption[] = [
     { value: "AL", label: "Arnavutça", flag: "🇦🇱" },
 ];
 
+let registry: LanguageOption[] = [...DEFAULT_LANGUAGE_OPTIONS];
+
+export const registerLanguageOptions = (options: LanguageOption[]): void => {
+    registry = options.length > 0 ? options : [...DEFAULT_LANGUAGE_OPTIONS];
+};
+
+export const getRegisteredLanguageOptions = (): LanguageOption[] => registry;
+
 export const getLanguageOption = (code: string): LanguageOption | undefined =>
-    LANGUAGE_OPTIONS.find((option) => option.value === code);
+    registry.find((option) => option.value === code) ??
+    DEFAULT_LANGUAGE_OPTIONS.find((option) => option.value === code);

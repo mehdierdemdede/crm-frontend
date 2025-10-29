@@ -90,6 +90,23 @@ export interface AgentStatsResponse {
     lastAssignedAt: string | null;
 }
 
+export interface LanguageResponse {
+    id: string;
+    code: string;
+    name: string;
+    flagEmoji?: string | null;
+    active?: boolean;
+    createdAt?: string;
+    updatedAt?: string;
+}
+
+export interface UpsertLanguageRequest {
+    code: string;
+    name: string;
+    flagEmoji?: string | null;
+    active?: boolean;
+}
+
 // ──────────────────────────────── HELPERS ────────────────────────────────
 const getStoredItem = (key: string): string | null => {
     if (typeof window === "undefined") return null;
@@ -381,6 +398,96 @@ export const triggerFacebookLeadFetch = async (): Promise<
     }
 };
 
+// ──────────────────────────────── LANGUAGES API ────────────────────────────────
+
+export const getLanguages = async (): Promise<LanguageResponse[]> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/languages`, { headers });
+        if (!res.ok) throw new Error("Diller alınamadı");
+        return (await res.json()) as LanguageResponse[];
+    } catch (err) {
+        console.error("getLanguages error:", err);
+        return [];
+    }
+};
+
+export const createLanguage = async (
+    payload: UpsertLanguageRequest
+): Promise<LanguageResponse> => {
+    const headers = getAuthHeaders();
+    try {
+        const response = await fetch(`${BASE_URL}/languages`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+        });
+
+        const body = await extractResponseBody(response);
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Dil oluşturulurken bir hata oluştu."),
+            );
+        }
+
+        return body as LanguageResponse;
+    } catch (error) {
+        console.error("createLanguage error:", error);
+        throw error instanceof Error
+            ? error
+            : new Error("Dil oluşturulurken bir hata oluştu.");
+    }
+};
+
+export const updateLanguage = async (
+    languageId: string,
+    payload: UpsertLanguageRequest
+): Promise<LanguageResponse> => {
+    const headers = getAuthHeaders();
+    try {
+        const response = await fetch(`${BASE_URL}/languages/${languageId}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(payload),
+        });
+
+        const body = await extractResponseBody(response);
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Dil güncellenirken bir hata oluştu."),
+            );
+        }
+
+        return body as LanguageResponse;
+    } catch (error) {
+        console.error("updateLanguage error:", error);
+        throw error instanceof Error
+            ? error
+            : new Error("Dil güncellenirken bir hata oluştu.");
+    }
+};
+
+export const deleteLanguage = async (languageId: string): Promise<void> => {
+    const headers = getAuthHeaders();
+    try {
+        const response = await fetch(`${BASE_URL}/languages/${languageId}`, {
+            method: "DELETE",
+            headers,
+        });
+
+        const body = await extractResponseBody(response);
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Dil silinirken bir hata oluştu."),
+            );
+        }
+    } catch (error) {
+        console.error("deleteLanguage error:", error);
+        throw error instanceof Error
+            ? error
+            : new Error("Dil silinirken bir hata oluştu.");
+    }
+};
 
 
 // ──────────────────────────────── LEADS API ────────────────────────────────
