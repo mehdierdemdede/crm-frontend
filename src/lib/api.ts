@@ -116,6 +116,12 @@ export interface UpsertLanguageRequest {
     active: boolean;
 }
 
+export interface LanguageCatalogEntry {
+    code: string;
+    name: string;
+    flagEmoji: string | null;
+}
+
 // ──────────────────────────────── HELPERS ────────────────────────────────
 const getStoredItem = (key: string): string | null => {
     if (typeof window === "undefined") return null;
@@ -241,6 +247,52 @@ const ensureLanguageResponse = (language: unknown): LanguageResponse => {
             typeof record.createdAt === "string" ? record.createdAt : undefined,
         updatedAt:
             typeof record.updatedAt === "string" ? record.updatedAt : undefined,
+    };
+};
+
+const ensureLanguageCatalogEntry = (entry: unknown): LanguageCatalogEntry => {
+    if (!entry || typeof entry !== "object") {
+        throw new Error("Dil kataloğu yanıtı beklenmeyen bir formatta alındı.");
+    }
+
+    const record = entry as Record<string, unknown>;
+
+    const rawCode =
+        typeof record.code === "string"
+            ? record.code
+            : typeof record.languageCode === "string"
+              ? record.languageCode
+              : null;
+
+    if (!rawCode || rawCode.trim().length === 0) {
+        throw new Error("Dil kataloğu kaydında code alanı eksik.");
+    }
+
+    const rawName =
+        typeof record.name === "string"
+            ? record.name
+            : typeof record.languageName === "string"
+              ? record.languageName
+              : null;
+
+    if (!rawName || rawName.trim().length === 0) {
+        throw new Error("Dil kataloğu kaydında name alanı eksik.");
+    }
+
+    const rawFlag =
+        typeof record.flagEmoji === "string"
+            ? record.flagEmoji
+            : typeof record.flag === "string"
+              ? record.flag
+              : null;
+
+    return {
+        code: rawCode.trim(),
+        name: rawName.trim(),
+        flagEmoji:
+            rawFlag === null || rawFlag === undefined || rawFlag === ""
+                ? null
+                : rawFlag,
     };
 };
 
@@ -499,6 +551,56 @@ export const getLanguages = async (): Promise<LanguageResponse[]> => {
         throw err instanceof Error
             ? err
             : new Error("Diller alınırken bir hata oluştu.");
+    }
+};
+
+export const searchLanguageCatalog = async (
+    query: string,
+    signal?: AbortSignal
+): Promise<LanguageCatalogEntry[]> => {
+    const trimmed = query.trim();
+    if (!trimmed) {
+        return [];
+    }
+
+    const headers = getAuthHeaders();
+
+    try {
+        const params = new URLSearchParams({ query: trimmed });
+        const response = await fetch(
+            `${BASE_URL}/languages/catalog?${params.toString()}`,
+            {
+                headers,
+                signal,
+            }
+        );
+
+        const body = await extractResponseBody(response);
+
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(
+                    body,
+                    "Dil kataloğu aranırken bir hata oluştu.",
+                ),
+            );
+        }
+
+        const payload = unwrapApiData<unknown>(body);
+
+        if (!Array.isArray(payload)) {
+            throw new Error("Dil kataloğu beklenen formatta değil.");
+        }
+
+        return payload.map(ensureLanguageCatalogEntry);
+    } catch (error) {
+        if (error instanceof DOMException && error.name === "AbortError") {
+            throw error;
+        }
+        console.error("searchLanguageCatalog error:", error);
+        throw error instanceof Error
+            ? error
+            : new Error("Dil kataloğu aranırken bir hata oluştu.");
     }
 };
 

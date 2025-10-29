@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -8,6 +8,10 @@ import { Input } from "@/components/Input";
 import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import { useLanguages } from "@/contexts/LanguageContext";
 import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
+import {
+    type LanguageCatalogEntry,
+    searchLanguageCatalog,
+} from "@/lib/api";
 
 interface LanguageFormState {
     code: string;
@@ -42,12 +46,32 @@ export default function LanguageSettingsPage() {
     const [submitting, setSubmitting] = useState(false);
     const [formError, setFormError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [searchResults, setSearchResults] = useState<LanguageCatalogEntry[]>([]);
+    const [searching, setSearching] = useState(false);
+    const [searchError, setSearchError] = useState<string | null>(null);
+    const [showSuggestions, setShowSuggestions] = useState(false);
+    const searchAbortController = useRef<AbortController | null>(null);
+    const activeSearchId = useRef(0);
+    const hideSuggestionsTimeout = useRef<number>();
+    const skipNextSearch = useRef(false);
 
     const resetForm = () => {
         setForm(emptyForm);
         setEditingId(null);
         setFormError(null);
         setSuccessMessage(null);
+        setSearchTerm("");
+        setSearchResults([]);
+        setSearchError(null);
+        setShowSuggestions(false);
+        if (hideSuggestionsTimeout.current) {
+            window.clearTimeout(hideSuggestionsTimeout.current);
+        }
+        if (searchAbortController.current) {
+            searchAbortController.current.abort();
+            searchAbortController.current = null;
+        }
         clearError();
     };
 
@@ -62,7 +86,89 @@ export default function LanguageSettingsPage() {
         setEditingId(language.id ?? null);
         setFormError(null);
         setSuccessMessage(null);
+        setSearchTerm(language.label);
+        setSearchResults([]);
+        setSearchError(null);
+        setShowSuggestions(false);
     };
+
+    useEffect(() => {
+        const trimmed = searchTerm.trim();
+
+        if (skipNextSearch.current) {
+            skipNextSearch.current = false;
+            if (searchAbortController.current) {
+                searchAbortController.current.abort();
+                searchAbortController.current = null;
+            }
+            setSearching(false);
+            return;
+        }
+
+        if (trimmed.length < 2) {
+            if (searchAbortController.current) {
+                searchAbortController.current.abort();
+                searchAbortController.current = null;
+            }
+            activeSearchId.current += 1;
+            setSearching(false);
+            setSearchResults([]);
+            setSearchError(null);
+            return;
+        }
+
+        const controller = new AbortController();
+        searchAbortController.current = controller;
+        const searchId = activeSearchId.current + 1;
+        activeSearchId.current = searchId;
+
+        const timeoutId = window.setTimeout(() => {
+            setSearching(true);
+            searchLanguageCatalog(trimmed, controller.signal)
+                .then((results) => {
+                    if (activeSearchId.current !== searchId) return;
+                    setSearchResults(results);
+                    setSearchError(null);
+                })
+                .catch((error) => {
+                    if (error instanceof DOMException && error.name === "AbortError") {
+                        return;
+                    }
+                    if (activeSearchId.current !== searchId) return;
+                    setSearchResults([]);
+                    setSearchError(
+                        error instanceof Error
+                            ? error.message
+                            : "Dil kataloğu aranırken bir hata oluştu.",
+                    );
+                })
+                .finally(() => {
+                    if (activeSearchId.current !== searchId) return;
+                    setSearching(false);
+                    searchAbortController.current = null;
+                });
+        }, 300);
+
+        return () => {
+            window.clearTimeout(timeoutId);
+            controller.abort();
+            if (searchAbortController.current === controller) {
+                searchAbortController.current = null;
+            }
+        };
+    }, [searchTerm]);
+
+    useEffect(() => {
+        return () => {
+            if (searchAbortController.current) {
+                searchAbortController.current.abort();
+                searchAbortController.current = null;
+            }
+            if (hideSuggestionsTimeout.current) {
+                window.clearTimeout(hideSuggestionsTimeout.current);
+            }
+        };
+    }, []);
 
     const handleDelete = async (language: LanguageOption) => {
         if (!language.id) return;
@@ -86,6 +192,53 @@ export default function LanguageSettingsPage() {
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const handleSearchChange = (value: string) => {
+        if (hideSuggestionsTimeout.current) {
+            window.clearTimeout(hideSuggestionsTimeout.current);
+        }
+        setSearchTerm(value);
+        setShowSuggestions(true);
+    };
+
+    const handleSearchFocus = () => {
+        if (hideSuggestionsTimeout.current) {
+            window.clearTimeout(hideSuggestionsTimeout.current);
+        }
+        setShowSuggestions(true);
+    };
+
+    const handleSearchBlur = () => {
+        if (hideSuggestionsTimeout.current) {
+            window.clearTimeout(hideSuggestionsTimeout.current);
+        }
+        hideSuggestionsTimeout.current = window.setTimeout(() => {
+            setShowSuggestions(false);
+        }, 150);
+    };
+
+    const handleSuggestionSelect = (entry: LanguageCatalogEntry) => {
+        if (hideSuggestionsTimeout.current) {
+            window.clearTimeout(hideSuggestionsTimeout.current);
+        }
+        skipNextSearch.current = true;
+        if (searchAbortController.current) {
+            searchAbortController.current.abort();
+            searchAbortController.current = null;
+        }
+        activeSearchId.current += 1;
+        setForm((prev) => ({
+            ...prev,
+            code: entry.code.toUpperCase(),
+            name: entry.name,
+            flag: entry.flagEmoji ?? "",
+        }));
+        setSearchTerm(entry.name);
+        setSearchResults([]);
+        setSearchError(null);
+        setShowSuggestions(false);
+        setFormError(null);
     };
 
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -134,6 +287,11 @@ export default function LanguageSettingsPage() {
         }
     };
 
+    const suggestionsVisible =
+        showSuggestions &&
+        searchTerm.trim().length >= 2 &&
+        (searching || searchResults.length > 0 || searchError !== null);
+
     return (
         <Layout title="Dil Yönetimi" subtitle="Kullanılabilir dil seçeneklerini yönetin">
             {contextError && (
@@ -162,6 +320,79 @@ export default function LanguageSettingsPage() {
                     </CardHeader>
                     <CardContent>
                         <form className="space-y-4" onSubmit={handleSubmit}>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-gray-800">
+                                    Dil Ara ve Seç
+                                </label>
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        value={searchTerm}
+                                        onChange={(event) =>
+                                            handleSearchChange(event.target.value)
+                                        }
+                                        onFocus={handleSearchFocus}
+                                        onBlur={handleSearchBlur}
+                                        placeholder="Örn. İngilizce"
+                                        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-blue-500"
+                                        autoComplete="off"
+                                    />
+                                    {searching && (
+                                        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">
+                                            Aranıyor...
+                                        </span>
+                                    )}
+                                    {suggestionsVisible && (
+                                        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
+                                            {searchError ? (
+                                                <div className="px-3 py-2 text-sm text-red-600">
+                                                    {searchError}
+                                                </div>
+                                            ) : searchResults.length === 0 ? (
+                                                <div className="px-3 py-2 text-sm text-gray-500">
+                                                    Sonuç bulunamadı.
+                                                </div>
+                                            ) : (
+                                                <ul className="divide-y divide-gray-100">
+                                                    {searchResults.map((entry) => {
+                                                        const option = enhanceLanguageOption({
+                                                            value: entry.code.toUpperCase(),
+                                                            label: entry.name,
+                                                            flag: entry.flagEmoji ?? undefined,
+                                                        });
+                                                        return (
+                                                            <li key={`${entry.code}-${entry.name}`}>
+                                                                <button
+                                                                    type="button"
+                                                                    className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm hover:bg-blue-50"
+                                                                    onMouseDown={(event) => {
+                                                                        event.preventDefault();
+                                                                        handleSuggestionSelect(entry);
+                                                                    }}
+                                                                >
+                                                                    <LanguageFlagIcon option={option} size={18} />
+                                                                    <div>
+                                                                        <div className="font-medium text-gray-900">
+                                                                            {entry.name}
+                                                                        </div>
+                                                                        <div className="text-xs text-gray-500">
+                                                                            {entry.code.toUpperCase()}
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            </li>
+                                                        );
+                                                    })}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="mt-1 text-xs text-gray-500">
+                                    En az 2 harf yazarak API kataloğundaki dilleri arayabilir ve
+                                    seçim yaparak formu doldurabilirsiniz.
+                                </p>
+                            </div>
                             <Input
                                 label="Dil Kodu"
                                 value={form.code}
