@@ -1,3 +1,5 @@
+import { resolveLanguageFlag } from "./flag-utils";
+
 export interface LanguageOption {
     id?: string;
     value: string;
@@ -7,12 +9,15 @@ export interface LanguageOption {
 }
 
 export const DEFAULT_LANGUAGE_OPTIONS: LanguageOption[] = [
-    { value: "TR", label: "Türkçe", flag: "🇹🇷" },
-    { value: "EN", label: "İngilizce", flag: "🇬🇧" },
-    { value: "DE", label: "Almanca", flag: "🇩🇪" },
-    { value: "AR", label: "Arapça", flag: "🇸🇦" },
-    { value: "AL", label: "Arnavutça", flag: "🇦🇱" },
-];
+    { value: "TR", label: "Türkçe" },
+    { value: "EN", label: "İngilizce" },
+    { value: "DE", label: "Almanca" },
+    { value: "AR", label: "Arapça" },
+    { value: "AL", label: "Arnavutça" },
+].map((option) => ({
+    ...option,
+    flag: resolveLanguageFlag(option.value, option.flag),
+}));
 
 let registry: LanguageOption[] = [...DEFAULT_LANGUAGE_OPTIONS];
 
