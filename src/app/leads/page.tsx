@@ -19,6 +19,7 @@ import {
     type SimpleUser,
 } from "@/lib/api";
 import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown } from "lucide-react";
+import { useLanguages } from "@/contexts/LanguageContext";
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
     UNCONTACTED: "İlk Temas Yok",
@@ -63,6 +64,7 @@ export default function LeadsPage() {
     const [totalElements, setTotalElements] = useState(0);
     const perPage = 10;
     const { user } = useAuth();
+    const { languages, getOptionByCode } = useLanguages();
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -131,12 +133,31 @@ export default function LeadsPage() {
     ]);
 
     const languageOptions = useMemo(() => {
-        const langs = new Set<string>();
+        const map = new Map<string, { value: string; label: string; flag: string }>();
+        languages
+            .filter((lang) => lang.active ?? true)
+            .forEach((lang) => {
+                map.set(lang.value, {
+                    value: lang.value,
+                    label: lang.label,
+                    flag: lang.flag ?? "🏳️",
+                });
+            });
+
         leads.forEach((lead) => {
-            if (lead.language) langs.add(lead.language);
+            if (lead.language && !map.has(lead.language)) {
+                map.set(lead.language, {
+                    value: lead.language,
+                    label: lead.language,
+                    flag: "🏳️",
+                });
+            }
         });
-        return Array.from(langs).sort((a, b) => a.localeCompare(b));
-    }, [leads]);
+
+        return Array.from(map.values()).sort((a, b) =>
+            a.label.localeCompare(b.label, "tr")
+        );
+    }, [languages, leads]);
 
     const campaignOptions = useMemo(() => {
         const campaigns = new Set<string>();
@@ -292,8 +313,8 @@ export default function LeadsPage() {
                             >
                                 <option value="">Tüm Diller</option>
                                 {languageOptions.map((lang) => (
-                                    <option key={lang} value={lang}>
-                                        {lang}
+                                    <option key={lang.value} value={lang.value}>
+                                        {lang.flag} {lang.label}
                                     </option>
                                 ))}
                             </select>
@@ -372,11 +393,15 @@ export default function LeadsPage() {
                                         </tr>
                                         </thead>
                                         <tbody>
-                                        {leads.map((lead) => (
-                                            <tr
-                                                key={lead.id}
-                                                className="border-t hover:bg-blue-50 transition-colors even:bg-gray-50"
-                                            >
+                                        {leads.map((lead) => {
+                                            const languageOption = lead.language
+                                                ? getOptionByCode(lead.language)
+                                                : undefined;
+                                            return (
+                                                <tr
+                                                    key={lead.id}
+                                                    className="border-t hover:bg-blue-50 transition-colors even:bg-gray-50"
+                                                >
                                                 <td className="p-3">
                                                     <Link
                                                         href={`/leads/${lead.id}`}
@@ -386,7 +411,20 @@ export default function LeadsPage() {
                                                     </Link>
                                                 </td>
                                                 <td className="p-3">{lead.email ?? "-"}</td>
-                                                <td className="p-3">{lead.language ?? "-"}</td>
+                                                <td className="p-3">
+                                                    {lead.language ? (
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <span>
+                                                                {languageOption?.flag ?? "🏳️"}
+                                                            </span>
+                                                            <span>
+                                                                {languageOption?.label ?? lead.language}
+                                                            </span>
+                                                        </span>
+                                                    ) : (
+                                                        "-"
+                                                    )}
+                                                </td>
                                                 <td className="p-3">{lead.campaign?.name ?? "-"}</td>
 
                                                 <td className="p-3">
@@ -457,18 +495,23 @@ export default function LeadsPage() {
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))}
+                                            );
+                                        })}
                                         </tbody>
                                     </table>
                                 </div>
 
                                 {/* 📱 Mobil görünüm (kartlar) */}
                                 <div className="md:hidden flex flex-col gap-4">
-                                    {leads.map((lead) => (
-                                        <div
-                                            key={lead.id}
-                                            className="border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-2"
-                                        >
+                                    {leads.map((lead) => {
+                                        const languageOption = lead.language
+                                            ? getOptionByCode(lead.language)
+                                            : undefined;
+                                        return (
+                                            <div
+                                                key={lead.id}
+                                                className="border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-2"
+                                            >
                                             <div className="flex justify-between items-center">
                                                 <Link
                                                     href={`/leads/${lead.id}`}
@@ -483,7 +526,17 @@ export default function LeadsPage() {
 
                                             <div className="text-xs text-gray-600">
                                                 <div>Email: {lead.email ?? "-"}</div>
-                                                <div>Dil: {lead.language ?? "-"}</div>
+                                                <div>
+                                                    Dil:{" "}
+                                                    {lead.language ? (
+                                                        <span className="inline-flex items-center gap-1">
+                                                            <span>{languageOption?.flag ?? "🏳️"}</span>
+                                                            <span>{languageOption?.label ?? lead.language}</span>
+                                                        </span>
+                                                    ) : (
+                                                        "-"
+                                                    )}
+                                                </div>
                                                 <div>Kampanya: {lead.campaign?.name ?? "-"}</div>
                                             </div>
 
@@ -568,8 +621,9 @@ export default function LeadsPage() {
                                                 </div>
 
                                             </div>
-                                        </div>
-                                    ))}
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                             </>
                         )}

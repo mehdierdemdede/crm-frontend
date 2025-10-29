@@ -7,12 +7,13 @@ import { Button } from "@/components/Button";
 import AddMemberModal from "@/components/AddMemberModal";
 import Link from "next/link";
 import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api"; // ✅ yeni servis
-import { getLanguageOption } from "@/lib/languages";
+import { useLanguages } from "@/contexts/LanguageContext";
 
 export default function MembersPage() {
     const [members, setMembers] = useState<AgentStatsResponse[]>([]);
     const [openModal, setOpenModal] = useState(false);
     const [loading, setLoading] = useState(true);
+    const { getOptionByCode } = useLanguages();
 
     // 📦 Verileri yükle
     useEffect(() => {
@@ -80,7 +81,7 @@ export default function MembersPage() {
                                         <td className="p-2">
                                             <div className="flex flex-wrap gap-1">
                                                 {m.supportedLanguages.map((code) => {
-                                                    const option = getLanguageOption(code);
+                                                    const option = getOptionByCode(code);
                                                     return (
                                                         <span
                                                             key={code}

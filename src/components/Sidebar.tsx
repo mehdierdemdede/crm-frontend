@@ -3,8 +3,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useState } from "react";
 import {
-    Home, Users, BarChart2, FileText, Plug, Activity,
-    Menu, X, LogOut
+    Home,
+    Users,
+    BarChart2,
+    FileText,
+    Plug,
+    Activity,
+    Globe,
+    Menu,
+    X,
+    LogOut,
 } from "lucide-react";
 import { Button } from "./Button";
 import {useAuth} from "@/hooks/useAuth";
@@ -87,6 +95,7 @@ export default function Sidebar() {
                         {NavItem("/leads", "Leads", FileText)}
                         {NavItem("/members", "Members", Users)}
                         {NavItem("/integrations", "Integrations", Plug)}
+                        {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
                         {NavItem("/reports", "Reports", BarChart2)}
                         {NavItem("/auto-assign", "Auto Assign", Activity)}
                     </ul>
@@ -120,6 +129,7 @@ export default function Sidebar() {
                                 {NavItem("/leads", "Leads", FileText)}
                                 {NavItem("/members", "Members", Users)}
                                 {NavItem("/integrations", "Integrations", Plug)}
+                                {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
                                 {NavItem("/reports", "Reports", BarChart2)}
                                 {NavItem("/auto-assign", "Auto Assign", Activity)}
                             </ul>

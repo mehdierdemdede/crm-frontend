@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { getAgentStats, type AgentStatsResponse } from "@/lib/api";
-import { getLanguageOption } from "@/lib/languages";
+import { useLanguages } from "@/contexts/LanguageContext";
 import { CheckCircle, XCircle, Activity } from "lucide-react";
 import {
     ResponsiveContainer,
@@ -25,6 +25,7 @@ const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626"];
 export default function AutoAssignStatsPage() {
     const [stats, setStats] = useState<AgentStatsResponse[]>([]);
     const [loading, setLoading] = useState(true);
+    const { getOptionByCode } = useLanguages();
 
     useEffect(() => {
         const fetchStats = async () => {
@@ -185,7 +186,7 @@ export default function AutoAssignStatsPage() {
                                             {a.supportedLanguages.length > 0 ? (
                                                 <div className="flex flex-wrap gap-1">
                                                     {a.supportedLanguages.map((code) => {
-                                                        const option = getLanguageOption(code);
+                                                        const option = getOptionByCode(code);
                                                         return (
                                                             <span
                                                                 key={code}

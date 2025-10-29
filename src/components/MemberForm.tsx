@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "./Button";
-import { LANGUAGE_OPTIONS } from "@/lib/languages";
+import { DEFAULT_LANGUAGE_OPTIONS } from "@/lib/languages";
+import { useLanguages } from "@/contexts/LanguageContext";
 
 type Role = "USER" | "ADMIN" | "SUPER_ADMIN";
 
@@ -47,6 +48,12 @@ export default function MemberForm({
     loading?: boolean;
 }) {
     const [form, setForm] = useState<MemberFormData>(withDefaults(initialData));
+    const { languages, loading: languagesLoading } = useLanguages();
+
+    const languageOptions = (languages.length > 0
+        ? languages
+        : DEFAULT_LANGUAGE_OPTIONS
+    ).filter((option) => option.active ?? true);
 
     useEffect(() => {
         setForm(withDefaults(initialData));
@@ -121,26 +128,34 @@ export default function MemberForm({
                 <p className="mt-1 text-xs text-gray-500">
                     Kullanıcının destekleyebileceği dilleri seçin.
                 </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                    {LANGUAGE_OPTIONS.map((option) => {
-                        const isSelected = form.supportedLanguages.includes(option.value);
-                        return (
-                            <button
-                                key={option.value}
-                                type="button"
-                                onClick={() => toggleLang(option.value)}
-                                className={`flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition ${
-                                    isSelected
-                                        ? "border-blue-500 bg-blue-50 text-blue-700"
-                                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                                }`}
-                            >
-                                <span className="text-base">{option.flag}</span>
-                                <span>{option.label}</span>
-                            </button>
-                        );
-                    })}
-                </div>
+                {languagesLoading ? (
+                    <div className="mt-3 text-sm text-gray-500">Diller yükleniyor...</div>
+                ) : languageOptions.length === 0 ? (
+                    <div className="mt-3 text-sm text-orange-600">
+                        Henüz tanımlı dil bulunmuyor. Önce ayarlardan dil ekleyin.
+                    </div>
+                ) : (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                        {languageOptions.map((option) => {
+                            const isSelected = form.supportedLanguages.includes(option.value);
+                            return (
+                                <button
+                                    key={option.value}
+                                    type="button"
+                                    onClick={() => toggleLang(option.value)}
+                                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition ${
+                                        isSelected
+                                            ? "border-blue-500 bg-blue-50 text-blue-700"
+                                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                                    }`}
+                                >
+                                    <span className="text-base">{option.flag ?? "🏳️"}</span>
+                                    <span>{option.label}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
             </div>
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

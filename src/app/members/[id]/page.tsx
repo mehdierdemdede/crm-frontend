@@ -17,7 +17,7 @@ import {
     Tooltip,
 } from "recharts";
 import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api";
-import { getLanguageOption } from "@/lib/languages";
+import { useLanguages } from "@/contexts/LanguageContext";
 
 export default function MemberDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -25,6 +25,7 @@ export default function MemberDetailPage() {
     const [member, setMember] = useState<AgentStatsResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [openEdit, setOpenEdit] = useState(false);
+    const { getOptionByCode } = useLanguages();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -87,7 +88,7 @@ export default function MemberDetailPage() {
                             {member.supportedLanguages.length > 0 ? (
                                 <span className="inline-flex flex-wrap gap-1">
                                     {member.supportedLanguages.map((code) => {
-                                        const option = getLanguageOption(code);
+                                        const option = getOptionByCode(code);
                                         return (
                                             <span
                                                 key={code}

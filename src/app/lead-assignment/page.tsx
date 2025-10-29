@@ -18,7 +18,7 @@ import {
     type FacebookLeadTreePage,
     type SaveFacebookLeadRuleRequest,
 } from "@/lib/api";
-import { getLanguageOption } from "@/lib/languages";
+import { useLanguages } from "@/contexts/LanguageContext";
 import { ChevronDown, ChevronUp, Edit3, Loader2, PlusCircle, Trash2 } from "lucide-react";
 
 interface UserSelectionState {
@@ -66,6 +66,7 @@ export default function LeadAssignmentPage() {
 
     const [formError, setFormError] = useState<string | null>(null);
     const [formSuccess, setFormSuccess] = useState<string | null>(null);
+    const { getOptionByCode } = useLanguages();
 
     const refreshTree = useCallback(async () => {
         try {
@@ -677,7 +678,7 @@ export default function LeadAssignmentPage() {
                                                     <td className="px-2 py-2 text-gray-600">
                                                         <div className="flex flex-wrap gap-1">
                                                             {agent.supportedLanguages.map((code) => {
-                                                                const option = getLanguageOption(code);
+                                                                const option = getOptionByCode(code);
                                                                 return (
                                                                     <span
                                                                         key={`${agent.userId}-${code}`}
