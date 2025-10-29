@@ -1,16 +1,24 @@
-import type { NextConfig } from 'next'
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
     experimental: {
         turbo: {
             rules: {
-                '*.svg': {
-                    loaders: ['@svgr/webpack'],
-                    as: '*.js',
+                "*.svg": {
+                    loaders: ["@svgr/webpack"],
+                    as: "*.js",
                 },
             },
         },
     },
-}
+    images: {
+        remotePatterns: [
+            {
+                protocol: "https",
+                hostname: "flagcdn.com",
+            },
+        ],
+    },
+};
 
-export default nextConfig
+export default nextConfig;

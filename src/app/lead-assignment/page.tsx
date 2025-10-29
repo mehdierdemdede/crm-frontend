@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import {
     deleteFacebookLeadRule,
     getAutoAssignStats,
@@ -19,6 +20,7 @@ import {
     type SaveFacebookLeadRuleRequest,
 } from "@/lib/api";
 import { useLanguages } from "@/contexts/LanguageContext";
+import { enhanceLanguageOption } from "@/lib/languages";
 import { ChevronDown, ChevronUp, Edit3, Loader2, PlusCircle, Trash2 } from "lucide-react";
 
 interface UserSelectionState {
@@ -678,14 +680,22 @@ export default function LeadAssignmentPage() {
                                                     <td className="px-2 py-2 text-gray-600">
                                                         <div className="flex flex-wrap gap-1">
                                                             {agent.supportedLanguages.map((code) => {
-                                                                const option = getOptionByCode(code);
+                                                                const option =
+                                                                    getOptionByCode(code) ??
+                                                                    enhanceLanguageOption({
+                                                                        value: code,
+                                                                        label: code,
+                                                                    });
                                                                 return (
                                                                     <span
                                                                         key={`${agent.userId}-${code}`}
                                                                         className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
                                                                     >
-                                                                        <span>{option?.flag ?? "🏳️"}</span>
-                                                                        <span>{option?.label ?? code}</span>
+                                                                        <LanguageFlagIcon
+                                                                            option={option}
+                                                                            size={14}
+                                                                        />
+                                                                        <span>{option.label ?? code}</span>
                                                                     </span>
                                                                 );
                                                             })}

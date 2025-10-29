@@ -4,10 +4,12 @@ import { useState, useEffect } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import AddMemberModal from "@/components/AddMemberModal";
 import Link from "next/link";
 import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api"; // ✅ yeni servis
 import { useLanguages } from "@/contexts/LanguageContext";
+import { enhanceLanguageOption } from "@/lib/languages";
 
 export default function MembersPage() {
     const [members, setMembers] = useState<AgentStatsResponse[]>([]);
@@ -81,14 +83,19 @@ export default function MembersPage() {
                                         <td className="p-2">
                                             <div className="flex flex-wrap gap-1">
                                                 {m.supportedLanguages.map((code) => {
-                                                    const option = getOptionByCode(code);
+                                                    const option =
+                                                        getOptionByCode(code) ??
+                                                        enhanceLanguageOption({
+                                                            value: code,
+                                                            label: code,
+                                                        });
                                                     return (
                                                         <span
                                                             key={code}
                                                             className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
                                                         >
-                                                            <span>{option?.flag ?? "🏳️"}</span>
-                                                            <span>{option?.label ?? code}</span>
+                                                            <LanguageFlagIcon option={option} size={14} />
+                                                            <span>{option.label ?? code}</span>
                                                         </span>
                                                     );
                                                 })}
