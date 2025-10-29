@@ -1,7 +1,16 @@
 // src/lib/api.ts
 import {SalesPayload} from "@/app/leads/[id]/SalesForm";
 
-const BASE_URL = "http://localhost:8080/api";
+const DEFAULT_API_URL = "http://localhost:8080";
+
+const normaliseBaseUrl = (url: string): string => {
+    const trimmed = url.replace(/\/+$/, "");
+    return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+};
+
+export const BASE_URL = normaliseBaseUrl(
+    process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL
+);
 
 // ──────────────────────────────── TYPES ────────────────────────────────
 export type Role = "SUPER_ADMIN" | "ADMIN" | "USER";
@@ -94,8 +103,8 @@ export interface LanguageResponse {
     id: string;
     code: string;
     name: string;
-    flagEmoji?: string | null;
-    active?: boolean;
+    flagEmoji: string | null;
+    active: boolean;
     createdAt?: string;
     updatedAt?: string;
 }
@@ -103,8 +112,8 @@ export interface LanguageResponse {
 export interface UpsertLanguageRequest {
     code: string;
     name: string;
-    flagEmoji?: string | null;
-    active?: boolean;
+    flagEmoji: string | null;
+    active: boolean;
 }
 
 // ──────────────────────────────── HELPERS ────────────────────────────────
@@ -167,6 +176,72 @@ const resolveErrorMessage = (body: unknown, fallback = "Bir hata oluştu."): str
     }
 
     return fallback;
+};
+
+const unwrapApiData = <T>(body: unknown): T => {
+    if (
+        body &&
+        typeof body === "object" &&
+        "data" in body &&
+        (body as { data?: unknown }).data !== undefined
+    ) {
+        return (body as { data: T }).data;
+    }
+
+    return body as T;
+};
+
+const ensureLanguageResponse = (language: unknown): LanguageResponse => {
+    if (!language || typeof language !== "object") {
+        throw new Error("Dil yanıtı beklenmeyen bir formatta alındı.");
+    }
+
+    const record = language as Record<string, unknown>;
+    const { id, code, name } = record;
+
+    if (id === null || id === undefined) {
+        throw new Error("Dil yanıtında id alanı eksik.");
+    }
+
+    if (typeof code !== "string" || code.trim().length === 0) {
+        throw new Error("Dil yanıtında code alanı eksik.");
+    }
+
+    if (typeof name !== "string" || name.trim().length === 0) {
+        throw new Error("Dil yanıtında name alanı eksik.");
+    }
+
+    const rawFlag = record.flagEmoji;
+    if (
+        rawFlag !== null &&
+        rawFlag !== undefined &&
+        typeof rawFlag !== "string"
+    ) {
+        throw new Error("Dil yanıtında flagEmoji alanı beklenmeyen bir formatta.");
+    }
+
+    const rawActive = record.active;
+    const active =
+        typeof rawActive === "boolean"
+            ? rawActive
+            : rawActive == null
+              ? true
+              : Boolean(rawActive);
+
+    return {
+        id: String(id),
+        code: code.trim(),
+        name: name.trim(),
+        flagEmoji:
+            rawFlag === null || rawFlag === undefined || rawFlag === ""
+                ? null
+                : rawFlag,
+        active,
+        createdAt:
+            typeof record.createdAt === "string" ? record.createdAt : undefined,
+        updatedAt:
+            typeof record.updatedAt === "string" ? record.updatedAt : undefined,
+    };
 };
 
 // Ortak POST metodu (login, invite, vs için)
@@ -403,12 +478,27 @@ export const triggerFacebookLeadFetch = async (): Promise<
 export const getLanguages = async (): Promise<LanguageResponse[]> => {
     const headers = getAuthHeaders();
     try {
-        const res = await fetch(`${BASE_URL}/languages`, { headers });
-        if (!res.ok) throw new Error("Diller alınamadı");
-        return (await res.json()) as LanguageResponse[];
+        const response = await fetch(`${BASE_URL}/languages`, { headers });
+        const body = await extractResponseBody(response);
+
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Diller alınırken bir hata oluştu."),
+            );
+        }
+
+        const payload = unwrapApiData<unknown>(body);
+
+        if (!Array.isArray(payload)) {
+            throw new Error("Dil listesi beklenen formatta değil.");
+        }
+
+        return payload.map(ensureLanguageResponse);
     } catch (err) {
         console.error("getLanguages error:", err);
-        return [];
+        throw err instanceof Error
+            ? err
+            : new Error("Diller alınırken bir hata oluştu.");
     }
 };
 
@@ -430,7 +520,8 @@ export const createLanguage = async (
             );
         }
 
-        return body as LanguageResponse;
+        const responsePayload = unwrapApiData<unknown>(body);
+        return ensureLanguageResponse(responsePayload);
     } catch (error) {
         console.error("createLanguage error:", error);
         throw error instanceof Error
@@ -458,7 +549,8 @@ export const updateLanguage = async (
             );
         }
 
-        return body as LanguageResponse;
+        const responsePayload = unwrapApiData<unknown>(body);
+        return ensureLanguageResponse(responsePayload);
     } catch (error) {
         console.error("updateLanguage error:", error);
         throw error instanceof Error
