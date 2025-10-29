@@ -21,12 +21,13 @@ import {
     registerLanguageOptions,
     type LanguageOption,
 } from "@/lib/languages";
+import { resolveLanguageFlag } from "@/lib/flag-utils";
 
 const mapLanguage = (language: LanguageResponse): LanguageOption => ({
     id: language.id,
     value: language.code,
     label: language.name,
-    flag: language.flagEmoji ?? "🏳️",
+    flag: resolveLanguageFlag(language.code, language.flagEmoji ?? undefined),
     active: language.active ?? true,
 });
 
