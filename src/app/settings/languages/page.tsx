@@ -33,6 +33,8 @@ export default function LanguageSettingsPage() {
         updateLanguage,
         removeLanguage,
         refresh,
+        error: contextError,
+        clearError,
     } = useLanguages();
 
     const [form, setForm] = useState<LanguageFormState>(emptyForm);
@@ -46,9 +48,11 @@ export default function LanguageSettingsPage() {
         setEditingId(null);
         setFormError(null);
         setSuccessMessage(null);
+        clearError();
     };
 
     const startEdit = (language: LanguageOption) => {
+        clearError();
         setForm({
             code: language.value,
             name: language.label,
@@ -67,6 +71,7 @@ export default function LanguageSettingsPage() {
         );
         if (!confirmed) return;
         try {
+            clearError();
             setSubmitting(true);
             await removeLanguage(language.id);
             setSuccessMessage(`${language.label} silindi.`);
@@ -87,6 +92,7 @@ export default function LanguageSettingsPage() {
         event.preventDefault();
         setFormError(null);
         setSuccessMessage(null);
+        clearError();
 
         const code = form.code.trim().toUpperCase();
         const name = form.name.trim();
@@ -100,12 +106,17 @@ export default function LanguageSettingsPage() {
 
         setSubmitting(true);
         try {
-            const payload = { code, name, flagEmoji: flagEmoji || undefined, active };
+            const normalisedPayload = {
+                code,
+                name,
+                flagEmoji: flagEmoji || null,
+                active,
+            };
             if (editingId) {
-                await updateLanguage(editingId, payload);
+                await updateLanguage(editingId, normalisedPayload);
                 setSuccessMessage("Dil bilgisi güncellendi.");
             } else {
-                const created = await addLanguage(payload);
+                const created = await addLanguage(normalisedPayload);
                 setSuccessMessage(
                     created?.id
                         ? "Yeni dil başarıyla eklendi."
@@ -125,6 +136,20 @@ export default function LanguageSettingsPage() {
 
     return (
         <Layout title="Dil Yönetimi" subtitle="Kullanılabilir dil seçeneklerini yönetin">
+            {contextError && (
+                <div className="col-span-12">
+                    <div className="mb-4 flex items-start justify-between gap-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                        <span>{contextError}</span>
+                        <button
+                            type="button"
+                            onClick={clearError}
+                            className="text-xs font-semibold uppercase tracking-wide text-red-700"
+                        >
+                            Kapat
+                        </button>
+                    </div>
+                </div>
+            )}
             <div className="col-span-12 lg:col-span-4">
                 <Card>
                     <CardHeader className="flex items-center justify-between">
@@ -227,7 +252,15 @@ export default function LanguageSettingsPage() {
                     <CardHeader className="flex items-center justify-between">
                         <span className="font-semibold">Tanımlı Diller</span>
                         <div className="flex gap-2">
-                            <Button variant="outline" size="sm" onClick={() => void refresh()} disabled={loading}>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                    clearError();
+                                    void refresh();
+                                }}
+                                disabled={loading}
+                            >
                                 Yenile
                             </Button>
                         </div>

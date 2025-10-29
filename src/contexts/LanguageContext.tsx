@@ -29,7 +29,7 @@ const mapLanguage = (language: LanguageResponse): LanguageOption =>
         value: language.code,
         label: language.name,
         flag: language.flagEmoji ?? undefined,
-        active: language.active ?? true,
+        active: language.active,
     });
 
 const normaliseOptions = (options: LanguageOption[]): LanguageOption[] => {
@@ -52,6 +52,8 @@ const normaliseOptions = (options: LanguageOption[]): LanguageOption[] => {
 interface LanguageContextValue {
     languages: LanguageOption[];
     loading: boolean;
+    error: string | null;
+    clearError: () => void;
     refresh: () => Promise<void>;
     addLanguage: (
         payload: UpsertLanguageRequest
@@ -77,9 +79,33 @@ export function LanguageProvider({
         normaliseOptions(DEFAULT_LANGUAGE_OPTIONS)
     );
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const clearError = useCallback(() => {
+        setError(null);
+    }, []);
+
+    const shouldUseLocalFallback = (maybeError: unknown): boolean => {
+        const message =
+            maybeError instanceof Error
+                ? maybeError.message.toLowerCase()
+                : "";
+
+        return (
+            message.includes("no static resource") ||
+            message.includes("not found") ||
+            message.includes("failed to fetch")
+        );
+    };
+
+    const resolveErrorMessage = (maybeError: unknown, fallback: string): string =>
+        maybeError instanceof Error && maybeError.message
+            ? maybeError.message
+            : fallback;
 
     const refresh = useCallback(async () => {
         setLoading(true);
+        clearError();
         try {
             const response = await getLanguages();
             if (response.length === 0) {
@@ -88,13 +114,26 @@ export function LanguageProvider({
             }
             const mapped = response.map(mapLanguage);
             setLanguages(normaliseOptions(mapped));
+            setError(null);
         } catch (error) {
             console.error("Languages could not be refreshed", error);
-            setLanguages(normaliseOptions(DEFAULT_LANGUAGE_OPTIONS));
+            const message = resolveErrorMessage(
+                error,
+                "Diller yüklenirken bir hata oluştu.",
+            );
+
+            if (shouldUseLocalFallback(error)) {
+                setLanguages(normaliseOptions(DEFAULT_LANGUAGE_OPTIONS));
+                setError(
+                    "Dil servisine ulaşılamadı. Varsayılan diller gösteriliyor.",
+                );
+            } else {
+                setError(message);
+            }
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [clearError]);
 
     useEffect(() => {
         void refresh();
@@ -103,6 +142,7 @@ export function LanguageProvider({
     const addLanguage = useCallback(
         async (payload: UpsertLanguageRequest) => {
             try {
+                clearError();
                 const created = await createLanguage(payload);
                 const option = mapLanguage(created);
                 setLanguages((prev) =>
@@ -115,13 +155,14 @@ export function LanguageProvider({
             } catch (error) {
                 console.error("addLanguage error", error);
 
-                const message =
-                    error instanceof Error ? error.message.toLowerCase() : "";
-                const shouldFallback =
-                    message.includes("no static resource") ||
-                    message.includes("not found");
+                const fallback = shouldUseLocalFallback(error);
+                const message = resolveErrorMessage(
+                    error,
+                    "Dil oluşturulurken bir hata oluştu.",
+                );
 
-                if (!shouldFallback) {
+                if (!fallback) {
+                    setError(message);
                     throw error;
                 }
 
@@ -129,7 +170,7 @@ export function LanguageProvider({
                     value: payload.code,
                     label: payload.name,
                     flag: payload.flagEmoji ?? undefined,
-                    active: payload.active ?? true,
+                    active: payload.active,
                 });
 
                 setLanguages((prev) =>
@@ -139,15 +180,20 @@ export function LanguageProvider({
                     ])
                 );
 
+                setError(
+                    "Dil servisine ulaşılamadı. Dil yerel olarak kaydedildi.",
+                );
+
                 return option;
             }
         },
-        []
+        [clearError]
     );
 
     const updateLanguageEntry = useCallback(
         async (id: string, payload: UpsertLanguageRequest) => {
             try {
+                clearError();
                 const updated = await updateLanguage(id, payload);
                 const option = mapLanguage(updated);
                 setLanguages((prev) =>
@@ -162,14 +208,21 @@ export function LanguageProvider({
                 return option;
             } catch (error) {
                 console.error("updateLanguage error", error);
+                setError(
+                    resolveErrorMessage(
+                        error,
+                        "Dil güncellenirken bir hata oluştu.",
+                    ),
+                );
                 throw error;
             }
         },
-        []
+        [clearError]
     );
 
     const removeLanguage = useCallback(async (id: string) => {
         try {
+            clearError();
             await deleteLanguage(id);
             setLanguages((prev) =>
                 normaliseOptions(prev.filter((language) => language.id !== id))
@@ -177,9 +230,12 @@ export function LanguageProvider({
             return true;
         } catch (error) {
             console.error("removeLanguage error", error);
+            setError(
+                resolveErrorMessage(error, "Dil silinirken bir hata oluştu."),
+            );
             throw error;
         }
-    }, []);
+    }, [clearError]);
 
     const getOptionByCode = useCallback(
         (code: string) => languages.find((language) => language.value === code),
@@ -190,6 +246,8 @@ export function LanguageProvider({
         () => ({
             languages,
             loading,
+            error,
+            clearError,
             refresh,
             addLanguage,
             updateLanguage: updateLanguageEntry,
@@ -199,11 +257,13 @@ export function LanguageProvider({
         [
             languages,
             loading,
+            error,
             refresh,
             addLanguage,
             updateLanguageEntry,
             removeLanguage,
             getOptionByCode,
+            clearError,
         ]
     );
 
