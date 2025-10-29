@@ -105,8 +105,12 @@ export default function LanguageSettingsPage() {
                 await updateLanguage(editingId, payload);
                 setSuccessMessage("Dil bilgisi güncellendi.");
             } else {
-                await addLanguage(payload);
-                setSuccessMessage("Yeni dil başarıyla eklendi.");
+                const created = await addLanguage(payload);
+                setSuccessMessage(
+                    created?.id
+                        ? "Yeni dil başarıyla eklendi."
+                        : "Yeni dil yerel olarak eklendi. Kalıcı olması için lütfen backend üzerinde tanımlayın."
+                );
             }
             setForm(emptyForm);
             setEditingId(null);

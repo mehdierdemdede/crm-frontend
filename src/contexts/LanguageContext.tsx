@@ -114,7 +114,32 @@ export function LanguageProvider({
                 return option;
             } catch (error) {
                 console.error("addLanguage error", error);
-                throw error;
+
+                const message =
+                    error instanceof Error ? error.message.toLowerCase() : "";
+                const shouldFallback =
+                    message.includes("no static resource") ||
+                    message.includes("not found");
+
+                if (!shouldFallback) {
+                    throw error;
+                }
+
+                const option = enhanceLanguageOption({
+                    value: payload.code,
+                    label: payload.name,
+                    flag: payload.flagEmoji ?? undefined,
+                    active: payload.active ?? true,
+                });
+
+                setLanguages((prev) =>
+                    normaliseOptions([
+                        ...prev.filter((existing) => existing.value !== option.value),
+                        option,
+                    ])
+                );
+
+                return option;
             }
         },
         []
