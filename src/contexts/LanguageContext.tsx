@@ -19,17 +19,18 @@ import {
 import {
     DEFAULT_LANGUAGE_OPTIONS,
     registerLanguageOptions,
+    enhanceLanguageOption,
     type LanguageOption,
 } from "@/lib/languages";
-import { resolveLanguageFlag } from "@/lib/flag-utils";
 
-const mapLanguage = (language: LanguageResponse): LanguageOption => ({
-    id: language.id,
-    value: language.code,
-    label: language.name,
-    flag: resolveLanguageFlag(language.code, language.flagEmoji ?? undefined),
-    active: language.active ?? true,
-});
+const mapLanguage = (language: LanguageResponse): LanguageOption =>
+    enhanceLanguageOption({
+        id: language.id,
+        value: language.code,
+        label: language.name,
+        flag: language.flagEmoji ?? undefined,
+        active: language.active ?? true,
+    });
 
 const normaliseOptions = (options: LanguageOption[]): LanguageOption[] => {
     if (options.length === 0) {
@@ -38,7 +39,7 @@ const normaliseOptions = (options: LanguageOption[]): LanguageOption[] => {
     }
 
     const unique = new Map<string, LanguageOption>();
-    options.forEach((option) => {
+    options.map(enhanceLanguageOption).forEach((option) => {
         unique.set(option.value, option);
     });
 
@@ -113,7 +114,32 @@ export function LanguageProvider({
                 return option;
             } catch (error) {
                 console.error("addLanguage error", error);
-                throw error;
+
+                const message =
+                    error instanceof Error ? error.message.toLowerCase() : "";
+                const shouldFallback =
+                    message.includes("no static resource") ||
+                    message.includes("not found");
+
+                if (!shouldFallback) {
+                    throw error;
+                }
+
+                const option = enhanceLanguageOption({
+                    value: payload.code,
+                    label: payload.name,
+                    flag: payload.flagEmoji ?? undefined,
+                    active: payload.active ?? true,
+                });
+
+                setLanguages((prev) =>
+                    normaliseOptions([
+                        ...prev.filter((existing) => existing.value !== option.value),
+                        option,
+                    ])
+                );
+
+                return option;
             }
         },
         []

@@ -5,6 +5,7 @@ import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -20,6 +21,7 @@ import {
 } from "@/lib/api";
 import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown } from "lucide-react";
 import { useLanguages } from "@/contexts/LanguageContext";
+import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
     UNCONTACTED: "İlk Temas Yok",
@@ -133,24 +135,23 @@ export default function LeadsPage() {
     ]);
 
     const languageOptions = useMemo(() => {
-        const map = new Map<string, { value: string; label: string; flag: string }>();
+        const map = new Map<string, LanguageOption>();
+
         languages
             .filter((lang) => lang.active ?? true)
             .forEach((lang) => {
-                map.set(lang.value, {
-                    value: lang.value,
-                    label: lang.label,
-                    flag: lang.flag ?? "🏳️",
-                });
+                map.set(lang.value, enhanceLanguageOption(lang));
             });
 
         leads.forEach((lead) => {
             if (lead.language && !map.has(lead.language)) {
-                map.set(lead.language, {
-                    value: lead.language,
-                    label: lead.language,
-                    flag: "🏳️",
-                });
+                map.set(
+                    lead.language,
+                    enhanceLanguageOption({
+                        value: lead.language,
+                        label: lead.language,
+                    })
+                );
             }
         });
 
@@ -312,11 +313,27 @@ export default function LeadsPage() {
                                 }}
                             >
                                 <option value="">Tüm Diller</option>
-                                {languageOptions.map((lang) => (
-                                    <option key={lang.value} value={lang.value}>
-                                        {lang.flag} {lang.label}
-                                    </option>
-                                ))}
+                                {languageOptions.map((lang) => {
+                                    const optionText = `${lang.flag ?? ""} ${lang.label}`.trim();
+                                    const optionStyle = lang.flagImageUrl
+                                        ? {
+                                              backgroundImage: `url(${lang.flagImageUrl})`,
+                                              backgroundRepeat: "no-repeat",
+                                              backgroundPosition: "8px center",
+                                              backgroundSize: "18px 13px",
+                                              paddingLeft: "32px",
+                                          }
+                                        : undefined;
+                                    return (
+                                        <option
+                                            key={lang.value}
+                                            value={lang.value}
+                                            style={optionStyle}
+                                        >
+                                            {optionText}
+                                        </option>
+                                    );
+                                })}
                             </select>
                             <select
                                 className="border rounded-md p-2 text-sm bg-white shadow-sm"
@@ -395,7 +412,11 @@ export default function LeadsPage() {
                                         <tbody>
                                         {leads.map((lead) => {
                                             const languageOption = lead.language
-                                                ? getOptionByCode(lead.language)
+                                                ? getOptionByCode(lead.language) ??
+                                                  enhanceLanguageOption({
+                                                      value: lead.language,
+                                                      label: lead.language,
+                                                  })
                                                 : undefined;
                                             return (
                                                 <tr
@@ -413,10 +434,11 @@ export default function LeadsPage() {
                                                 <td className="p-3">{lead.email ?? "-"}</td>
                                                 <td className="p-3">
                                                     {lead.language ? (
-                                                        <span className="inline-flex items-center gap-1">
-                                                            <span>
-                                                                {languageOption?.flag ?? "🏳️"}
-                                                            </span>
+                                                        <span className="inline-flex items-center gap-2">
+                                                            <LanguageFlagIcon
+                                                                option={languageOption}
+                                                                size={18}
+                                                            />
                                                             <span>
                                                                 {languageOption?.label ?? lead.language}
                                                             </span>
@@ -505,7 +527,11 @@ export default function LeadsPage() {
                                 <div className="md:hidden flex flex-col gap-4">
                                     {leads.map((lead) => {
                                         const languageOption = lead.language
-                                            ? getOptionByCode(lead.language)
+                                            ? getOptionByCode(lead.language) ??
+                                              enhanceLanguageOption({
+                                                  value: lead.language,
+                                                  label: lead.language,
+                                              })
                                             : undefined;
                                         return (
                                             <div
@@ -529,8 +555,11 @@ export default function LeadsPage() {
                                                 <div>
                                                     Dil:{" "}
                                                     {lead.language ? (
-                                                        <span className="inline-flex items-center gap-1">
-                                                            <span>{languageOption?.flag ?? "🏳️"}</span>
+                                                        <span className="inline-flex items-center gap-2">
+                                                            <LanguageFlagIcon
+                                                                option={languageOption}
+                                                                size={16}
+                                                            />
                                                             <span>{languageOption?.label ?? lead.language}</span>
                                                         </span>
                                                     ) : (

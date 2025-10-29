@@ -5,8 +5,9 @@ import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import { useLanguages } from "@/contexts/LanguageContext";
-import { type LanguageOption } from "@/lib/languages";
+import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
 
 interface LanguageFormState {
     code: string;
@@ -104,8 +105,12 @@ export default function LanguageSettingsPage() {
                 await updateLanguage(editingId, payload);
                 setSuccessMessage("Dil bilgisi güncellendi.");
             } else {
-                await addLanguage(payload);
-                setSuccessMessage("Yeni dil başarıyla eklendi.");
+                const created = await addLanguage(payload);
+                setSuccessMessage(
+                    created?.id
+                        ? "Yeni dil başarıyla eklendi."
+                        : "Yeni dil yerel olarak eklendi. Kalıcı olması için lütfen backend üzerinde tanımlayın."
+                );
             }
             setForm(emptyForm);
             setEditingId(null);
@@ -253,7 +258,12 @@ export default function LanguageSettingsPage() {
                                                     {language.value}
                                                 </td>
                                                 <td className="px-3 py-2">{language.label}</td>
-                                                <td className="px-3 py-2 text-lg">{language.flag ?? "🏳️"}</td>
+                                                <td className="px-3 py-2 text-lg">
+                                                    <LanguageFlagIcon
+                                                        option={enhanceLanguageOption(language)}
+                                                        size={18}
+                                                    />
+                                                </td>
                                                 <td className="px-3 py-2">
                                                     <span
                                                         className={`inline-flex rounded-full px-2 py-0.5 text-xs ${

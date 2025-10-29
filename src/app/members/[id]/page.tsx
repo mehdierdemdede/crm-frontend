@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import { ArrowLeft } from "lucide-react";
 import EditMemberModal from "@/components/EditMemberModal";
 import {
@@ -18,6 +19,7 @@ import {
 } from "recharts";
 import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api";
 import { useLanguages } from "@/contexts/LanguageContext";
+import { enhanceLanguageOption } from "@/lib/languages";
 
 export default function MemberDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -88,14 +90,19 @@ export default function MemberDetailPage() {
                             {member.supportedLanguages.length > 0 ? (
                                 <span className="inline-flex flex-wrap gap-1">
                                     {member.supportedLanguages.map((code) => {
-                                        const option = getOptionByCode(code);
+                                        const option =
+                                            getOptionByCode(code) ??
+                                            enhanceLanguageOption({
+                                                value: code,
+                                                label: code,
+                                            });
                                         return (
                                             <span
                                                 key={code}
                                                 className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
                                             >
-                                                <span>{option?.flag ?? "🏳️"}</span>
-                                                <span>{option?.label ?? code}</span>
+                                                <LanguageFlagIcon option={option} size={14} />
+                                                <span>{option.label ?? code}</span>
                                             </span>
                                         );
                                     })}
