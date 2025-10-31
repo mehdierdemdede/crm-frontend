@@ -22,6 +22,7 @@ import {
 import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown } from "lucide-react";
 import { useLanguages } from "@/contexts/LanguageContext";
 import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
+import useDebounce from "@/hooks/useDebounce";
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
     UNCONTACTED: "İlk Temas Yok",
@@ -64,6 +65,8 @@ export default function LeadsPage() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [totalElements, setTotalElements] = useState(0);
+    const debouncedSearch = useDebounce(search, 400);
+    const isSearching = search !== debouncedSearch;
     const perPage = 10;
     const { user } = useAuth();
     const { languages, getOptionByCode } = useLanguages();
@@ -102,7 +105,7 @@ export default function LeadsPage() {
                     page,
                     size: perPage,
                     sort: `${sortBy},${sortOrder}`,
-                    search: search.trim() || undefined,
+                    search: debouncedSearch.trim() || undefined,
                     status: statusFilter || undefined,
                     language: languageFilter || undefined,
                     campaignId: campaignFilter || undefined,
@@ -127,7 +130,7 @@ export default function LeadsPage() {
         campaignFilter,
         languageFilter,
         page,
-        search,
+        debouncedSearch,
         sortBy,
         sortOrder,
         statusFilter,
@@ -170,7 +173,7 @@ export default function LeadsPage() {
 
     const filtered = useMemo(() => {
         return leads.filter((l) => {
-            const hay = search.toLowerCase();
+            const hay = debouncedSearch.toLowerCase();
             const byText =
                 l.name?.toLowerCase().includes(hay) ||
                 l.email?.toLowerCase().includes(hay) ||
@@ -196,7 +199,7 @@ export default function LeadsPage() {
         campaignFilter,
         languageFilter,
         leads,
-        search,
+        debouncedSearch,
         statusFilter,
         user?.id,
     ]);
@@ -289,6 +292,11 @@ export default function LeadsPage() {
                                     setPage(0);
                                 }}
                             />
+                            {isSearching && (
+                                <span className="text-xs text-blue-500 self-start sm:self-center animate-pulse px-2 py-1 bg-blue-50 rounded-md">
+                                    Aranıyor...
+                                </span>
+                            )}
                             <select
                                 className="border rounded-md p-2 text-sm bg-white shadow-sm"
                                 value={statusFilter}
