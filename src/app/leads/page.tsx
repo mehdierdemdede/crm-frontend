@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+import Modal from "@/components/Modal";
+import { ToastContainer, type ToastMessage } from "@/components/Toast";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -65,11 +67,39 @@ export default function LeadsPage() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
     const [totalElements, setTotalElements] = useState(0);
+    const [toasts, setToasts] = useState<ToastMessage[]>([]);
+    const [leadToDelete, setLeadToDelete] = useState<LeadResponse | null>(null);
+    const [deleteLoading, setDeleteLoading] = useState(false);
     const debouncedSearch = useDebounce(search, 400);
     const isSearching = search !== debouncedSearch;
     const perPage = 10;
     const { user } = useAuth();
     const { languages, getOptionByCode } = useLanguages();
+
+    const showToast = useCallback(
+        (toast: Omit<ToastMessage, "id">) => {
+            const id = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            setToasts((prev) => [
+                ...prev.slice(-3),
+                {
+                    id,
+                    duration: toast.duration ?? 4000,
+                    variant: toast.variant ?? "info",
+                    ...toast,
+                },
+            ]);
+        },
+        []
+    );
+
+    const dismissToast = useCallback((id: string) => {
+        setToasts((prev) => prev.filter((toast) => toast.id !== id));
+    }, []);
+
+    const handleCloseDeleteModal = useCallback(() => {
+        if (deleteLoading) return;
+        setLeadToDelete(null);
+    }, [deleteLoading]);
 
     useEffect(() => {
         const fetchUsers = async () => {
@@ -205,18 +235,39 @@ export default function LeadsPage() {
     ]);
 
     const handleCall = (phone?: string | null | undefined) => {
-        if (!phone) return alert("Telefon numarası bulunamadı.");
+        if (!phone) {
+            showToast({
+                title: "Telefon numarası yok",
+                description: "Telefon numarası bulunamadı.",
+                variant: "error",
+            });
+            return;
+        }
         window.open(`tel:${phone}`, "_self");
     };
 
     const handleWhatsApp = (phone?: string | null | undefined) => {
-        if (!phone) return alert("Telefon numarası bulunamadı.");
+        if (!phone) {
+            showToast({
+                title: "Telefon numarası yok",
+                description: "WhatsApp için telefon numarası bulunamadı.",
+                variant: "error",
+            });
+            return;
+        }
         const formatted = phone.replace(/\D/g, "");
         window.open(`https://wa.me/${formatted}`, "_blank");
     };
 
     const handleMessenger = (messengerId?: string | null | undefined) => {
-        if (!messengerId) return alert("Messenger bağlantısı bulunamadı.");
+        if (!messengerId) {
+            showToast({
+                title: "Bağlantı bulunamadı",
+                description: "Messenger bağlantısı bulunamadı.",
+                variant: "error",
+            });
+            return;
+        }
         window.open(`https://m.me/${messengerId}`, "_blank");
     };
 
@@ -244,40 +295,87 @@ export default function LeadsPage() {
                 "STATUS",
                 `Lead durumu ${statusLabel} olarak güncellendi`
             );
-        } else alert("Durum güncellenemedi.");
+            showToast({
+                title: "Durum güncellendi",
+                description: `${targetLead.name ?? "Lead"} durumu "${
+                    STATUS_LABELS[newStatus] ?? newStatus
+                }" olarak işaretlendi.`,
+                variant: "success",
+            });
+        } else {
+            showToast({
+                title: "İşlem başarısız",
+                description: "Lead durumu güncellenemedi.",
+                variant: "error",
+            });
+        }
     };
 
     const handleAssign = async (leadId: string, userId: string | null) => {
         const ok = await patchLeadAssign(leadId, userId);
         if (ok) {
+            const assignedUser = userId
+                ? users.find((u) => u.id === userId) || null
+                : null;
             setLeads((prev) =>
                 prev.map((l) =>
                     l.id === leadId
                         ? {
-                            ...l,
-                            assignedToUser: userId
-                                ? users.find((u) => u.id === userId) || null
-                                : null,
-                        }
+                              ...l,
+                              assignedToUser: assignedUser,
+                          }
                         : l
                 )
             );
-        } else alert("Atama başarısız!");
-    };
-
-
-    const handleDelete = async (leadId: string) => {
-        if (!confirm("Bu lead'i silmek istediğine emin misin?")) return;
-        const ok = await deleteLead(leadId);
-        if (ok) {
-            await addLeadAction(leadId, "DELETE", "Lead silindi.");
-            setLeads((prev) => prev.filter((l) => l.id !== leadId));
-            setTotalElements((prev) => Math.max(prev - 1, 0));
+            showToast({
+                title: userId ? "Lead atandı" : "Atama kaldırıldı",
+                description: userId
+                    ? `${assignedUser?.firstName ?? "Kullanıcı"} ${
+                          assignedUser?.lastName ?? ""
+                      } lead'e atandı.`.trim()
+                    : "Lead ataması kaldırıldı.",
+                variant: "success",
+            });
+        } else {
+            showToast({
+                title: "Atama başarısız",
+                description: "Lead ataması tamamlanamadı. Lütfen tekrar deneyin.",
+                variant: "error",
+            });
         }
     };
 
+    const handleDeleteRequest = (lead: LeadResponse) => {
+        setLeadToDelete(lead);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!leadToDelete) return;
+        setDeleteLoading(true);
+        const ok = await deleteLead(leadToDelete.id);
+        if (ok) {
+            await addLeadAction(leadToDelete.id, "DELETE", "Lead silindi.");
+            setLeads((prev) => prev.filter((l) => l.id !== leadToDelete.id));
+            setTotalElements((prev) => Math.max(prev - 1, 0));
+            showToast({
+                title: "Lead silindi",
+                description: `${leadToDelete.name ?? "Lead"} başarıyla silindi.`,
+                variant: "success",
+            });
+            setLeadToDelete(null);
+        } else {
+            showToast({
+                title: "Silme başarısız",
+                description: "Lead silinemedi. Lütfen tekrar deneyin.",
+                variant: "error",
+            });
+        }
+        setDeleteLoading(false);
+    };
+
     return (
-        <Layout title="Lead Yönetimi" subtitle="Tüm lead’leri görüntüle ve yönet">
+        <>
+            <Layout title="Lead Yönetimi" subtitle="Tüm lead’leri görüntüle ve yönet">
             {/* 🧭 Filtre ve üst bar */}
             <div className="col-span-12">
                 <Card className="shadow-md rounded-xl">
@@ -517,7 +615,7 @@ export default function LeadsPage() {
                                                             size="icon"
                                                             variant="outline"
                                                             className="text-red-600 hover:bg-red-50"
-                                                            onClick={() => handleDelete(lead.id)}
+                                                            onClick={() => handleDeleteRequest(lead)}
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -650,7 +748,7 @@ export default function LeadsPage() {
                                                     <Button
                                                         size="icon"
                                                         variant="outline"
-                                                        onClick={() => handleDelete(lead.id)}
+                                                        onClick={() => handleDeleteRequest(lead)}
                                                         title="Lead'i sil"
                                                     >
                                                         <Trash2 className="h-4 w-4 text-red-600"/>
@@ -695,7 +793,53 @@ export default function LeadsPage() {
                     </Button>
                 </div>
             </div>
-        </Layout>
+            </Layout>
+            <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+            <Modal
+                isOpen={!!leadToDelete}
+                onClose={handleCloseDeleteModal}
+                closeOnBackdrop={!deleteLoading}
+                showCloseButton={!deleteLoading}
+                title="Lead'i Sil"
+                description={
+                    leadToDelete
+                        ? `${leadToDelete.name ?? "Bu lead"} kalıcı olarak silinecek.`
+                        : undefined
+                }
+                actions={[
+                    {
+                        label: "İptal",
+                        variant: "ghost",
+                        onClick: handleCloseDeleteModal,
+                        disabled: deleteLoading,
+                    },
+                    {
+                        label: "Sil",
+                        variant: "danger",
+                        onClick: handleDeleteConfirm,
+                        isLoading: deleteLoading,
+                        disabled: deleteLoading,
+                    },
+                ]}
+            >
+                {leadToDelete && (
+                    <div className="space-y-3 text-sm text-gray-600">
+                        <p>Bu işlem geri alınamaz. Lead ile ilişkili tüm kayıtlar silinecek.</p>
+                        <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                            <p className="font-semibold text-gray-900">
+                                {leadToDelete.name ?? "İsimsiz Lead"}
+                            </p>
+                            {leadToDelete.email && (
+                                <p className="mt-1 text-xs text-gray-500">{leadToDelete.email}</p>
+                            )}
+                            {leadToDelete.phone && (
+                                <p className="mt-0.5 text-xs text-gray-500">{leadToDelete.phone}</p>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </Modal>
+        </>
     );
 
 }
