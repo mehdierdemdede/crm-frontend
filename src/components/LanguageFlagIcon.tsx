@@ -18,14 +18,23 @@ export function LanguageFlagIcon({
     className = "",
     title,
 }: LanguageFlagIconProps) {
+    const [imageFailed, setImageFailed] = React.useState(false);
+    const flagImageUrl = option?.flagImageUrl ?? null;
+
+    React.useEffect(() => {
+        setImageFailed(false);
+    }, [flagImageUrl]);
+
     const height = size > 0 ? size : DEFAULT_SIZE;
     const width = computeWidth(height);
     const alt = title ?? (option?.label ? `${option.label} bayrağı` : "Dil bayrağı");
 
-    if (option?.flagImageUrl) {
+    const shouldRenderImage = Boolean(flagImageUrl && !imageFailed);
+
+    if (shouldRenderImage && flagImageUrl) {
         return (
             <Image
-                src={option.flagImageUrl}
+                src={flagImageUrl}
                 alt={alt}
                 width={width}
                 height={height}
@@ -33,18 +42,39 @@ export function LanguageFlagIcon({
                 loading="lazy"
                 className={`inline-block rounded-sm border border-gray-200 bg-white object-cover ${className}`.trim()}
                 title={title ?? option.label}
+                onError={() => {
+                    setImageFailed(true);
+                }}
             />
         );
     }
 
-    const text = option?.value ?? option?.flag ?? "";
+    const text = option?.flag ?? option?.label ?? option?.value ?? "";
+
+    const fallbackClassName = [
+        "inline-flex",
+        "items-center",
+        "justify-center",
+        "rounded-sm",
+        "border",
+        "border-gray-200",
+        "bg-gray-100",
+        "px-1",
+        "text-xs",
+        "font-medium",
+        "leading-none",
+        "text-gray-600",
+    ]
+        .join(" ")
+        .trim();
 
     return (
         <span
-            className={`inline-block leading-none ${className}`.trim()}
+            className={`${fallbackClassName} ${className}`.trim()}
             aria-label={alt}
             role="img"
             title={title ?? option?.label}
+            style={{ width, height, lineHeight: `${height}px` }}
         >
             {text || option?.label || ""}
         </span>
