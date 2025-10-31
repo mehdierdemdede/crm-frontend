@@ -25,6 +25,7 @@ import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown } from "lucide-reac
 import { useLanguages } from "@/contexts/LanguageContext";
 import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
 import useDebounce from "@/hooks/useDebounce";
+import { Skeleton } from "@/components/Skeleton";
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
     UNCONTACTED: "İlk Temas Yok",
@@ -52,6 +53,16 @@ type SortableColumn =
     | "status"
     | "assignedToUser"
     | "createdAt";
+
+const TABLE_COLUMNS: Array<{ key: SortableColumn; label: string }> = [
+    { key: "name", label: "Ad" },
+    { key: "email", label: "Email" },
+    { key: "language", label: "Dil" },
+    { key: "campaign", label: "Kampanya" },
+    { key: "status", label: "Durum" },
+    { key: "assignedToUser", label: "Atanan Kullanıcı" },
+    { key: "createdAt", label: "Tarih" },
+];
 
 export default function LeadsPage() {
     const [leads, setLeads] = useState<LeadResponse[]>([]);
@@ -482,7 +493,105 @@ export default function LeadsPage() {
                     {/* 📋 Tablo (masaüstü) */}
                     <CardContent>
                         {loading ? (
-                            <div className="text-center text-gray-500 py-10">Yükleniyor...</div>
+                            <>
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="min-w-full text-sm border rounded-lg overflow-hidden">
+                                        <thead>
+                                            <tr className="bg-gray-50 text-left text-gray-700 font-medium">
+                                                {TABLE_COLUMNS.map((c) => (
+                                                    <th
+                                                        key={c.key}
+                                                        className="p-3"
+                                                    >
+                                                        {c.label}
+                                                    </th>
+                                                ))}
+                                                <th className="p-3 text-center">Aksiyonlar</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {Array.from({ length: 6 }).map((_, idx) => (
+                                                <tr
+                                                    key={idx}
+                                                    className="border-t even:bg-gray-50"
+                                                >
+                                                    <td className="p-3">
+                                                        <Skeleton className="h-4 w-32" />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <Skeleton className="h-4 w-40" />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <Skeleton className="h-4 w-4 rounded-full" />
+                                                            <Skeleton className="h-4 w-20" />
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <Skeleton className="h-4 w-28" />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <Skeleton className="h-7 w-32" />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <Skeleton className="h-7 w-32" />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <Skeleton className="h-4 w-24" />
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                        <div className="flex justify-center gap-2">
+                                                            {Array.from({ length: 4 }).map((__, actionIdx) => (
+                                                                <Skeleton
+                                                                    key={actionIdx}
+                                                                    className="h-9 w-9 rounded-full"
+                                                                />
+                                                            ))}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div className="md:hidden flex flex-col gap-4">
+                                    {Array.from({ length: 4 }).map((_, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-3"
+                                        >
+                                            <div className="flex justify-between items-center">
+                                                <Skeleton className="h-5 w-32" />
+                                                <Skeleton className="h-4 w-16" />
+                                            </div>
+
+                                            <div className="space-y-2">
+                                                <Skeleton className="h-4 w-40" />
+                                                <div className="flex items-center gap-2">
+                                                    <Skeleton className="h-4 w-4 rounded-full" />
+                                                    <Skeleton className="h-4 w-24" />
+                                                </div>
+                                                <Skeleton className="h-4 w-32" />
+                                            </div>
+
+                                            <div className="flex gap-3">
+                                                <Skeleton className="h-8 flex-1" />
+                                                <Skeleton className="h-8 flex-1" />
+                                            </div>
+
+                                            <div className="flex justify-end gap-2">
+                                                {Array.from({ length: 4 }).map((__, actionIdx) => (
+                                                    <Skeleton
+                                                        key={actionIdx}
+                                                        className="h-9 w-9 rounded-full"
+                                                    />
+                                                ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
                         ) : leads.length === 0 ? (
                             <div className="text-center text-gray-500 py-10">
                                 Kayıt bulunamadı.
@@ -494,19 +603,11 @@ export default function LeadsPage() {
                                     <table className="min-w-full text-sm border rounded-lg overflow-hidden">
                                         <thead>
                                         <tr className="bg-gray-50 text-left text-gray-700 font-medium">
-                                            {[
-                                                { key: "name", label: "Ad" },
-                                                { key: "email", label: "Email" },
-                                                { key: "language", label: "Dil" },
-                                                { key: "campaign", label: "Kampanya" },
-                                                { key: "status", label: "Durum" },
-                                                { key: "assignedToUser", label: "Atanan Kullanıcı" },
-                                                { key: "createdAt", label: "Tarih" },
-                                            ].map((c) => (
+                                            {TABLE_COLUMNS.map((c) => (
                                                 <th
                                                     key={c.key}
                                                     className="p-3 cursor-pointer select-none"
-                                                    onClick={() => handleSort(c.key as SortableColumn)}
+                                                    onClick={() => handleSort(c.key)}
                                                 >
                                                     {c.label}{" "}
                                                     <ArrowUpDown className="inline h-3 w-3 ml-1 text-gray-400" />
