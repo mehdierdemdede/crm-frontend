@@ -37,7 +37,7 @@ export function LanguageFlagIcon({
         );
     }
 
-    const text = option?.flag ?? "🏳️";
+    const text = option?.value ?? option?.flag ?? "";
 
     return (
         <span
@@ -46,7 +46,7 @@ export function LanguageFlagIcon({
             role="img"
             title={title ?? option?.label}
         >
-            {text}
+            {text || option?.label || ""}
         </span>
     );
 }
