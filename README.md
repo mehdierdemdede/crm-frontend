@@ -1,42 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CRM Frontend
 
-## Getting Started
+Bu proje, CRM uygulaması için hazırlanan Next.js tabanlı front-end kodunu içerir. Yönetim paneli aracılığıyla lead listelerini görüntüleyebilir, satış kayıtlarını güncelleyebilir ve kampanya bazlı raporlar alabilirsiniz. Depoya backend ile birlikte kurulumu ve dağıtımı kolaylaştıracak yönergeler eklenmiştir.
 
-First, run the development server:
+## Ön Gereksinimler
+
+- Node.js 18 veya üstü (Next.js 15 ile uyumlu sürüm)
+- npm 9+ (alternatif olarak `pnpm`, `yarn` veya `bun` kullanabilirsiniz)
+
+## Kurulum
+
+```bash
+npm install
+```
+
+Kurulum tamamlandıktan sonra projeyi geliştirme modunda başlatmak için:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Ardından [http://localhost:3000](http://localhost:3000) adresini ziyaret ederek uygulamayı görebilirsiniz. Kodda yaptığınız değişiklikler otomatik olarak yansır.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Ortam Değişkenleri
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Front-end, backend API adresini `NEXT_PUBLIC_API_URL` değişkeni üzerinden okur. Değer, backend servisinin kök URL'si olmalıdır; `/api` eki otomatik olarak eklenir.
 
-## UI specifics
+`.env.local` dosyası oluşturup aşağıdaki gibi yapılandırabilirsiniz:
 
-### Language flag badges
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
 
-Language selections across the member management screens display flag icons by reusing the emoji flag characters that ship with Unicode. No additional npm package is required—flags are defined in [`src/lib/languages.ts`](./src/lib/languages.ts) alongside their language labels and ISO codes.
+> **Not:** Eğer backend `https://crm.example.com/api` gibi doğrudan `/api` uzantısına sahip bir adres üzerinden servis veriyorsa, `NEXT_PUBLIC_API_URL=https://crm.example.com/api` şeklinde de tanımlayabilirsiniz. Uygulama gerekirse sondaki `/api` kısmını korur.
 
-## Learn More
+## Backend ile Beraber Çalıştırma
 
-To learn more about Next.js, take a look at the following resources:
+1. Backend uygulamasını yerelde `http://localhost:8080` (veya kendi belirlediğiniz port) üzerinde başlatın. Backend API sözleşmesiyle ilgili ayrıntılar için [`docs/backend-sync-request.md`](./docs/backend-sync-request.md) dosyasına göz atabilirsiniz.
+2. Front-end projesinin kök dizininde `.env.local` dosyasını oluşturup `NEXT_PUBLIC_API_URL` değerini backend adresinize göre ayarlayın.
+3. `npm run dev` komutu ile front-end'i ayağa kaldırın. Geliştirme sırasında API çağrıları belirtilen backend adresine yönlenecektir.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Docker Compose ile Örnek Kullanım
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Frontend ve backend'i birlikte dağıtmak için örnek bir `docker-compose.yml` dosyası şu şekilde olabilir:
 
-## Deploy on Vercel
+```yaml
+version: "3.9"
+services:
+  backend:
+    image: ghcr.io/organisation/crm-backend:latest
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+    ports:
+      - "8080:8080"
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+  frontend:
+    build: .
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8080
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Bu yapılandırma, Docker ağı içinde `backend` servisini `frontend` için erişilebilir kılar. Üretim ortamında bir ters proxy (Nginx, Traefik vb.) kullanarak iki servisi aynı etki alanı altında sunabilirsiniz.
+
+## Üretim İçin Derleme ve Çalıştırma
+
+Üretime çıkmadan önce Next.js uygulamasını derleyip statik asset'leri oluşturun:
+
+```bash
+npm run build
+npm run start
+```
+
+`npm run start` komutu, daha önce oluşturulan üretim paketini 3000 portunda servis eder. Başka bir portta çalıştırmak için `PORT` ortam değişkenini kullanabilirsiniz.
+
+## Dağıtım İpuçları
+
+- **Vercel / Netlify:** Uygulamayı Vercel veya Netlify gibi sunucusuz ortamlara dağıtıyorsanız, proje ayarlarında `NEXT_PUBLIC_API_URL` değerini backend'in halka açık URL'sine yönlendirin. Vercel üzerinde build sırasında kullanılan değer, çalışırken de aynen kullanılır.
+- **Kendi Sunucunuz:** Node.js sürecini `pm2`, `systemd` veya Docker ile yönetebilirsiniz. Reverse proxy üzerinden `/api` isteklerini backend'e, diğer tüm istekleri Next.js uygulamasına yönlendirecek şekilde yapılandırmanız yeterlidir.
+- **Ön Bellekleme / CDN:** Backend çağrıları doğrudan tarayıcıdan yapıldığı için CDN üzerinden sadece statik front-end varlıklarını önbelleğe almanız gerekir. API çağrılarının backend tarafından CORS izinlerini doğru şekilde tanımladığından emin olun.
+
+## Ek Kaynaklar
+
+- [Next.js Dokümantasyonu](https://nextjs.org/docs)
+- [Next.js ile Deploy Rehberi](https://nextjs.org/docs/app/building-your-application/deploying)
+- Backend API gereksinimleri: [`docs/backend-sync-request.md`](./docs/backend-sync-request.md)
