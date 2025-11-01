@@ -67,6 +67,7 @@ export interface LeadResponse {
     name: string;
     email?: string;
     phone?: string;
+    pageId?: string | null;
     language?: string;
     campaign?: { id: string; name: string } | null;
     status: LeadStatus;
