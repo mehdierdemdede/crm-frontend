@@ -703,17 +703,17 @@ export default function LeadsPage() {
 
                                                 <td className="p-3 text-center">
                                                     <div className="flex justify-center gap-2">
-                                                        <Button size="icon" variant="outline" onClick={() => handleCall(lead.phone)}>
+                                                        <Button size="sm" variant="outline" onClick={() => handleCall(lead.phone)}>
                                                             <Phone className="h-4 w-4 text-blue-600" />
                                                         </Button>
-                                                        <Button size="icon" variant="outline" onClick={() => handleWhatsApp(lead.phone)}>
+                                                        <Button size="sm" variant="outline" onClick={() => handleWhatsApp(lead.phone)}>
                                                             <MessageCircle className="h-4 w-4 text-green-600" />
                                                         </Button>
-                                                        <Button size="icon" variant="outline" onClick={() => handleMessenger(lead.email)}>
+                                                        <Button size="sm" variant="outline" onClick={() => handleMessenger(lead.email)}>
                                                             <Facebook className="h-4 w-4 text-indigo-600" />
                                                         </Button>
                                                         <Button
-                                                            size="icon"
+                                                            size="sm"
                                                             variant="outline"
                                                             className="text-red-600 hover:bg-red-50"
                                                             onClick={() => handleDeleteRequest(lead)}
@@ -817,7 +817,7 @@ export default function LeadsPage() {
                                                 <div className="flex justify-end gap-2 mt-2">
                                                     {/* 📞 Telefon Araması */}
                                                     <Button
-                                                        size="icon"
+                                                        size="sm"
                                                         variant="outline"
                                                         onClick={() => handleCall(lead.phone)}
                                                         title="Telefon ile ara"
@@ -827,7 +827,7 @@ export default function LeadsPage() {
 
                                                     {/* 💬 WhatsApp */}
                                                     <Button
-                                                        size="icon"
+                                                        size="sm"
                                                         variant="outline"
                                                         onClick={() => handleWhatsApp(lead.phone)}
                                                         title="WhatsApp ile mesaj gönder"
@@ -837,7 +837,7 @@ export default function LeadsPage() {
 
                                                     {/* 💙 Messenger */}
                                                     <Button
-                                                        size="icon"
+                                                        size="sm"
                                                         variant="outline"
                                                         onClick={() => handleMessenger(lead.email)}
                                                         title="Messenger üzerinden mesaj gönder"
@@ -847,7 +847,7 @@ export default function LeadsPage() {
 
                                                     {/* 🗑️ Silme */}
                                                     <Button
-                                                        size="icon"
+                                                        size="sm"
                                                         variant="outline"
                                                         onClick={() => handleDeleteRequest(lead)}
                                                         title="Lead'i sil"
