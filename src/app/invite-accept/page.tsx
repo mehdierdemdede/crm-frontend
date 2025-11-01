@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { Suspense, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import {acceptInvite} from "@/lib/api";
+import { acceptInvite } from "@/lib/api";
 
-export default function InviteAcceptPage() {
+function InviteAcceptContent() {
     const searchParams = useSearchParams();
     const router = useRouter();
     const token = searchParams.get("token") ?? "";
@@ -85,5 +85,19 @@ export default function InviteAcceptPage() {
                 </form>
             </div>
         </div>
+    );
+}
+
+export default function InviteAcceptPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+                    <div className="text-sm text-gray-600">Yükleniyor...</div>
+                </div>
+            }
+        >
+            <InviteAcceptContent />
+        </Suspense>
     );
 }

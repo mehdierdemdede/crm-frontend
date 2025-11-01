@@ -41,6 +41,34 @@ const STATUS_COLORS: Record<LeadStatus, string> = {
     WRONG_INFO: "bg-orange-100 text-orange-800",
 };
 
+const SALE_CACHE_PREFIX = "lead-sale:";
+
+const saveCachedSale = (leadId: string, sale: SaleResponse) => {
+    if (typeof window === "undefined") return;
+
+    try {
+        window.localStorage.setItem(
+            `${SALE_CACHE_PREFIX}${leadId}`,
+            JSON.stringify({
+                ...sale,
+                cachedAt: Date.now(),
+            })
+        );
+    } catch (error) {
+        console.warn("Satış bilgisi önbelleğe alınamadı", error);
+    }
+};
+
+const clearCachedSale = (leadId: string) => {
+    if (typeof window === "undefined") return;
+
+    try {
+        window.localStorage.removeItem(`${SALE_CACHE_PREFIX}${leadId}`);
+    } catch (error) {
+        console.warn("Satış önbelleği temizlenemedi", error);
+    }
+};
+
 interface LeadAction {
     id: string;
     actionType: string;
@@ -164,7 +192,7 @@ export default function LeadDetailPage() {
         handleAddAction("WHATSAPP", "WhatsApp mesajı gönderildi");
     };
 
-    const handleMessenger = (pageId?: string) => {
+    const handleMessenger = (pageId?: string | null) => {
         if (!pageId) return alert("Messenger bağlantısı bulunamadı.");
         window.open(`https://m.me/${pageId}`, "_blank");
         handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi");

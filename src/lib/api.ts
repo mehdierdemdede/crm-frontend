@@ -135,7 +135,7 @@ const getStoredItem = (key: string): string | null => {
     );
 };
 
-export const getAuthHeaders = (): HeadersInit => {
+export const getAuthHeaders = (): Record<string, string> => {
     const token = getStoredItem("authToken");
     const tokenType = getStoredItem("tokenType") || "Bearer";
 
@@ -331,11 +331,16 @@ export const api = {
                 return { data: responseData as T, status: response.status };
             } else {
                 const errorMessage =
-                    typeof responseData === "object" && responseData.message
-                        ? responseData.message
+                    typeof responseData === "object" && responseData !== null && "message" in responseData
+                        ? (responseData as { message?: string }).message
                         : responseData;
+                const normalizedMessage =
+                    typeof errorMessage === "string" && errorMessage.trim().length > 0
+                        ? errorMessage
+                        : "Bir hata oluştu.";
+
                 return {
-                    message: errorMessage || "Bir hata oluştu.",
+                    message: normalizedMessage,
                     status: response.status,
                 };
             }
@@ -976,11 +981,15 @@ export const inviteUser = async (
             return { data: responseData as UserResponse, status: res.status };
         } else {
             const errorMessage =
-                typeof responseData === "object" && responseData.message
-                    ? responseData.message
+                typeof responseData === "object" && responseData !== null && "message" in responseData
+                    ? (responseData as { message?: string }).message
                     : responseData;
+            const normalizedMessage =
+                typeof errorMessage === "string" && errorMessage.trim().length > 0
+                    ? errorMessage
+                    : "Bir hata oluştu.";
             return {
-                message: errorMessage || "Bir hata oluştu.",
+                message: normalizedMessage,
                 status: res.status,
             };
         }
@@ -1156,7 +1165,7 @@ export const deleteFacebookLeadRule = async (ruleId: string): Promise<void> => {
     }
 };
 
-export const getAutoAssignStats = async () => {
+export const getAutoAssignStats = async (): Promise<AgentStatsResponse[]> => {
     const headers = getAuthHeaders();
     try {
         const res = await fetch(`${BASE_URL}/auto-assign/stats`, { headers });
