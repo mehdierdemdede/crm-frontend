@@ -41,7 +41,7 @@ export function LanguageFlagIcon({
                 sizes={`${width}px`}
                 loading="lazy"
                 className={`inline-block rounded-sm border border-gray-200 bg-white object-cover ${className}`.trim()}
-                title={title ?? option.label}
+                title={title ?? option?.label}
                 onError={() => {
                     setImageFailed(true);
                 }}

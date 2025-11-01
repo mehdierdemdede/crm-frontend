@@ -53,7 +53,7 @@ export default function LanguageSettingsPage() {
     const [showSuggestions, setShowSuggestions] = useState(false);
     const searchAbortController = useRef<AbortController | null>(null);
     const activeSearchId = useRef(0);
-    const hideSuggestionsTimeout = useRef<number>();
+    const hideSuggestionsTimeout = useRef<number | undefined>(undefined);
     const skipNextSearch = useRef(false);
 
     const resetForm = () => {
