@@ -200,15 +200,18 @@ export default function LeadDetailPage() {
 
                         <div className="flex gap-2">
                             <Button
-                                size="icon"
+                                size="sm"
+                                className="h-10 w-10 p-0"
                                 variant="outline"
                                 title="Telefon"
                                 onClick={() => handleCall(lead.phone)}
                             >
-                                <Phone className="h-4 w-4 text-blue-600" />
+
+                            <Phone className="h-4 w-4 text-blue-600" />
                             </Button>
                             <Button
-                                size="icon"
+                                                                size="sm"
+                                className="h-10 w-10 p-0"
                                 variant="outline"
                                 title="WhatsApp"
                                 onClick={() => handleWhatsApp(lead.phone)}
@@ -216,7 +219,8 @@ export default function LeadDetailPage() {
                                 <MessageCircle className="h-4 w-4 text-green-600" />
                             </Button>
                             <Button
-                                size="icon"
+                                                                size="sm"
+                                className="h-10 w-10 p-0"
                                 variant="outline"
                                 title="Messenger"
                                 onClick={() => handleMessenger(lead.pageId)}
