@@ -98,6 +98,7 @@ export default function Sidebar() {
                         {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
                         {NavItem("/reports", "Reports", BarChart2)}
                         {NavItem("/auto-assign", "Auto Assign", Activity)}
+                        {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
                     </ul>
                 </div>
                 <div className="pt-4 border-t">{LogoutBtn}</div>
@@ -132,6 +133,7 @@ export default function Sidebar() {
                                 {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
                                 {NavItem("/reports", "Reports", BarChart2)}
                                 {NavItem("/auto-assign", "Auto Assign", Activity)}
+                                {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
                             </ul>
                         </div>
                         <div className="pt-4 border-t">{LogoutBtn}</div>

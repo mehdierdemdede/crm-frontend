@@ -1,4 +1,7 @@
-const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080";
+const DEFAULT_API_URL =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+
 
 const isAbsoluteUrl = (value: string) => /^https?:\/\//i.test(value);
 
