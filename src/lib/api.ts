@@ -68,6 +68,15 @@ export interface LeadResponse {
 }
 
 
+export interface SimpleUser {
+    id: string;
+    firstName: string;
+    lastName?: string | null;
+    email: string;
+    active: boolean;
+    [key: string]: unknown;
+}
+
 export interface LeadAction {
     id: string;
     actionType: "PHONE" | "WHATSAPP" | "MESSENGER" | "NOTE" | "EMAIL" | "OTHER";
@@ -75,10 +84,75 @@ export interface LeadAction {
     createdAt: string;
 }
 
+export interface LeadActivityLogEntry {
+    id: string;
+    type?: string | null;
+    message?: string | null;
+    createdAt?: string;
+    createdBy?: SimpleUser | null;
+    [key: string]: unknown;
+}
+
+export interface LeadActivityLogRequest {
+    type?: string;
+    message: string;
+    metadata?: Record<string, unknown>;
+    [key: string]: unknown;
+}
+
+export interface LeadStatusLog {
+    id: string;
+    previousStatus?: LeadStatus | null;
+    newStatus?: LeadStatus | null;
+    changedAt?: string;
+    changedBy?: SimpleUser | null;
+    [key: string]: unknown;
+}
+
+export interface LeadCreateRequest {
+    name: string;
+    email?: string | null;
+    phone?: string | null;
+    language?: string | null;
+    campaignId?: string | null;
+    assignedUserId?: string | null;
+    [key: string]: unknown;
+}
+
+export type LeadUpdateRequest = Partial<LeadCreateRequest> & {
+    status?: LeadStatus;
+};
+
 export interface LeadReportResponse {
     timeline: { date: string; leads: number }[];
     statusBreakdown: { status: string; count: number }[];
     userPerformance: { userName: string; sales: number; total: number }[];
+}
+
+export interface IntegrationLogEntry {
+    id: string;
+    platform?: IntegrationPlatform;
+    message?: string | null;
+    level?: string | null;
+    timestamp?: string;
+    [key: string]: unknown;
+}
+
+export interface IntegrationLogPage {
+    content: IntegrationLogEntry[];
+    totalElements?: number;
+    totalPages?: number;
+    number?: number;
+    size?: number;
+    [key: string]: unknown;
+}
+
+export interface IntegrationLogQuery {
+    platform?: IntegrationPlatform;
+    integrationId?: string;
+    page?: number;
+    size?: number;
+    search?: string;
 }
 
 export interface AgentStatsResponse {
@@ -115,6 +189,44 @@ export interface LanguageCatalogEntry {
     name: string;
     flagEmoji: string | null;
 }
+
+export interface UserCreateRequest {
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: Role;
+    supportedLanguages: string[];
+    dailyCapacity: number;
+    active: boolean;
+    autoAssignEnabled: boolean;
+    password?: string;
+    [key: string]: unknown;
+}
+
+export type UserUpdateRequest = Partial<UserCreateRequest> & {
+    email?: string;
+};
+
+export interface HashPasswordResponse {
+    hashedPassword: string;
+    [key: string]: unknown;
+}
+
+export interface Hotel {
+    id: string;
+    name?: string;
+    [key: string]: unknown;
+}
+
+export type HotelPayload = Record<string, unknown>;
+
+export interface TransferRoute {
+    id: string;
+    name?: string;
+    [key: string]: unknown;
+}
+
+export type TransferRoutePayload = Record<string, unknown>;
 
 // ──────────────────────────────── HELPERS ────────────────────────────────
 const getStoredItem = (key: string): string | null => {
@@ -524,6 +636,116 @@ export const triggerFacebookLeadFetch = async (): Promise<
     }
 };
 
+export const getIntegration = async (
+    platform: IntegrationPlatform,
+    organizationId?: string,
+): Promise<IntegrationStatus | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const params = new URLSearchParams();
+        if (organizationId) {
+            params.append("organizationId", organizationId);
+        }
+        const query = params.toString();
+        const res = await fetch(
+            `${BASE_URL}/integrations/${platform}${query ? `?${query}` : ""}`,
+            { headers },
+        );
+        if (res.status === 404) {
+            return null;
+        }
+        if (!res.ok) {
+            const body = await extractResponseBody(res);
+            throw new Error(
+                resolveErrorMessage(
+                    body,
+                    "Entegrasyon bilgisi alınırken bir hata oluştu.",
+                ),
+            );
+        }
+        return (await res.json()) as IntegrationStatus;
+    } catch (error) {
+        console.error("getIntegration error:", error);
+        return null;
+    }
+};
+
+export const deleteIntegration = async (
+    platform: IntegrationPlatform,
+    organizationId?: string,
+): Promise<boolean> => {
+    const headers = getAuthHeaders();
+    try {
+        const params = new URLSearchParams();
+        if (organizationId) {
+            params.append("organizationId", organizationId);
+        }
+        const query = params.toString();
+        const res = await fetch(
+            `${BASE_URL}/integrations/${platform}${query ? `?${query}` : ""}`,
+            {
+                method: "DELETE",
+                headers,
+            },
+        );
+        return res.ok;
+    } catch (error) {
+        console.error("deleteIntegration error:", error);
+        return false;
+    }
+};
+
+export const getIntegrationLogs = async (
+    params: IntegrationLogQuery = {},
+): Promise<IntegrationLogPage | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const searchParams = new URLSearchParams();
+        if (params.platform) searchParams.append("platform", params.platform);
+        if (params.integrationId)
+            searchParams.append("integrationId", params.integrationId);
+        if (typeof params.page === "number")
+            searchParams.append("page", String(params.page));
+        if (typeof params.size === "number")
+            searchParams.append("size", String(params.size));
+        if (params.search) searchParams.append("search", params.search);
+
+        const query = searchParams.toString();
+        const res = await fetch(
+            `${BASE_URL}/integrations/logs${query ? `?${query}` : ""}`,
+            { headers },
+        );
+        if (!res.ok) {
+            const body = await extractResponseBody(res);
+            throw new Error(
+                resolveErrorMessage(
+                    body,
+                    "Entegrasyon logları alınırken bir hata oluştu.",
+                ),
+            );
+        }
+        const body = await extractResponseBody(res);
+        const unwrapped = unwrapApiData<unknown>(body);
+        if (!unwrapped || typeof unwrapped !== "object") {
+            return {
+                content: [],
+                totalElements: 0,
+                totalPages: 0,
+                number: 0,
+                size: params.size ?? 0,
+            };
+        }
+        const payload = unwrapped as IntegrationLogPage;
+        const content = Array.isArray(payload.content)
+            ? (payload.content as IntegrationLogEntry[])
+            : [];
+        return { ...payload, content };
+    } catch (error) {
+        console.error("getIntegrationLogs error:", error);
+        return null;
+    }
+};
+
 // ──────────────────────────────── LANGUAGES API ────────────────────────────────
 
 export const getLanguages = async (): Promise<LanguageResponse[]> => {
@@ -794,6 +1016,49 @@ export const deleteLead = async (leadId: string): Promise<boolean> => {
     }
 };
 
+export const createLead = async (
+    payload: LeadCreateRequest,
+): Promise<LeadResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/leads`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Lead oluşturulamadı");
+        }
+        return (await res.json()) as LeadResponse;
+    } catch (err) {
+        console.error("createLead error:", err);
+        return null;
+    }
+};
+
+export const updateLead = async (
+    leadId: string,
+    payload: LeadUpdateRequest,
+): Promise<LeadResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/leads/${leadId}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Lead güncellenemedi");
+        }
+        return (await res.json()) as LeadResponse;
+    } catch (err) {
+        console.error("updateLead error:", err);
+        return null;
+    }
+};
+
 /**
  * 🔹 Lead atama işlemi (tek lead)
  */
@@ -819,15 +1084,6 @@ export const patchLeadAssign = async (leadId: string, userId: string | null): Pr
 };
 
 
-// 🔹 Organizasyondaki kullanıcı listesini getirir
-export interface SimpleUser {
-    id: string;
-    firstName: string;
-    lastName?: string | null;
-    email: string;
-    active: boolean;
-}
-
 export const getUsers = async (): Promise<SimpleUser[]> => {
     const headers = getAuthHeaders();
     try {
@@ -837,6 +1093,104 @@ export const getUsers = async (): Promise<SimpleUser[]> => {
     } catch (err) {
         console.error("getUsers error:", err);
         return [];
+    }
+};
+
+export const getUserById = async (userId: string): Promise<UserResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/users/${userId}`, { headers });
+        if (res.status === 404) {
+            return null;
+        }
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Kullanıcı bilgisi alınamadı.");
+        }
+        return (await res.json()) as UserResponse;
+    } catch (err) {
+        console.error("getUserById error:", err);
+        return null;
+    }
+};
+
+export const createUser = async (
+    payload: UserCreateRequest,
+): Promise<UserResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/users`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Kullanıcı oluşturulamadı.");
+        }
+        return (await res.json()) as UserResponse;
+    } catch (err) {
+        console.error("createUser error:", err);
+        return null;
+    }
+};
+
+export const updateUser = async (
+    userId: string,
+    payload: UserUpdateRequest,
+): Promise<UserResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/users/${userId}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Kullanıcı güncellenemedi.");
+        }
+        return (await res.json()) as UserResponse;
+    } catch (err) {
+        console.error("updateUser error:", err);
+        return null;
+    }
+};
+
+export const deleteUser = async (userId: string): Promise<boolean> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/users/${userId}`, {
+            method: "DELETE",
+            headers,
+        });
+        return res.ok;
+    } catch (err) {
+        console.error("deleteUser error:", err);
+        return false;
+    }
+};
+
+export const getMyHashedPassword = async (): Promise<string | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/users/getMyHashedPass`, { headers });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Hash değerine ulaşılamadı.");
+        }
+        const body = await extractResponseBody(res);
+        if (typeof body === "string") {
+            return body;
+        }
+        if (body && typeof body === "object" && "hashedPassword" in body) {
+            const value = (body as { hashedPassword?: unknown }).hashedPassword;
+            return typeof value === "string" ? value : null;
+        }
+        return null;
+    } catch (err) {
+        console.error("getMyHashedPassword error:", err);
+        return null;
     }
 };
 
@@ -886,6 +1240,46 @@ export const getLeadActivityLogs = async (leadId: string) => {
         return await res.json();
     } catch (err) {
         console.error("getLeadActivityLogs error:", err);
+        return [];
+    }
+};
+
+export const addLeadActivityLog = async (
+    leadId: string,
+    payload: LeadActivityLogRequest,
+): Promise<LeadActivityLogEntry | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/leads/${leadId}/activity-logs`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Aktivite kaydı oluşturulamadı.");
+        }
+        return (await res.json()) as LeadActivityLogEntry;
+    } catch (err) {
+        console.error("addLeadActivityLog error:", err);
+        return null;
+    }
+};
+
+export const getLeadStatusLogs = async (leadId: string): Promise<LeadStatusLog[]> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/leads/${leadId}/status-logs`, { headers });
+        if (res.status === 204) {
+            return [];
+        }
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Durum geçmişi alınamadı.");
+        }
+        return (await res.json()) as LeadStatusLog[];
+    } catch (err) {
+        console.error("getLeadStatusLogs error:", err);
         return [];
     }
 };
@@ -1261,6 +1655,191 @@ export const createSale = async (
         console.error("createSale error:", err);
         return { success: false, sale: null, saleId: null };
     }
+};
+
+
+// ──────────────────────────────── HOTELS API ────────────────────────────────
+
+export const getHotels = async (): Promise<Hotel[]> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/hotels`, { headers });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Otel listesi alınamadı.");
+        }
+        const body = await extractResponseBody(res);
+        const unwrapped = unwrapApiData<unknown>(body);
+        return Array.isArray(unwrapped)
+            ? (unwrapped as Hotel[])
+            : [];
+    } catch (error) {
+        console.error("getHotels error:", error);
+        return [];
+    }
+};
+
+export const createHotel = async (payload: HotelPayload): Promise<Hotel | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/hotels`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Otel oluşturulamadı.");
+        }
+        return (await res.json()) as Hotel;
+    } catch (error) {
+        console.error("createHotel error:", error);
+        return null;
+    }
+};
+
+export const updateHotel = async (
+    hotelId: string,
+    payload: HotelPayload,
+): Promise<Hotel | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/hotels/${hotelId}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Otel güncellenemedi.");
+        }
+        return (await res.json()) as Hotel;
+    } catch (error) {
+        console.error("updateHotel error:", error);
+        return null;
+    }
+};
+
+export const deleteHotel = async (hotelId: string): Promise<boolean> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/hotels/${hotelId}`, {
+            method: "DELETE",
+            headers,
+        });
+        return res.ok;
+    } catch (error) {
+        console.error("deleteHotel error:", error);
+        return false;
+    }
+};
+
+
+// ──────────────────────────────── TRANSFER ROUTES API ────────────────────────────────
+
+export const getTransferRoutes = async (): Promise<TransferRoute[]> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/transfers`, { headers });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Transfer listesi alınamadı.");
+        }
+        const body = await extractResponseBody(res);
+        const unwrapped = unwrapApiData<unknown>(body);
+        return Array.isArray(unwrapped)
+            ? (unwrapped as TransferRoute[])
+            : [];
+    } catch (error) {
+        console.error("getTransferRoutes error:", error);
+        return [];
+    }
+};
+
+export const createTransferRoute = async (
+    payload: TransferRoutePayload,
+): Promise<TransferRoute | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/transfers`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Transfer rotası oluşturulamadı.");
+        }
+        return (await res.json()) as TransferRoute;
+    } catch (error) {
+        console.error("createTransferRoute error:", error);
+        return null;
+    }
+};
+
+export const updateTransferRoute = async (
+    transferId: string,
+    payload: TransferRoutePayload,
+): Promise<TransferRoute | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/transfers/${transferId}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(payload),
+        });
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Transfer rotası güncellenemedi.");
+        }
+        return (await res.json()) as TransferRoute;
+    } catch (error) {
+        console.error("updateTransferRoute error:", error);
+        return null;
+    }
+};
+
+export const deleteTransferRoute = async (transferId: string): Promise<boolean> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/transfers/${transferId}`, {
+            method: "DELETE",
+            headers,
+        });
+        return res.ok;
+    } catch (error) {
+        console.error("deleteTransferRoute error:", error);
+        return false;
+    }
+};
+
+
+// ──────────────────────────────── AUTH UTILITIES ────────────────────────────────
+
+export const hashPassword = async (password: string): Promise<string | null> => {
+    const response = await api.post<HashPasswordResponse | string>(
+        "/auth/hash-password",
+        { password },
+    );
+
+    if (response.status >= 200 && response.status < 300 && response.data !== undefined) {
+        const data = response.data;
+        if (typeof data === "string") {
+            return data;
+        }
+        if (data && typeof data === "object" && "hashedPassword" in data) {
+            const value = (data as HashPasswordResponse).hashedPassword;
+            return typeof value === "string" ? value : null;
+        }
+    }
+
+    console.warn(
+        "hashPassword unexpected response:",
+        response.status,
+        response.message,
+        response.data,
+    );
+    return null;
 };
 
 
