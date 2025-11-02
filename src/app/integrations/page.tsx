@@ -77,12 +77,31 @@ const MESSAGE_TONE_CLASS: Record<
     warning: "border-amber-200 bg-amber-50 text-amber-800",
 };
 
-const getStatusConfig = (status?: IntegrationConnectionStatus | null) => {
+const getStatusConfig = (status?: IntegrationStatus | null) => {
     if (!status) {
         return DEFAULT_STATUS_CONFIG;
     }
 
-    return STATUS_CONFIG[status] ?? DEFAULT_STATUS_CONFIG;
+    const normalizedStatus =
+        typeof status.status === "string"
+            ? (status.status.toUpperCase() as IntegrationConnectionStatus)
+            : null;
+
+    if (normalizedStatus) {
+        if (normalizedStatus === "DISCONNECTED" && status.connected) {
+            return STATUS_CONFIG.CONNECTED;
+        }
+
+        if (normalizedStatus in STATUS_CONFIG) {
+            return STATUS_CONFIG[normalizedStatus];
+        }
+    }
+
+    if (status.connected) {
+        return STATUS_CONFIG.CONNECTED;
+    }
+
+    return DEFAULT_STATUS_CONFIG;
 };
 
 const getIdentifierLabel = (platform?: string | null) => {
@@ -232,8 +251,8 @@ export default function IntegrationsPage() {
         facebookStatus?.status === "CONNECTED" ||
         (!facebookStatus?.status && Boolean(facebookStatus?.connected));
 
-    const facebookStatusConfig = getStatusConfig(facebookStatus?.status);
-    const googleStatusConfig = getStatusConfig(googleStatus?.status);
+    const facebookStatusConfig = getStatusConfig(facebookStatus);
+    const googleStatusConfig = getStatusConfig(googleStatus);
 
     const facebookDetails = useMemo(
         () => buildIntegrationDetails(facebookStatus),
