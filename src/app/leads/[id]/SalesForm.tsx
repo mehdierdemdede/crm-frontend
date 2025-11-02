@@ -1,11 +1,18 @@
 "use client";
 
 import type { FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
-import { createSale, type SaleResponse } from "@/lib/api";
+import {
+    createSale,
+    getHotels,
+    getTransferRoutes,
+    type Hotel,
+    type SaleResponse,
+    type TransferRoute,
+} from "@/lib/api";
 import {
     resolveDocumentUrl,
     downloadDocumentWithAuth,
@@ -27,19 +34,6 @@ export interface SalesPayload {
 }
 
 const STEPS = ["Operasyon", "Fiyat", "Konaklama & Transfer", "Belgeler & Onay"];
-const TRANSFER_OPTIONS = [
-    "Full",
-    "Havalimanı - Otel",
-    "Havalimanı - Klinik",
-    "Operasyon Günü Geliş",
-    "Operasyon Günü Dönüş",
-    "Pansuman Günü Geliş",
-    "Pansuman Günü Dönüş",
-    "Yıkama Günü Geliş",
-    "Yıkama Günü Dönüş",
-    "Otel - Havalimanı",
-];
-
 export default function SalesForm({
     leadId,
     onSubmit,
@@ -69,6 +63,22 @@ export default function SalesForm({
     });
     const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
     const [documentFileName, setDocumentFileName] = useState<string>("satis-belgesi.pdf");
+    const [hotels, setHotels] = useState<Hotel[]>([]);
+    const [transferOptions, setTransferOptions] = useState<TransferRoute[]>([]);
+
+    useEffect(() => {
+        const fetchOptions = async () => {
+            const [fetchedHotels, fetchedTransfers] = await Promise.all([
+                getHotels(),
+                getTransferRoutes(),
+            ]);
+
+            setHotels(fetchedHotels);
+            setTransferOptions(fetchedTransfers);
+        };
+
+        void fetchOptions();
+    }, []);
 
     const validateStep = () => {
         const errs: string[] = [];
@@ -130,7 +140,21 @@ export default function SalesForm({
         }
     };
 
-    const fullSelected = form.transfer.includes("Full");
+    const normalizeValue = (value: string | null | undefined) =>
+        value ? value.trim().toLocaleLowerCase("tr-TR") : "";
+    const getTransferOptionValue = (transfer: TransferRoute) =>
+        transfer.id ?? transfer.name ?? "";
+    const fullTransferValue = transferOptions.reduce<string | null>((acc, transfer) => {
+        if (acc) return acc;
+        const isFullOption =
+            normalizeValue(transfer.name) === "full" || normalizeValue(transfer.id) === "full";
+        if (!isFullOption) return acc;
+        const optionValue = getTransferOptionValue(transfer);
+        return optionValue || acc;
+    }, null);
+    const fullSelected = fullTransferValue
+        ? form.transfer.includes(fullTransferValue)
+        : form.transfer.some((value) => normalizeValue(value) === "full");
 
     return (
         <Card className="shadow-sm">
@@ -328,8 +352,11 @@ export default function SalesForm({
                                 onChange={(e) => setForm({ ...form, hotel: e.target.value })}
                             >
                                 <option value="">Seçiniz</option>
-                                <option value="Hotel A">Hotel A</option>
-                                <option value="Hotel B">Hotel B</option>
+                                {hotels.map((hotel) => (
+                                    <option key={hotel.id} value={hotel.id}>
+                                        {hotel.name ?? hotel.id}
+                                    </option>
+                                ))}
                             </select>
                         </div>
 
@@ -352,32 +379,44 @@ export default function SalesForm({
                         <div>
                             <label className="block text-sm font-medium mb-1">Transfer</label>
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                {TRANSFER_OPTIONS.map((t) => (
-                                    <label key={t} className="flex items-center text-sm gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={form.transfer.includes(t)}
-                                            disabled={fullSelected && t !== "Full"}
-                                            onChange={(e) => {
-                                                const checked = e.target.checked;
-                                                if (t === "Full") {
-                                                    setForm({ ...form, transfer: checked ? ["Full"] : [] });
-                                                    return;
-                                                }
-                                                const base = form.transfer.includes("Full")
-                                                    ? []
-                                                    : form.transfer;
-                                                setForm({
-                                                    ...form,
-                                                    transfer: checked
-                                                        ? [...base, t]
-                                                        : base.filter((x) => x !== t),
-                                                });
-                                            }}
-                                        />
-                                        {t}
-                                    </label>
-                                ))}
+                                {transferOptions.map((transfer) => {
+                                    const optionValue = getTransferOptionValue(transfer);
+                                    if (!optionValue) return null;
+                                    const optionLabel = transfer.name ?? transfer.id ?? optionValue;
+                                    const isFullOption =
+                                        normalizeValue(transfer.name) === "full" ||
+                                        normalizeValue(transfer.id) === "full";
+                                    return (
+                                        <label
+                                            key={optionValue}
+                                            className="flex items-center text-sm gap-2"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={form.transfer.includes(optionValue)}
+                                                disabled={fullSelected && !isFullOption}
+                                                onChange={(e) => {
+                                                    const checked = e.target.checked;
+                                                    if (isFullOption) {
+                                                        setForm({
+                                                            ...form,
+                                                            transfer: checked ? [optionValue] : [],
+                                                        });
+                                                        return;
+                                                    }
+                                                    const base = fullSelected ? [] : form.transfer;
+                                                    setForm({
+                                                        ...form,
+                                                        transfer: checked
+                                                            ? [...base, optionValue]
+                                                            : base.filter((x) => x !== optionValue),
+                                                    });
+                                                }}
+                                            />
+                                            {optionLabel}
+                                        </label>
+                                    );
+                                })}
                             </div>
                         </div>
 
