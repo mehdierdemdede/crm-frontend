@@ -1,19 +1,9 @@
 // src/lib/api.ts
 import {SalesPayload} from "@/app/leads/[id]/SalesForm";
 
-const DEFAULT_API_URL =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "");
+import { resolveBackendApiBaseUrl } from "./backendConfig";
 
-
-const normaliseBaseUrl = (url: string): string => {
-    const trimmed = url.replace(/\/+$/, "");
-    return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
-};
-
-export const BASE_URL = normaliseBaseUrl(
-    process.env.NEXT_PUBLIC_API_URL ?? DEFAULT_API_URL
-);
+export const BASE_URL = resolveBackendApiBaseUrl();
 
 // ──────────────────────────────── TYPES ────────────────────────────────
 export type Role = "SUPER_ADMIN" | "ADMIN" | "USER";
