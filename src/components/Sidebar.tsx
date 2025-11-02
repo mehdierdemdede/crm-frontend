@@ -10,6 +10,8 @@ import {
     Plug,
     Activity,
     Globe,
+    Building2,
+    Route,
     Menu,
     X,
     LogOut,
@@ -96,6 +98,8 @@ export default function Sidebar() {
                         {NavItem("/members", "Members", Users)}
                         {NavItem("/integrations", "Integrations", Plug)}
                         {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
+                        {NavItem("/catalog/hotels", "Oteller", Building2)}
+                        {NavItem("/catalog/transfer-routes", "Transfer Rotaları", Route)}
                         {NavItem("/reports", "Reports", BarChart2)}
                         {NavItem("/auto-assign", "Auto Assign", Activity)}
                         {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
@@ -131,6 +135,8 @@ export default function Sidebar() {
                                 {NavItem("/members", "Members", Users)}
                                 {NavItem("/integrations", "Integrations", Plug)}
                                 {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
+                                {NavItem("/catalog/hotels", "Oteller", Building2)}
+                                {NavItem("/catalog/transfer-routes", "Transfer Rotaları", Route)}
                                 {NavItem("/reports", "Reports", BarChart2)}
                                 {NavItem("/auto-assign", "Auto Assign", Activity)}
                                 {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
