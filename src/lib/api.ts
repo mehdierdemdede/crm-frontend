@@ -1708,11 +1708,13 @@ export const getHotels = async (): Promise<Hotel[]> => {
 export const createHotel = async (payload: HotelPayload): Promise<Hotel | null> => {
     const headers = getAuthHeaders();
     const { currency, ...apiPayload } = payload;
+    const bodyPayload =
+        currency === undefined ? apiPayload : { ...apiPayload, currency };
     try {
         const res = await fetch(`${BASE_URL}/hotels`, {
             method: "POST",
             headers,
-            body: JSON.stringify(apiPayload),
+            body: JSON.stringify(bodyPayload),
         });
         if (!res.ok) {
             const text = await res.text();
@@ -1732,11 +1734,13 @@ export const updateHotel = async (
 ): Promise<Hotel | null> => {
     const headers = getAuthHeaders();
     const { currency, ...apiPayload } = payload;
+    const bodyPayload =
+        currency === undefined ? apiPayload : { ...apiPayload, currency };
     try {
         const res = await fetch(`${BASE_URL}/hotels/${hotelId}`, {
             method: "PUT",
             headers,
-            body: JSON.stringify(apiPayload),
+            body: JSON.stringify(bodyPayload),
         });
         if (!res.ok) {
             const text = await res.text();
