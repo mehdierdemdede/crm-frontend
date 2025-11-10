@@ -1707,17 +1707,19 @@ export const getHotels = async (): Promise<Hotel[]> => {
 
 export const createHotel = async (payload: HotelPayload): Promise<Hotel | null> => {
     const headers = getAuthHeaders();
+    const { currency, ...apiPayload } = payload;
     try {
         const res = await fetch(`${BASE_URL}/hotels`, {
             method: "POST",
             headers,
-            body: JSON.stringify(payload),
+            body: JSON.stringify(apiPayload),
         });
         if (!res.ok) {
             const text = await res.text();
             throw new Error(text || "Otel oluşturulamadı.");
         }
-        return (await res.json()) as Hotel;
+        const data = (await res.json()) as Hotel;
+        return { ...data, currency: currency ?? data.currency ?? null };
     } catch (error) {
         console.error("createHotel error:", error);
         return null;
@@ -1729,17 +1731,19 @@ export const updateHotel = async (
     payload: HotelPayload,
 ): Promise<Hotel | null> => {
     const headers = getAuthHeaders();
+    const { currency, ...apiPayload } = payload;
     try {
         const res = await fetch(`${BASE_URL}/hotels/${hotelId}`, {
             method: "PUT",
             headers,
-            body: JSON.stringify(payload),
+            body: JSON.stringify(apiPayload),
         });
         if (!res.ok) {
             const text = await res.text();
             throw new Error(text || "Otel güncellenemedi.");
         }
-        return (await res.json()) as Hotel;
+        const data = (await res.json()) as Hotel;
+        return { ...data, currency: currency ?? data.currency ?? null };
     } catch (error) {
         console.error("updateHotel error:", error);
         return null;
