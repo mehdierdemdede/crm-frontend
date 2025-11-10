@@ -66,6 +66,67 @@ export default function SalesForm({
     const [hotels, setHotels] = useState<Hotel[]>([]);
     const [transferOptions, setTransferOptions] = useState<TransferRoute[]>([]);
 
+    const formatCurrency = (value: number | null | undefined, currency?: string | null) => {
+        if (typeof value !== "number" || Number.isNaN(value)) return null;
+        const resolvedCurrency = currency ?? "EUR";
+        try {
+            return new Intl.NumberFormat("tr-TR", {
+                style: "currency",
+                currency: resolvedCurrency,
+                maximumFractionDigits: 2,
+            }).format(value);
+        } catch (error) {
+            console.warn("Currency format error", error);
+            return `${value} ${resolvedCurrency}`;
+        }
+    };
+
+    const formatHotelOption = (hotel: Hotel): string => {
+        const parts: string[] = [];
+        if (hotel.name) parts.push(hotel.name);
+        if (typeof hotel.starRating === "number" && !Number.isNaN(hotel.starRating)) {
+            parts.push(`${hotel.starRating}★`);
+        }
+        if (typeof hotel.nightlyRate === "number" && !Number.isNaN(hotel.nightlyRate)) {
+            const rate = formatCurrency(hotel.nightlyRate, hotel.currency);
+            if (rate) parts.push(rate);
+        }
+        return parts.join(" • ") || hotel.id;
+    };
+
+    const getHotelStars = (hotel: Hotel): string => {
+        if (typeof hotel.starRating !== "number" || Number.isNaN(hotel.starRating)) return "-";
+        const rating = Math.max(1, Math.min(5, Math.round(hotel.starRating)));
+        return `${rating} (${"★".repeat(rating)})`;
+    };
+
+    const getTransferSegments = (route: TransferRoute): string[] => {
+        const segments: string[] = [];
+        if (route.start) segments.push(route.start);
+        const stops = Array.isArray(route.stops)
+            ? route.stops.filter((stop) => !!stop && stop.trim() !== "")
+            : [];
+        segments.push(...stops);
+        if (route.final) segments.push(route.final);
+        if (segments.length === 0 && route.name) {
+            return route.name
+                .split(/[→>-]/)
+                .map((segment) => segment.replace(/^-|-$|>/g, "").trim())
+                .filter(Boolean);
+        }
+        return segments;
+    };
+
+    const formatTransferLabel = (route: TransferRoute): string => {
+        const segments = getTransferSegments(route);
+        const path = segments.length > 0 ? segments.join(" → ") : route.name ?? "";
+        const price =
+            typeof route.price === "number" && !Number.isNaN(route.price)
+                ? formatCurrency(route.price, route.currency)
+                : null;
+        return price ? `${path} (${price})` : path;
+    };
+
     useEffect(() => {
         const fetchOptions = async () => {
             const [fetchedHotels, fetchedTransfers] = await Promise.all([
@@ -142,8 +203,7 @@ export default function SalesForm({
 
     const normalizeValue = (value: string | null | undefined) =>
         value ? value.trim().toLocaleLowerCase("tr-TR") : "";
-    const getTransferOptionValue = (transfer: TransferRoute) =>
-        transfer.id ?? transfer.name ?? "";
+    const getTransferOptionValue = (transfer: TransferRoute) => transfer.id ?? transfer.name ?? "";
     const fullTransferValue = transferOptions.reduce<string | null>((acc, transfer) => {
         if (acc) return acc;
         const isFullOption =
@@ -354,10 +414,34 @@ export default function SalesForm({
                                 <option value="">Seçiniz</option>
                                 {hotels.map((hotel) => (
                                     <option key={hotel.id} value={hotel.id}>
-                                        {hotel.name ?? hotel.id}
+                                        {formatHotelOption(hotel)}
                                     </option>
                                 ))}
                             </select>
+                            {form.hotel && (
+                                (() => {
+                                    const selectedHotel = hotels.find((hotel) => hotel.id === form.hotel);
+                                    if (!selectedHotel) return null;
+                                    const nightlyRate = formatCurrency(
+                                        selectedHotel.nightlyRate,
+                                        selectedHotel.currency,
+                                    );
+                                    return (
+                                        <div className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
+                                            <div className="font-medium">
+                                                {selectedHotel.name ?? selectedHotel.id}
+                                            </div>
+                                            <div>Yıldız: {getHotelStars(selectedHotel)}</div>
+                                            <div>
+                                                Gecelik Ücreti: {nightlyRate ?? "-"}
+                                            </div>
+                                            <div className="text-blue-900/80">
+                                                {selectedHotel.address ?? "Adres bilgisi bulunmuyor."}
+                                            </div>
+                                        </div>
+                                    );
+                                })()
+                            )}
                         </div>
 
                         <div>
@@ -382,7 +466,11 @@ export default function SalesForm({
                                 {transferOptions.map((transfer) => {
                                     const optionValue = getTransferOptionValue(transfer);
                                     if (!optionValue) return null;
-                                    const optionLabel = transfer.name ?? transfer.id ?? optionValue;
+                                    const optionLabel =
+                                        formatTransferLabel(transfer) ||
+                                        transfer.name ||
+                                        transfer.id ||
+                                        optionValue;
                                     const isFullOption =
                                         normalizeValue(transfer.name) === "full" ||
                                         normalizeValue(transfer.id) === "full";
