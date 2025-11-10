@@ -1820,7 +1820,7 @@ export const deleteHotel = async (hotelId: string): Promise<boolean> => {
 export const getTransferRoutes = async (): Promise<TransferRoute[]> => {
     const headers = getAuthHeaders();
     try {
-        const res = await fetch(`${BASE_URL}/transfers`, { headers });
+        const res = await fetch(`${BASE_URL}/transfer-routes`, { headers });
         if (!res.ok) {
             const text = await res.text();
             throw new Error(text || "Transfer listesi alınamadı.");
@@ -1841,7 +1841,7 @@ export const createTransferRoute = async (
 ): Promise<TransferRoute | null> => {
     const headers = getAuthHeaders();
     try {
-        const res = await fetch(`${BASE_URL}/transfers`, {
+        const res = await fetch(`${BASE_URL}/transfer-routes`, {
             method: "POST",
             headers,
             body: JSON.stringify(payload),
@@ -1863,7 +1863,7 @@ export const updateTransferRoute = async (
 ): Promise<TransferRoute | null> => {
     const headers = getAuthHeaders();
     try {
-        const res = await fetch(`${BASE_URL}/transfers/${transferId}`, {
+        const res = await fetch(`${BASE_URL}/transfer-routes/${transferId}`, {
             method: "PUT",
             headers,
             body: JSON.stringify(payload),
@@ -1882,7 +1882,7 @@ export const updateTransferRoute = async (
 export const deleteTransferRoute = async (transferId: string): Promise<boolean> => {
     const headers = getAuthHeaders();
     try {
-        const res = await fetch(`${BASE_URL}/transfers/${transferId}`, {
+        const res = await fetch(`${BASE_URL}/transfer-routes/${transferId}`, {
             method: "DELETE",
             headers,
         });
