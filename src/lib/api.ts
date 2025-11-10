@@ -52,6 +52,11 @@ export interface SaleResponse {
     createdAt?: string;
 }
 
+export interface SaleDocumentsUpload {
+    passport?: File | null;
+    flightTicket?: File | null;
+}
+
 export interface LeadResponse {
     id: string;
     name: string;
@@ -60,9 +65,15 @@ export interface LeadResponse {
     pageId?: string | null;
     language?: string;
     campaign?: { id: string; name: string } | null;
+    adsetId?: string | null;
+    adsetName?: string | null;
+    adId?: string | null;
+    adName?: string | null;
     status: LeadStatus;
     assignedToUser?: SimpleUser | null;
     createdAt: string;
+    firstActionAt?: string | null;
+    firstActionDelayMinutes?: number | null;
     lastSaleId?: string | null; // ✅ eklendi
     lastSale?: SaleResponse | null;
 }
@@ -946,11 +957,15 @@ export interface LeadListParams {
     size?: number;
     sort?: string;
     search?: string;
-    status?: string;
+    statuses?: string[];
     language?: string;
     campaignId?: string;
     assignedUserId?: string;
     unassigned?: boolean;
+    dateFrom?: string;
+    dateTo?: string;
+    firstResponseMinMinutes?: number;
+    firstResponseMaxMinutes?: number;
 }
 
 export const getLeads = async ({
@@ -958,11 +973,15 @@ export const getLeads = async ({
     size = 10,
     sort = "createdAt,desc",
     search,
-    status,
+    statuses,
     language,
     campaignId,
     assignedUserId,
     unassigned,
+    dateFrom,
+    dateTo,
+    firstResponseMinMinutes,
+    firstResponseMaxMinutes,
 }: LeadListParams = {}): Promise<LeadPage | null> => {
     const headers = getAuthHeaders();
     try {
@@ -973,11 +992,35 @@ export const getLeads = async ({
         });
 
         if (search?.trim()) params.append("search", search.trim());
-        if (status) params.append("status", status);
+        if (Array.isArray(statuses) && statuses.length > 0) {
+            statuses.forEach((status) => {
+                if (status) params.append("status", status);
+            });
+        }
         if (language) params.append("language", language);
         if (campaignId) params.append("campaignId", campaignId);
         if (assignedUserId) params.append("assignedUserId", assignedUserId);
         if (unassigned) params.append("unassigned", "true");
+        if (dateFrom) params.append("dateFrom", dateFrom);
+        if (dateTo) params.append("dateTo", dateTo);
+        if (
+            typeof firstResponseMinMinutes === "number" &&
+            !Number.isNaN(firstResponseMinMinutes)
+        ) {
+            params.append(
+                "firstResponseMinMinutes",
+                String(firstResponseMinMinutes),
+            );
+        }
+        if (
+            typeof firstResponseMaxMinutes === "number" &&
+            !Number.isNaN(firstResponseMaxMinutes)
+        ) {
+            params.append(
+                "firstResponseMaxMinutes",
+                String(firstResponseMaxMinutes),
+            );
+        }
 
         const query = params.toString();
         const res = await fetch(`${BASE_URL}/leads?${query}`, { headers });
@@ -1658,14 +1701,17 @@ export interface CreateSaleRequest {
 
 export const createSale = async (
     payload: SalesPayload,
-    file?: File | null
+    documents?: SaleDocumentsUpload,
 ): Promise<{ success: boolean; sale?: SaleResponse | null; saleId?: string | null }> => {
     const headers = getAuthHeaders();
     delete headers["Content-Type"]; // FormData kendi Content-Type'ını belirler
 
     const formData = new FormData();
     formData.append("data", new Blob([JSON.stringify(payload)], { type: "application/json" }));
-    if (file) formData.append("file", file);
+    if (documents?.passport) formData.append("passport", documents.passport);
+    if (documents?.flightTicket) {
+        formData.append("flightTicket", documents.flightTicket);
+    }
 
     try {
         const res = await fetch(`${BASE_URL}/sales`, {

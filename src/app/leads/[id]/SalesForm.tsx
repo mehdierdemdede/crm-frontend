@@ -30,10 +30,22 @@ export interface SalesPayload {
     hotel: string;
     nights: number | "";
     transfer: string[];
-    passportFile?: File | null;
+    transferPreference: "YES" | "NO";
 }
 
 const STEPS = ["Operasyon", "Fiyat", "Konaklama & Transfer", "Belgeler & Onay"];
+const FALLBACK_TRANSFER_OPTIONS: TransferRoute[] = [
+    { id: "full", name: "Full" },
+    { id: "airport-hotel", name: "Havalimanı → Otel" },
+    { id: "airport-clinic", name: "Havalimanı → Klinik" },
+    { id: "op-day-arrive", name: "Operasyon Günü Geliş" },
+    { id: "op-day-return", name: "Operasyon Günü Dönüş" },
+    { id: "dressing-arrive", name: "Pansuman Günü Geliş" },
+    { id: "dressing-return", name: "Pansuman Günü Dönüş" },
+    { id: "wash-arrive", name: "Yıkama Günü Geliş" },
+    { id: "wash-return", name: "Yıkama Günü Dönüş" },
+    { id: "hotel-airport", name: "Otel → Havalimanı" },
+];
 export default function SalesForm({
     leadId,
     onSubmit,
@@ -59,12 +71,14 @@ export default function SalesForm({
         hotel: "",
         nights: "",
         transfer: [],
-        passportFile: null,
+        transferPreference: "NO",
     });
     const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
     const [documentFileName, setDocumentFileName] = useState<string>("satis-belgesi.pdf");
     const [hotels, setHotels] = useState<Hotel[]>([]);
     const [transferOptions, setTransferOptions] = useState<TransferRoute[]>([]);
+    const [passportFile, setPassportFile] = useState<File | null>(null);
+    const [flightTicketFile, setFlightTicketFile] = useState<File | null>(null);
 
     const formatCurrency = (value: number | null | undefined, currency?: string | null) => {
         if (typeof value !== "number" || Number.isNaN(value)) return null;
@@ -155,8 +169,8 @@ export default function SalesForm({
             if (!form.hotel) errs.push("Otel seçilmelidir.");
             if (form.nights === "" || Number(form.nights) <= 0)
                 errs.push("Gece sayısı 1 veya üzeri olmalıdır.");
-            if (form.transfer.length === 0)
-                errs.push("En az bir transfer seçilmelidir.");
+            if (form.transferPreference === "YES" && form.transfer.length === 0)
+                errs.push("Transfer seçeneklerinden en az birini işaretleyiniz.");
         }
         setErrors(errs);
         return errs.length === 0;
@@ -181,17 +195,22 @@ export default function SalesForm({
             currency: form.currency,
             hotel: form.hotel,
             nights: Number(form.nights) || 0,
-            transfer: form.transfer,
+            transfer:
+                form.transferPreference === "YES" ? form.transfer : [],
+            transferPreference: form.transferPreference,
         };
 
-        const { success: saleCreated, sale, saleId } = await createSale(
-            payload,
-            form.passportFile
-        );
+        const { success: saleCreated, sale, saleId } = await createSale(payload, {
+            passport: passportFile,
+            flightTicket: flightTicketFile,
+        });
 
         if (saleCreated) {
             setSuccess(true);
             onSubmit(payload, { sale: sale ?? null, saleId: saleId ?? null });
+
+            setPassportFile(null);
+            setFlightTicketFile(null);
 
             const url = resolveDocumentUrl(sale?.documentPath, sale?.id ?? saleId ?? null);
             setDocumentUrl(url);
@@ -201,10 +220,12 @@ export default function SalesForm({
         }
     };
 
+    const transferChoices =
+        transferOptions.length > 0 ? transferOptions : FALLBACK_TRANSFER_OPTIONS;
     const normalizeValue = (value: string | null | undefined) =>
         value ? value.trim().toLocaleLowerCase("tr-TR") : "";
     const getTransferOptionValue = (transfer: TransferRoute) => transfer.id ?? transfer.name ?? "";
-    const fullTransferValue = transferOptions.reduce<string | null>((acc, transfer) => {
+    const fullTransferValue = transferChoices.reduce<string | null>((acc, transfer) => {
         if (acc) return acc;
         const isFullOption =
             normalizeValue(transfer.name) === "full" || normalizeValue(transfer.id) === "full";
@@ -462,50 +483,92 @@ export default function SalesForm({
 
                         <div>
                             <label className="block text-sm font-medium mb-1">Transfer</label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                                {transferOptions.map((transfer) => {
-                                    const optionValue = getTransferOptionValue(transfer);
-                                    if (!optionValue) return null;
-                                    const optionLabel =
-                                        formatTransferLabel(transfer) ||
-                                        transfer.name ||
-                                        transfer.id ||
-                                        optionValue;
-                                    const isFullOption =
-                                        normalizeValue(transfer.name) === "full" ||
-                                        normalizeValue(transfer.id) === "full";
-                                    return (
-                                        <label
-                                            key={optionValue}
-                                            className="flex items-center text-sm gap-2"
-                                        >
-                                            <input
-                                                type="checkbox"
-                                                checked={form.transfer.includes(optionValue)}
-                                                disabled={fullSelected && !isFullOption}
-                                                onChange={(e) => {
-                                                    const checked = e.target.checked;
-                                                    if (isFullOption) {
-                                                        setForm({
-                                                            ...form,
-                                                            transfer: checked ? [optionValue] : [],
-                                                        });
-                                                        return;
-                                                    }
-                                                    const base = fullSelected ? [] : form.transfer;
-                                                    setForm({
-                                                        ...form,
-                                                        transfer: checked
-                                                            ? [...base, optionValue]
-                                                            : base.filter((x) => x !== optionValue),
-                                                    });
-                                                }}
-                                            />
-                                            {optionLabel}
-                                        </label>
-                                    );
-                                })}
+                            <div className="flex flex-wrap items-center gap-4 mb-3 text-sm">
+                                <label className="inline-flex items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        name="transfer-preference"
+                                        value="YES"
+                                        checked={form.transferPreference === "YES"}
+                                        onChange={() =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                transferPreference: "YES",
+                                            }))
+                                        }
+                                    />
+                                    Evet
+                                </label>
+                                <label className="inline-flex items-center gap-2">
+                                    <input
+                                        type="radio"
+                                        name="transfer-preference"
+                                        value="NO"
+                                        checked={form.transferPreference === "NO"}
+                                        onChange={() =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                transferPreference: "NO",
+                                                transfer: [],
+                                            }))
+                                        }
+                                    />
+                                    Hayır
+                                </label>
                             </div>
+
+                            {form.transferPreference === "YES" ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                    {transferChoices.map((transfer) => {
+                                        const optionValue = getTransferOptionValue(transfer);
+                                        if (!optionValue) return null;
+                                        const optionLabel =
+                                            formatTransferLabel(transfer) ||
+                                            transfer.name ||
+                                            transfer.id ||
+                                            optionValue;
+                                        const isFullOption =
+                                            normalizeValue(transfer.name) === "full" ||
+                                            normalizeValue(transfer.id) === "full";
+                                        return (
+                                            <label
+                                                key={optionValue}
+                                                className="flex items-center text-sm gap-2"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={form.transfer.includes(optionValue)}
+                                                    disabled={fullSelected && !isFullOption}
+                                                    onChange={(e) => {
+                                                        const checked = e.target.checked;
+                                                        if (isFullOption) {
+                                                            setForm((prev) => ({
+                                                                ...prev,
+                                                                transfer: checked ? [optionValue] : [],
+                                                            }));
+                                                            return;
+                                                        }
+                                                        setForm((prev) => {
+                                                            const base = fullSelected ? [] : prev.transfer;
+                                                            return {
+                                                                ...prev,
+                                                                transfer: checked
+                                                                    ? [...base, optionValue]
+                                                                    : base.filter((x) => x !== optionValue),
+                                                            };
+                                                        });
+                                                    }}
+                                                />
+                                                {optionLabel}
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            ) : (
+                                <div className="rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-600">
+                                    Bu hasta için transfer planlanmadı.
+                                </div>
+                            )}
                         </div>
 
                         <div className="flex justify-between">
@@ -522,20 +585,45 @@ export default function SalesForm({
                 {/* 📎 Step 4: Belgeler */}
                 {step === 4 && (
                     <form onSubmit={submit} className="space-y-4 animate-fade-in">
-                        <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Belge (Pasaport, uçuş, onay vb.)
-                            </label>
-                            <Input
-                                type="file"
-                                onChange={(e) =>
-                                    setForm({
-                                        ...form,
-                                        passportFile: e.target.files?.[0] || null,
-                                    })
-                                }
-                            />
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <div>
+                                <label className="block text-sm font-medium mb-1">
+                                    Pasaport / Kimlik
+                                </label>
+                                <Input
+                                    type="file"
+                                    onChange={(e) =>
+                                        setPassportFile(e.target.files?.[0] ?? null)
+                                    }
+                                />
+                                {passportFile && (
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        Seçilen belge: {passportFile.name}
+                                    </p>
+                                )}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium mb-1">
+                                    Uçuş Bileti
+                                </label>
+                                <Input
+                                    type="file"
+                                    onChange={(e) =>
+                                        setFlightTicketFile(e.target.files?.[0] ?? null)
+                                    }
+                                />
+                                {flightTicketFile && (
+                                    <p className="mt-1 text-xs text-gray-500">
+                                        Seçilen belge: {flightTicketFile.name}
+                                    </p>
+                                )}
+                            </div>
                         </div>
+
+                        <p className="text-xs text-gray-500">
+                            Pasaport/ID ve uçuş biletlerini ayrı ayrı yükleyebilirsiniz. İki dosyayı aynı anda yüklemek zorunlu
+                            değildir.
+                        </p>
 
                         <div className="flex justify-between">
                             <Button variant="outline" onClick={prev}>
@@ -545,15 +633,6 @@ export default function SalesForm({
                                 Kaydet
                             </Button>
                         </div>
-
-                        {/* ✅ belge yüklendiyse göster */}
-                        {form.passportFile && (
-                            <div className="mt-3 flex justify-end">
-                <span className="text-xs text-gray-500 mr-2">
-                    Seçilen belge: {form.passportFile.name}
-                </span>
-                            </div>
-                        )}
                     </form>
                 )}
             </CardContent>
