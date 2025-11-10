@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Layout from "@/components/Layout";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Button } from "@/components/Button";
@@ -17,6 +17,7 @@ import {
     patchLeadAssign,
     getUsers,
     addLeadAction,
+    createLead,
     type LeadResponse,
     type LeadStatus,
     type SimpleUser,
@@ -26,6 +27,19 @@ import { useLanguages } from "@/contexts/LanguageContext";
 import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
 import useDebounce from "@/hooks/useDebounce";
 import { Skeleton } from "@/components/Skeleton";
+
+
+type SortableColumn = "name" | "assignedToUser" | "createdAt";
+type DurationUnit = "minutes" | "hours";
+
+type TableColumnKey =
+    | "name"
+    | "adInfo"
+    | "status"
+    | "assignedToUser"
+    | "createdAt"
+    | "firstResponse"
+    | "actions";
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
     UNCONTACTED: "İlk Temas Yok",
@@ -45,34 +59,100 @@ const STATUS_COLORS: Record<LeadStatus, string> = {
     WRONG_INFO: "bg-orange-100 text-orange-800",
 };
 
-type SortableColumn =
-    | "name"
-    | "email"
-    | "language"
-    | "campaign"
-    | "status"
-    | "assignedToUser"
-    | "createdAt";
-
-const TABLE_COLUMNS: Array<{ key: SortableColumn; label: string }> = [
-    { key: "name", label: "Ad" },
-    { key: "email", label: "Email" },
-    { key: "language", label: "Dil" },
-    { key: "campaign", label: "Kampanya" },
-    { key: "status", label: "Durum" },
-    { key: "assignedToUser", label: "Atanan Kullanıcı" },
-    { key: "createdAt", label: "Tarih" },
+const TABLE_COLUMNS: Array<{ key: TableColumnKey; label: string; sortable?: boolean }> = [
+    { key: "name", label: "İsim Soyisim", sortable: true },
+    { key: "adInfo", label: "Reklam" },
+    { key: "status", label: "Lead Durumu" },
+    { key: "assignedToUser", label: "Danışman", sortable: true },
+    { key: "createdAt", label: "Lead Geliş Tarihi", sortable: true },
+    { key: "firstResponse", label: "Aksiyon Süresi" },
+    { key: "actions", label: "Aksiyonlar" },
 ];
+
+const INITIAL_CREATE_FORM = {
+    name: "",
+    email: "",
+    phone: "",
+    language: "",
+};
+
+const parseDurationToMinutes = (value: string, unit: DurationUnit): number | undefined => {
+    if (!value) return undefined;
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric) || numeric < 0) return undefined;
+    return unit === "hours" ? numeric * 60 : numeric;
+};
+
+const toStartOfDay = (value: string): Date | null => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    date.setHours(0, 0, 0, 0);
+    return date;
+};
+
+const toEndOfDay = (value: string): Date | null => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return null;
+    date.setHours(23, 59, 59, 999);
+    return date;
+};
+
+const getFirstResponseMinutes = (lead: LeadResponse): number | null => {
+    if (
+        typeof lead.firstActionDelayMinutes === "number" &&
+        !Number.isNaN(lead.firstActionDelayMinutes)
+    ) {
+        return lead.firstActionDelayMinutes;
+    }
+
+    if (!lead.firstActionAt) return null;
+
+    const created = new Date(lead.createdAt).getTime();
+    const first = new Date(lead.firstActionAt).getTime();
+    if (Number.isNaN(created) || Number.isNaN(first)) return null;
+    if (first < created) return 0;
+
+    return (first - created) / 60000;
+};
+
+const formatFirstResponseDuration = (minutes: number | null | undefined): string => {
+    if (minutes == null || Number.isNaN(minutes)) return "-";
+    const rounded = Math.round(minutes);
+    if (rounded < 60) return `${rounded} dk`;
+    const hours = Math.floor(rounded / 60);
+    const mins = rounded % 60;
+    if (mins === 0) return `${hours} sa`;
+    return `${hours} sa ${mins} dk`;
+};
+
+const formatAdInfo = (lead: LeadResponse): string => {
+    const parts = [lead.campaign?.name, lead.adsetName, lead.adName]
+        .filter((part) => part && part.trim() !== "")
+        .map((part) => part!.trim());
+    return parts.join(" / ");
+};
+
+const formatUserName = (user?: SimpleUser | null): string => {
+    if (!user) return "Atanmadı";
+    const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+    if (fullName) return fullName;
+    return user.email || "Atanmadı";
+};
 
 export default function LeadsPage() {
     const [leads, setLeads] = useState<LeadResponse[]>([]);
     const [users, setUsers] = useState<SimpleUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState("");
+    const [statusFilters, setStatusFilters] = useState<LeadStatus[]>([]);
     const [languageFilter, setLanguageFilter] = useState("");
     const [campaignFilter, setCampaignFilter] = useState("");
     const [assignedFilter, setAssignedFilter] = useState("");
+    const [createdFrom, setCreatedFrom] = useState("");
+    const [createdTo, setCreatedTo] = useState("");
+    const [actionDurationMin, setActionDurationMin] = useState("");
+    const [actionDurationMax, setActionDurationMax] = useState("");
+    const [actionDurationUnit, setActionDurationUnit] = useState<DurationUnit>("minutes");
     const [sortBy, setSortBy] = useState<SortableColumn>("createdAt");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
     const [page, setPage] = useState(0);
@@ -81,11 +161,35 @@ export default function LeadsPage() {
     const [toasts, setToasts] = useState<ToastMessage[]>([]);
     const [leadToDelete, setLeadToDelete] = useState<LeadResponse | null>(null);
     const [deleteLoading, setDeleteLoading] = useState(false);
+    const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+    const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
+    const [bulkAssignUserId, setBulkAssignUserId] = useState("");
+    const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [createLeadLoading, setCreateLeadLoading] = useState(false);
+    const [createLeadError, setCreateLeadError] = useState<string | null>(null);
+    const [createLeadForm, setCreateLeadForm] = useState(INITIAL_CREATE_FORM);
+
     const debouncedSearch = useDebounce(search, 400);
     const isSearching = search !== debouncedSearch;
+    const selectAllRef = useRef<HTMLInputElement>(null);
     const perPage = 10;
+
     const { user } = useAuth();
     const { languages, getOptionByCode } = useLanguages();
+
+    const responseMinMinutes = useMemo(
+        () => parseDurationToMinutes(actionDurationMin, actionDurationUnit),
+        [actionDurationMin, actionDurationUnit],
+    );
+    const responseMaxMinutes = useMemo(
+        () => parseDurationToMinutes(actionDurationMax, actionDurationUnit),
+        [actionDurationMax, actionDurationUnit],
+    );
+
+    const canBulkAssign = user?.role === "SUPER_ADMIN";
+    const canDeleteLead = user?.role === "ADMIN";
+    const canCreateLead = user?.role === "ADMIN" || user?.role === "SUPER_ADMIN";
 
     const showToast = useCallback(
         (toast: Omit<ToastMessage, "id">) => {
@@ -100,7 +204,7 @@ export default function LeadsPage() {
                 },
             ]);
         },
-        []
+        [],
     );
 
     const dismissToast = useCallback((id: string) => {
@@ -128,6 +232,7 @@ export default function LeadsPage() {
         if (assignedFilter === "__me__" && !user?.id) {
             return;
         }
+
         const fetchLeads = async () => {
             setLoading(true);
             try {
@@ -147,17 +252,20 @@ export default function LeadsPage() {
                     size: perPage,
                     sort: `${sortBy},${sortOrder}`,
                     search: debouncedSearch.trim() || undefined,
-                    status: statusFilter || undefined,
+                    statuses: statusFilters,
                     language: languageFilter || undefined,
-                    campaignId: campaignFilter || undefined,
                     assignedUserId,
                     unassigned: assignedFilter === "__unassigned__",
+                    dateFrom: createdFrom || undefined,
+                    dateTo: createdTo || undefined,
+                    firstResponseMinMinutes: responseMinMinutes,
+                    firstResponseMaxMinutes: responseMaxMinutes,
                 });
 
                 setLeads(leadPage?.content ?? []);
                 setTotalPages(leadPage?.totalPages ?? 1);
                 setTotalElements(
-                    leadPage?.totalElements ?? leadPage?.content?.length ?? 0
+                    leadPage?.totalElements ?? leadPage?.content?.length ?? 0,
                 );
             } catch (err) {
                 console.error("Lead listesi alınamadı:", err);
@@ -165,16 +273,20 @@ export default function LeadsPage() {
                 setLoading(false);
             }
         };
-        fetchLeads();
+
+        void fetchLeads();
     }, [
         assignedFilter,
-        campaignFilter,
+        createdFrom,
+        createdTo,
+        debouncedSearch,
         languageFilter,
         page,
-        debouncedSearch,
+        responseMaxMinutes,
+        responseMinMinutes,
         sortBy,
         sortOrder,
-        statusFilter,
+        statusFilters,
         user?.id,
     ]);
 
@@ -194,96 +306,113 @@ export default function LeadsPage() {
                     enhanceLanguageOption({
                         value: lead.language,
                         label: lead.language,
-                    })
+                    }),
                 );
             }
         });
 
         return Array.from(map.values()).sort((a, b) =>
-            a.label.localeCompare(b.label, "tr")
+            a.label.localeCompare(b.label, "tr"),
         );
     }, [languages, leads]);
 
-    const campaignOptions = useMemo(() => {
-        const campaigns = new Set<string>();
-        leads.forEach((lead) => {
-            if (lead.campaign?.name) campaigns.add(lead.campaign.name);
-        });
-        return Array.from(campaigns).sort((a, b) => a.localeCompare(b));
-    }, [leads]);
+    const displayedLeads = useMemo(() => {
+        const searchValue = debouncedSearch.trim().toLowerCase();
+        const campaignValue = campaignFilter.trim().toLowerCase();
+        const createdFromDate = createdFrom ? toStartOfDay(createdFrom) : null;
+        const createdToDate = createdTo ? toEndOfDay(createdTo) : null;
 
-    const filtered = useMemo(() => {
-        return leads.filter((l) => {
-            const hay = debouncedSearch.toLowerCase();
-            const byText =
-                l.name?.toLowerCase().includes(hay) ||
-                l.email?.toLowerCase().includes(hay) ||
-                l.campaign?.name?.toLowerCase().includes(hay);
-            const byStatus = statusFilter ? l.status === statusFilter : true;
-            const byLanguage = languageFilter ? l.language === languageFilter : true;
-            const byCampaign = campaignFilter
-                ? l.campaign?.name === campaignFilter
+        return leads.filter((lead) => {
+            const matchesSearch = searchValue
+                ? [lead.name, lead.email, lead.phone, lead.campaign?.name]
+                      .filter(Boolean)
+                      .some((field) =>
+                          String(field).toLowerCase().includes(searchValue),
+                      )
                 : true;
-            const byAssigned = (() => {
+
+            const adInfo = formatAdInfo(lead).toLowerCase();
+            const matchesAd = campaignValue ? adInfo.includes(campaignValue) : true;
+
+            const matchesStatus =
+                statusFilters.length > 0
+                    ? statusFilters.includes(lead.status)
+                    : true;
+
+            const matchesLanguage = languageFilter
+                ? lead.language === languageFilter
+                : true;
+
+            const matchesAssigned = (() => {
                 if (!assignedFilter) return true;
                 if (assignedFilter === "__me__")
-                    return l.assignedToUser?.id === user?.id;
+                    return lead.assignedToUser?.id === user?.id;
                 if (assignedFilter === "__unassigned__")
-                    return !l.assignedToUser;
-                return l.assignedToUser?.id === assignedFilter;
+                    return !lead.assignedToUser;
+                return lead.assignedToUser?.id === assignedFilter;
             })();
 
-            return byText && byStatus && byLanguage && byCampaign && byAssigned;
+            const createdDateValue = new Date(lead.createdAt);
+            const matchesFrom = createdFromDate
+                ? createdDateValue >= createdFromDate
+                : true;
+            const matchesTo = createdToDate
+                ? createdDateValue <= createdToDate
+                : true;
+
+            const responseMinutes = getFirstResponseMinutes(lead);
+            const matchesMin =
+                responseMinMinutes !== undefined
+                    ? responseMinutes != null && responseMinutes >= responseMinMinutes
+                    : true;
+            const matchesMax =
+                responseMaxMinutes !== undefined
+                    ? responseMinutes != null && responseMinutes <= responseMaxMinutes
+                    : true;
+
+            return (
+                matchesSearch &&
+                matchesAd &&
+                matchesStatus &&
+                matchesLanguage &&
+                matchesAssigned &&
+                matchesFrom &&
+                matchesTo &&
+                matchesMin &&
+                matchesMax
+            );
         });
     }, [
         assignedFilter,
         campaignFilter,
-        languageFilter,
-        leads,
+        createdFrom,
+        createdTo,
         debouncedSearch,
-        statusFilter,
+        leads,
+        languageFilter,
+        responseMaxMinutes,
+        responseMinMinutes,
+        statusFilters,
         user?.id,
     ]);
 
-    const handleCall = (phone?: string | null | undefined) => {
-        if (!phone) {
-            showToast({
-                title: "Telefon numarası yok",
-                description: "Telefon numarası bulunamadı.",
-                variant: "error",
-            });
-            return;
-        }
-        window.open(`tel:${phone}`, "_self");
-    };
+    const selectedCount = selectedLeadIds.size;
+    const allDisplayedSelected =
+        displayedLeads.length > 0 &&
+        displayedLeads.every((lead) => selectedLeadIds.has(lead.id));
+    const someDisplayedSelected = displayedLeads.some((lead) =>
+        selectedLeadIds.has(lead.id),
+    );
 
-    const handleWhatsApp = (phone?: string | null | undefined) => {
-        if (!phone) {
-            showToast({
-                title: "Telefon numarası yok",
-                description: "WhatsApp için telefon numarası bulunamadı.",
-                variant: "error",
-            });
-            return;
-        }
-        const formatted = phone.replace(/\D/g, "");
-        window.open(`https://wa.me/${formatted}`, "_blank");
-    };
-
-    const handleMessenger = (messengerId?: string | null | undefined) => {
-        if (!messengerId) {
-            showToast({
-                title: "Bağlantı bulunamadı",
-                description: "Messenger bağlantısı bulunamadı.",
-                variant: "error",
-            });
-            return;
-        }
-        window.open(`https://m.me/${messengerId}`, "_blank");
-    };
+    useEffect(() => {
+        if (!selectAllRef.current) return;
+        selectAllRef.current.indeterminate =
+            someDisplayedSelected && !allDisplayedSelected;
+    }, [allDisplayedSelected, someDisplayedSelected, displayedLeads.length]);
 
     const handleSort = (field: SortableColumn) => {
-        if (sortBy === field) setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+        if (sortBy === field)
+            setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
         else {
             setSortBy(field);
             setSortOrder("asc");
@@ -298,13 +427,13 @@ export default function LeadsPage() {
         const ok = await updateLeadStatus(leadId, newStatus);
         if (ok) {
             setLeads((prev) =>
-                prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l))
+                prev.map((l) => (l.id === leadId ? { ...l, status: newStatus } : l)),
             );
             const statusLabel = STATUS_LABELS[newStatus] ?? newStatus;
             await addLeadAction(
                 leadId,
                 "STATUS",
-                `Lead durumu ${statusLabel} olarak güncellendi`
+                `Lead durumu ${statusLabel} olarak güncellendi`,
             );
             showToast({
                 title: "Durum güncellendi",
@@ -335,16 +464,21 @@ export default function LeadsPage() {
                               ...l,
                               assignedToUser: assignedUser,
                           }
-                        : l
-                )
+                        : l,
+                ),
+            );
+
+            const message = assignedUser
+                ? `${formatUserName(assignedUser)} lead'e atandı.`
+                : "Lead ataması kaldırıldı.";
+            await addLeadAction(
+                leadId,
+                "ASSIGN",
+                `Atama güncellendi: ${message}`,
             );
             showToast({
                 title: userId ? "Lead atandı" : "Atama kaldırıldı",
-                description: userId
-                    ? `${assignedUser?.firstName ?? "Kullanıcı"} ${
-                          assignedUser?.lastName ?? ""
-                      } lead'e atandı.`.trim()
-                    : "Lead ataması kaldırıldı.",
+                description: message,
                 variant: "success",
             });
         } else {
@@ -367,6 +501,11 @@ export default function LeadsPage() {
         if (ok) {
             await addLeadAction(leadToDelete.id, "DELETE", "Lead silindi.");
             setLeads((prev) => prev.filter((l) => l.id !== leadToDelete.id));
+            setSelectedLeadIds((prev) => {
+                const next = new Set(prev);
+                next.delete(leadToDelete.id);
+                return next;
+            });
             setTotalElements((prev) => Math.max(prev - 1, 0));
             showToast({
                 title: "Lead silindi",
@@ -384,240 +523,709 @@ export default function LeadsPage() {
         setDeleteLoading(false);
     };
 
+    const toggleLeadSelection = (leadId: string) => {
+        setSelectedLeadIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(leadId)) next.delete(leadId);
+            else next.add(leadId);
+            return next;
+        });
+    };
+
+    const toggleSelectAllDisplayed = () => {
+        setSelectedLeadIds((prev) => {
+            const next = new Set(prev);
+            if (allDisplayedSelected) {
+                displayedLeads.forEach((lead) => next.delete(lead.id));
+            } else {
+                displayedLeads.forEach((lead) => next.add(lead.id));
+            }
+            return next;
+        });
+    };
+
+    const handleCall = async (lead: LeadResponse) => {
+        if (!lead.phone) {
+            showToast({
+                title: "Telefon numarası yok",
+                description: "Telefon numarası bulunamadı.",
+                variant: "error",
+            });
+            return;
+        }
+        window.open(`tel:${lead.phone}`, "_self");
+        void addLeadAction(lead.id, "PHONE", "Telefon araması başlatıldı");
+    };
+
+    const handleWhatsApp = async (lead: LeadResponse) => {
+        if (!lead.phone) {
+            showToast({
+                title: "Telefon numarası yok",
+                description: "WhatsApp için telefon numarası bulunamadı.",
+                variant: "error",
+            });
+            return;
+        }
+        const formatted = lead.phone.replace(/\D/g, "");
+        window.open(`https://wa.me/${formatted}`, "_blank");
+        void addLeadAction(lead.id, "WHATSAPP", "WhatsApp mesajı gönderildi");
+    };
+
+    const handleMessenger = async (lead: LeadResponse) => {
+        const messengerTarget = lead.pageId || lead.email;
+        if (!messengerTarget) {
+            showToast({
+                title: "Bağlantı bulunamadı",
+                description: "Messenger bağlantısı bulunamadı.",
+                variant: "error",
+            });
+            return;
+        }
+        window.open(`https://m.me/${messengerTarget}`, "_blank");
+        void addLeadAction(
+            lead.id,
+            "MESSENGER",
+            "Messenger üzerinden mesaj gönderildi",
+        );
+    };
+
+    const handleStatusFilterChange = (
+        event: React.ChangeEvent<HTMLSelectElement>,
+    ) => {
+        const values = Array.from(event.target.selectedOptions).map(
+            (option) => option.value as LeadStatus,
+        );
+        setStatusFilters(values);
+        setPage(0);
+    };
+
+    const handleBulkAssignConfirm = async () => {
+        const leadIds = Array.from(selectedLeadIds);
+        if (leadIds.length === 0) return;
+        if (!bulkAssignUserId) {
+            showToast({
+                title: "Kullanıcı seçiniz",
+                description: "Aktarım için bir kullanıcı seçmelisiniz.",
+                variant: "error",
+            });
+            return;
+        }
+
+        setBulkAssignLoading(true);
+        const assignedUser = users.find((u) => u.id === bulkAssignUserId) || null;
+        const results: Array<{ leadId: string; ok: boolean }> = [];
+
+        for (const leadId of leadIds) {
+            const ok = await patchLeadAssign(leadId, bulkAssignUserId);
+            if (ok) {
+                setLeads((prev) =>
+                    prev.map((lead) =>
+                        lead.id === leadId
+                            ? { ...lead, assignedToUser: assignedUser }
+                            : lead,
+                    ),
+                );
+                await addLeadAction(
+                    leadId,
+                    "ASSIGN",
+                    `${formatUserName(assignedUser)} toplu aktarım ile atandı`,
+                );
+            }
+            results.push({ leadId, ok });
+        }
+
+        setBulkAssignLoading(false);
+
+        const successCount = results.filter((r) => r.ok).length;
+        const failureCount = results.length - successCount;
+
+        if (successCount > 0) {
+            showToast({
+                title: "Lead'ler aktarıldı",
+                description: `${successCount} lead başarıyla aktarıldı.`,
+                variant: "success",
+            });
+        }
+        if (failureCount > 0) {
+            showToast({
+                title: "Aktarım hatası",
+                description: `${failureCount} lead aktarılırken hata oluştu.`,
+                variant: "error",
+            });
+        }
+
+        if (successCount > 0) {
+            setSelectedLeadIds(new Set());
+            setBulkAssignUserId("");
+            setIsBulkAssignOpen(false);
+        }
+    };
+
+    const handleCreateLead = async () => {
+        const trimmedName = createLeadForm.name.trim();
+        if (!trimmedName) {
+            setCreateLeadError("İsim soyisim alanı zorunludur.");
+            return;
+        }
+
+        setCreateLeadLoading(true);
+        setCreateLeadError(null);
+
+        try {
+            const payload = {
+                name: trimmedName,
+                email: createLeadForm.email.trim() || undefined,
+                phone: createLeadForm.phone.trim() || undefined,
+                language: createLeadForm.language || undefined,
+            };
+
+            const newLead = await createLead(payload);
+            if (!newLead) {
+                setCreateLeadError(
+                    "Lead oluşturulamadı. Lütfen tekrar deneyiniz.",
+                );
+                return;
+            }
+
+            if (page === 0) {
+                setLeads((prev) => {
+                    const withoutNew = prev.filter((lead) => lead.id !== newLead.id);
+                    return [newLead, ...withoutNew].slice(0, perPage);
+                });
+            } else {
+                setPage(0);
+            }
+
+            setTotalElements((prev) => prev + 1);
+            setCreateLeadForm(INITIAL_CREATE_FORM);
+            setIsCreateModalOpen(false);
+            showToast({
+                title: "Yeni lead oluşturuldu",
+                description: `${newLead.name ?? "Lead"} sisteme eklendi.`,
+                variant: "success",
+            });
+        } catch (error) {
+            setCreateLeadError(
+                error instanceof Error
+                    ? error.message
+                    : "Lead oluşturulamadı.",
+            );
+        } finally {
+            setCreateLeadLoading(false);
+        }
+    };
+
+    const handleOpenCreateModal = () => {
+        setCreateLeadError(null);
+        setCreateLeadForm(INITIAL_CREATE_FORM);
+        setIsCreateModalOpen(true);
+    };
+
+    const handleCreateModalClose = () => {
+        if (createLeadLoading) return;
+        setIsCreateModalOpen(false);
+    };
+
+    const hasActiveFilters =
+        Boolean(debouncedSearch.trim()) ||
+        Boolean(campaignFilter.trim()) ||
+        Boolean(languageFilter) ||
+        Boolean(assignedFilter) ||
+        Boolean(createdFrom) ||
+        Boolean(createdTo) ||
+        statusFilters.length > 0 ||
+        responseMinMinutes !== undefined ||
+        responseMaxMinutes !== undefined;
+
     return (
         <>
-            <Layout title="Lead Yönetimi" subtitle="Tüm lead’leri görüntüle ve yönet">
-            {/* 🧭 Filtre ve üst bar */}
-            <div className="col-span-12">
-                <Card className="shadow-md rounded-xl">
-                    <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b pb-4">
-                        <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto flex-wrap">
-                            <Input
-                                className="flex-1 sm:w-64"
-                                placeholder="İsim, email veya kampanya ara..."
-                                value={search}
-                                onChange={(e) => {
-                                    setSearch(e.target.value);
-                                    setPage(0);
-                                }}
-                            />
-                            {isSearching && (
-                                <span className="text-xs text-blue-500 self-start sm:self-center animate-pulse px-2 py-1 bg-blue-50 rounded-md">
-                                    Aranıyor...
-                                </span>
-                            )}
-                            <select
-                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
-                                value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value);
-                                    setPage(0);
-                                }}
-                            >
-                                <option value="">Tüm Durumlar</option>
-                                {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                                    <option key={k} value={k}>
-                                        {v}
-                                    </option>
-                                ))}
-                            </select>
-                            <select
-                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
-                                value={languageFilter}
-                                onChange={(e) => {
-                                    setLanguageFilter(e.target.value);
-                                    setPage(0);
-                                }}
-                            >
-                                <option value="">Tüm Diller</option>
-                                {languageOptions.map((lang) => {
-                                    const optionText = `${lang.flag ?? ""} ${lang.label}`.trim();
-                                    const optionStyle = lang.flagImageUrl
-                                        ? {
-                                              backgroundImage: `url(${lang.flagImageUrl})`,
-                                              backgroundRepeat: "no-repeat",
-                                              backgroundPosition: "8px center",
-                                              backgroundSize: "18px 13px",
-                                              paddingLeft: "32px",
-                                          }
-                                        : undefined;
-                                    return (
-                                        <option
-                                            key={lang.value}
-                                            value={lang.value}
-                                            style={optionStyle}
-                                        >
-                                            {optionText}
-                                        </option>
-                                    );
-                                })}
-                            </select>
-                            <select
-                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
-                                value={campaignFilter}
-                                onChange={(e) => {
-                                    setCampaignFilter(e.target.value);
-                                    setPage(0);
-                                }}
-                            >
-                                <option value="">Tüm Kampanyalar</option>
-                                {campaignOptions.map((campaign) => (
-                                    <option key={campaign} value={campaign}>
-                                        {campaign}
-                                    </option>
-                                ))}
-                            </select>
-                            <select
-                                className="border rounded-md p-2 text-sm bg-white shadow-sm"
-                                value={assignedFilter}
-                                onChange={(e) => {
-                                    setAssignedFilter(e.target.value);
-                                    setPage(0);
-                                }}
-                            >
-                                <option value="">Tüm Kullanıcılar</option>
-                                <option value="__unassigned__">Atanmamış</option>
-                                {user && <option value="__me__">Bana Atananlar</option>}
-                                {users.map((u) => (
-                                    <option key={u.id} value={u.id}>
-                                        {u.firstName} {u.lastName}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="text-xs sm:text-sm text-gray-500 text-right sm:text-left">
-                            Toplam {totalElements} kayıttan {filtered.length} kayıt listeleniyor
-                        </div>
-                    </CardHeader>
-
-                    {/* 📋 Tablo (masaüstü) */}
-                    <CardContent>
-                        {loading ? (
-                            <>
-                                <div className="hidden md:block overflow-x-auto">
-                                    <table className="min-w-full text-sm border rounded-lg overflow-hidden">
-                                        <thead>
-                                            <tr className="bg-gray-50 text-left text-gray-700 font-medium">
-                                                {TABLE_COLUMNS.map((c) => (
-                                                    <th
-                                                        key={c.key}
-                                                        className="p-3"
-                                                    >
-                                                        {c.label}
-                                                    </th>
-                                                ))}
-                                                <th className="p-3 text-center">Aksiyonlar</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {Array.from({ length: 6 }).map((_, idx) => (
-                                                <tr
-                                                    key={idx}
-                                                    className="border-t even:bg-gray-50"
-                                                >
-                                                    <td className="p-3">
-                                                        <Skeleton className="h-4 w-32" />
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <Skeleton className="h-4 w-40" />
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <Skeleton className="h-4 w-4 rounded-full" />
-                                                            <Skeleton className="h-4 w-20" />
-                                                        </div>
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <Skeleton className="h-4 w-28" />
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <Skeleton className="h-7 w-32" />
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <Skeleton className="h-7 w-32" />
-                                                    </td>
-                                                    <td className="p-3">
-                                                        <Skeleton className="h-4 w-24" />
-                                                    </td>
-                                                    <td className="p-3 text-center">
-                                                        <div className="flex justify-center gap-2">
-                                                            {Array.from({ length: 4 }).map((__, actionIdx) => (
-                                                                <Skeleton
-                                                                    key={actionIdx}
-                                                                    className="h-9 w-9 rounded-full"
-                                                                />
-                                                            ))}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+            <Layout
+                title="Lead Yönetimi"
+                subtitle="Tüm lead’leri görüntüle ve yönet"
+            >
+                <div className="col-span-12">
+                    <Card className="shadow-md rounded-xl">
+                        <CardHeader className="flex flex-col gap-3 border-b pb-4">
+                            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+                                    <span>Toplam {totalElements} lead</span>
+                                    {hasActiveFilters && (
+                                        <span className="text-gray-500">
+                                            Filtrelenen: {displayedLeads.length}
+                                        </span>
+                                    )}
+                                    {selectedCount > 0 && (
+                                        <span className="font-medium text-blue-600">
+                                            {selectedCount} lead seçildi
+                                        </span>
+                                    )}
                                 </div>
-
-                                <div className="md:hidden flex flex-col gap-4">
-                                    {Array.from({ length: 4 }).map((_, idx) => (
-                                        <div
-                                            key={idx}
-                                            className="border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-3"
+                                <div className="flex flex-wrap gap-2">
+                                    {canBulkAssign && (
+                                        <Button
+                                            variant="secondary"
+                                            disabled={selectedCount === 0}
+                                            onClick={() => setIsBulkAssignOpen(true)}
                                         >
-                                            <div className="flex justify-between items-center">
-                                                <Skeleton className="h-5 w-32" />
-                                                <Skeleton className="h-4 w-16" />
-                                            </div>
+                                            Aktar
+                                        </Button>
+                                    )}
+                                    {canCreateLead && (
+                                        <Button onClick={handleOpenCreateModal}>
+                                            Yeni Lead Ekle
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {loading ? (
+                                <>
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="min-w-full text-sm border rounded-lg overflow-hidden">
+                                            <thead>
+                                                <tr className="bg-gray-50 text-left text-gray-700 font-medium">
+                                                    <th className="p-3 w-10">
+                                                        <Skeleton className="h-4 w-4" />
+                                                    </th>
+                                                    {TABLE_COLUMNS.map((column) => (
+                                                        <th key={column.key} className="p-3">
+                                                            <Skeleton className="h-4 w-28" />
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {Array.from({ length: perPage }).map((_, idx) => (
+                                                    <tr key={idx} className="border-t">
+                                                        <td className="p-3">
+                                                            <Skeleton className="h-4 w-4 rounded" />
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <Skeleton className="h-4 w-32" />
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <Skeleton className="h-4 w-40" />
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <Skeleton className="h-7 w-32" />
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <Skeleton className="h-7 w-32" />
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <Skeleton className="h-4 w-32" />
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <Skeleton className="h-4 w-28" />
+                                                        </td>
+                                                        <td className="p-3">
+                                                            <div className="flex justify-center gap-2">
+                                                                {Array.from({ length: 4 }).map((__, actionIdx) => (
+                                                                    <Skeleton
+                                                                        key={actionIdx}
+                                                                        className="h-9 w-9 rounded-full"
+                                                                    />
+                                                                ))}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
 
-                                            <div className="space-y-2">
-                                                <Skeleton className="h-4 w-40" />
-                                                <div className="flex items-center gap-2">
-                                                    <Skeleton className="h-4 w-4 rounded-full" />
+                                    <div className="md:hidden flex flex-col gap-4">
+                                        {Array.from({ length: 4 }).map((_, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-3"
+                                            >
+                                                <div className="flex justify-between items-center">
+                                                    <Skeleton className="h-5 w-32" />
+                                                    <Skeleton className="h-4 w-16" />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Skeleton className="h-4 w-40" />
+                                                    <Skeleton className="h-4 w-32" />
                                                     <Skeleton className="h-4 w-24" />
                                                 </div>
-                                                <Skeleton className="h-4 w-32" />
+                                                <div className="flex gap-3">
+                                                    <Skeleton className="h-8 flex-1" />
+                                                    <Skeleton className="h-8 flex-1" />
+                                                </div>
+                                                <div className="flex justify-end gap-2">
+                                                    {Array.from({ length: 4 }).map((__, actionIdx) => (
+                                                        <Skeleton
+                                                            key={actionIdx}
+                                                            className="h-9 w-9 rounded-full"
+                                                        />
+                                                    ))}
+                                                </div>
                                             </div>
-
-                                            <div className="flex gap-3">
-                                                <Skeleton className="h-8 flex-1" />
-                                                <Skeleton className="h-8 flex-1" />
-                                            </div>
-
-                                            <div className="flex justify-end gap-2">
-                                                {Array.from({ length: 4 }).map((__, actionIdx) => (
-                                                    <Skeleton
-                                                        key={actionIdx}
-                                                        className="h-9 w-9 rounded-full"
-                                                    />
-                                                ))}
-                                            </div>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
+                                </>
+                            ) : displayedLeads.length === 0 ? (
+                                <div className="text-center text-gray-500 py-10">
+                                    Kayıt bulunamadı.
                                 </div>
-                            </>
-                        ) : leads.length === 0 ? (
-                            <div className="text-center text-gray-500 py-10">
-                                Kayıt bulunamadı.
-                            </div>
-                        ) : (
-                            <>
-                                {/* Masaüstü tablo */}
-                                <div className="hidden md:block overflow-x-auto">
-                                    <table className="min-w-full text-sm border rounded-lg overflow-hidden">
-                                        <thead>
-                                        <tr className="bg-gray-50 text-left text-gray-700 font-medium">
-                                            {TABLE_COLUMNS.map((c) => (
-                                                <th
-                                                    key={c.key}
-                                                    className="p-3 cursor-pointer select-none"
-                                                    onClick={() => handleSort(c.key)}
-                                                >
-                                                    {c.label}{" "}
-                                                    <ArrowUpDown className="inline h-3 w-3 ml-1 text-gray-400" />
-                                                </th>
-                                            ))}
-                                            <th className="p-3 text-center">Aksiyonlar</th>
-                                        </tr>
-                                        </thead>
-                                        <tbody>
-                                        {leads.map((lead) => {
+                            ) : (
+                                <>
+                                    <div className="hidden md:block overflow-x-auto">
+                                        <table className="min-w-full text-sm border rounded-lg overflow-hidden">
+                                            <thead>
+                                                <tr className="bg-gray-50 text-left text-gray-700 font-medium">
+                                                    <th className="p-3 w-12">
+                                                        <input
+                                                            ref={selectAllRef}
+                                                            type="checkbox"
+                                                            className="h-4 w-4 rounded border-gray-300"
+                                                            checked={allDisplayedSelected}
+                                                            onChange={toggleSelectAllDisplayed}
+                                                        />
+                                                    </th>
+                                                    {TABLE_COLUMNS.map((column) => (
+                                                        <th
+                                                            key={column.key}
+                                                            className="p-3 cursor-pointer select-none"
+                                                            onClick={() =>
+                                                                column.sortable &&
+                                                                handleSort(column.key as SortableColumn)
+                                                            }
+                                                        >
+                                                            {column.label}
+                                                            {column.sortable && (
+                                                                <ArrowUpDown className="inline h-3 w-3 ml-1 text-gray-400" />
+                                                            )}
+                                                        </th>
+                                                    ))}
+                                                </tr>
+                                                <tr className="bg-white text-xs text-gray-600">
+                                                    <th className="p-3">
+                                                        {selectedCount > 0 && (
+                                                            <button
+                                                                type="button"
+                                                                className="text-blue-600 hover:underline"
+                                                                onClick={() => setSelectedLeadIds(new Set())}
+                                                            >
+                                                                Seçimleri temizle
+                                                            </button>
+                                                        )}
+                                                    </th>
+                                                    <th className="p-3">
+                                                        <div className="flex flex-col gap-2">
+                                                            <Input
+                                                                className="flex-1"
+                                                                placeholder="İsim, email veya telefon..."
+                                                                value={search}
+                                                                onChange={(e) => {
+                                                                    setSearch(e.target.value);
+                                                                    setPage(0);
+                                                                }}
+                                                            />
+                                                            <select
+                                                                className="border rounded-md p-2 text-xs bg-white shadow-sm"
+                                                                value={languageFilter}
+                                                                onChange={(e) => {
+                                                                    setLanguageFilter(e.target.value);
+                                                                    setPage(0);
+                                                                }}
+                                                            >
+                                                                <option value="">Tüm Diller</option>
+                                                                {languageOptions.map((lang) => (
+                                                                    <option key={lang.value} value={lang.value}>
+                                                                        {lang.label}
+                                                                    </option>
+                                                                ))}
+                                                            </select>
+                                                            {isSearching && (
+                                                                <span className="text-[10px] text-blue-500">
+                                                                    Aranıyor...
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </th>
+                                                    <th className="p-3">
+                                                        <Input
+                                                            placeholder="Reklam adı..."
+                                                            value={campaignFilter}
+                                                            onChange={(e) => {
+                                                                setCampaignFilter(e.target.value);
+                                                                setPage(0);
+                                                            }}
+                                                        />
+                                                    </th>
+                                                    <th className="p-3">
+                                                        <select
+                                                            multiple
+                                                            className="border rounded-md p-2 text-xs bg-white shadow-sm h-24"
+                                                            value={statusFilters}
+                                                            onChange={handleStatusFilterChange}
+                                                        >
+                                                            {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                                                                <option key={k} value={k}>
+                                                                    {v}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </th>
+                                                    <th className="p-3">
+                                                        <select
+                                                            className="border rounded-md bg-white shadow-sm text-xs p-2"
+                                                            value={assignedFilter}
+                                                            onChange={(e) => {
+                                                                setAssignedFilter(e.target.value);
+                                                                setPage(0);
+                                                            }}
+                                                        >
+                                                            <option value="">Tümü</option>
+                                                            <option value="__me__">Bana Atananlar</option>
+                                                            <option value="__unassigned__">Atanmamış</option>
+                                                            {users.map((u) => (
+                                                                <option key={u.id} value={u.id}>
+                                                                    {u.firstName} {u.lastName}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </th>
+                                                    <th className="p-3">
+                                                        <div className="flex flex-col gap-2">
+                                                            <Input
+                                                                type="date"
+                                                                value={createdFrom}
+                                                                onChange={(e) => {
+                                                                    setCreatedFrom(e.target.value);
+                                                                    setPage(0);
+                                                                }}
+                                                            />
+                                                            <Input
+                                                                type="date"
+                                                                value={createdTo}
+                                                                onChange={(e) => {
+                                                                    setCreatedTo(e.target.value);
+                                                                    setPage(0);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    </th>
+                                                    <th className="p-3">
+                                                        <div className="grid gap-2">
+                                                            <div className="grid grid-cols-2 gap-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    placeholder="Min"
+                                                                    value={actionDurationMin}
+                                                                    onChange={(e) => {
+                                                                        setActionDurationMin(e.target.value);
+                                                                        setPage(0);
+                                                                    }}
+                                                                />
+                                                                <Input
+                                                                    type="number"
+                                                                    min={0}
+                                                                    placeholder="Maks"
+                                                                    value={actionDurationMax}
+                                                                    onChange={(e) => {
+                                                                        setActionDurationMax(e.target.value);
+                                                                        setPage(0);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                            <select
+                                                                className="border rounded-md p-2 text-xs bg-white shadow-sm"
+                                                                value={actionDurationUnit}
+                                                                onChange={(e) => {
+                                                                    setActionDurationUnit(e.target.value as DurationUnit);
+                                                                    setPage(0);
+                                                                }}
+                                                            >
+                                                                <option value="minutes">Dakika</option>
+                                                                <option value="hours">Saat</option>
+                                                            </select>
+                                                        </div>
+                                                    </th>
+                                                    <th className="p-3" />
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {displayedLeads.map((lead) => {
+                                                    const languageOption = lead.language
+                                                        ? getOptionByCode(lead.language) ??
+                                                          enhanceLanguageOption({
+                                                              value: lead.language,
+                                                              label: lead.language,
+                                                          })
+                                                        : undefined;
+                                                    const isSelected = selectedLeadIds.has(lead.id);
+                                                    const firstResponseMinutes = getFirstResponseMinutes(lead);
+                                                    return (
+                                                        <tr
+                                                            key={lead.id}
+                                                            className={`border-t transition-colors ${
+                                                                isSelected
+                                                                    ? "bg-blue-50"
+                                                                    : "hover:bg-blue-50 even:bg-gray-50"
+                                                            }`}
+                                                        >
+                                                            <td className="p-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="h-4 w-4 rounded border-gray-300"
+                                                                    checked={isSelected}
+                                                                    onChange={() => toggleLeadSelection(lead.id)}
+                                                                />
+                                                            </td>
+                                                            <td className="p-3">
+                                                                <div className="flex items-center gap-2">
+                                                                    <Link
+                                                                        href={`/leads/${lead.id}`}
+                                                                        className="text-blue-600 hover:underline"
+                                                                    >
+                                                                        {lead.name ?? "-"}
+                                                                    </Link>
+                                                                    {lead.language && (
+                                                                        <LanguageFlagIcon
+                                                                            option={languageOption}
+                                                                            size={16}
+                                                                        />
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-xs text-gray-500">
+                                                                    {lead.phone ?? lead.email ?? "İletişim bilgisi yok"}
+                                                                </div>
+                                                            </td>
+                                                            <td className="p-3 text-gray-700">
+                                                                {formatAdInfo(lead) || lead.campaign?.name || "-"}
+                                                            </td>
+                                                            <td className="p-3">
+                                                                <select
+                                                                    className={`border rounded-lg p-1.5 text-xs font-medium ${
+                                                                        STATUS_COLORS[
+                                                                            lead.status as LeadStatus
+                                                                        ]
+                                                                    } focus:ring-2 focus:ring-blue-200`}
+                                                                    value={lead.status}
+                                                                    onChange={(e) =>
+                                                                        handleStatusChange(
+                                                                            lead.id,
+                                                                            e.target
+                                                                                .value as LeadStatus,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    {Object.entries(STATUS_LABELS).map(
+                                                                        ([val, label]) => (
+                                                                            <option
+                                                                                key={val}
+                                                                                value={val}
+                                                                            >
+                                                                                {label}
+                                                                            </option>
+                                                                        ),
+                                                                    )}
+                                                                </select>
+                                                            </td>
+                                                            <td className="p-3">
+                                                                <select
+                                                                    className="border rounded-lg bg-white shadow-sm text-xs p-1.5"
+                                                                    value={lead.assignedToUser?.id || ""}
+                                                                    onChange={(e) =>
+                                                                        handleAssign(
+                                                                            lead.id,
+                                                                            e.target.value
+                                                                                ? e.target.value
+                                                                                : null,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <option value="">Atanmadı</option>
+                                                                    {users.map((u) => (
+                                                                        <option
+                                                                            key={u.id}
+                                                                            value={u.id}
+                                                                        >
+                                                                            {u.firstName} {u.lastName}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </td>
+                                                            <td className="p-3 text-gray-700">
+                                                                {new Date(lead.createdAt).toLocaleString()}
+                                                            </td>
+                                                            <td className="p-3 text-gray-700">
+                                                                {formatFirstResponseDuration(
+                                                                    firstResponseMinutes,
+                                                                )}
+                                                            </td>
+                                                            <td className="p-3">
+                                                                <div className="flex flex-wrap justify-end gap-2">
+                                                                    {lead.phone && (
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() =>
+                                                                                handleCall(lead)
+                                                                            }
+                                                                            title="Telefon ile arama yap"
+                                                                        >
+                                                                            <Phone className="h-4 w-4 text-blue-600" />
+                                                                        </Button>
+                                                                    )}
+                                                                    {lead.phone && (
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() =>
+                                                                                handleWhatsApp(lead)
+                                                                            }
+                                                                            title="WhatsApp ile mesaj gönder"
+                                                                        >
+                                                                            <MessageCircle className="h-4 w-4 text-green-600" />
+                                                                        </Button>
+                                                                    )}
+                                                                    {(lead.pageId || lead.email) && (
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            onClick={() =>
+                                                                                handleMessenger(lead)
+                                                                            }
+                                                                            title="Messenger üzerinden mesaj gönder"
+                                                                        >
+                                                                            <Facebook className="h-4 w-4 text-indigo-600" />
+                                                                        </Button>
+                                                                    )}
+                                                                    <Link
+                                                                        href={`/leads/${lead.id}`}
+                                                                        className="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-md border border-blue-200 bg-white text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                                    >
+                                                                        Satışa Git
+                                                                    </Link>
+                                                                    {canDeleteLead && (
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            className="text-red-600 hover:bg-red-50"
+                                                                            onClick={() =>
+                                                                                handleDeleteRequest(lead)
+                                                                            }
+                                                                        >
+                                                                            <Trash2 className="h-4 w-4" />
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div className="md:hidden flex flex-col gap-4">
+                                        {displayedLeads.map((lead) => {
                                             const languageOption = lead.language
                                                 ? getOptionByCode(lead.language) ??
                                                   enhanceLanguageOption({
@@ -625,277 +1233,194 @@ export default function LeadsPage() {
                                                       label: lead.language,
                                                   })
                                                 : undefined;
+                                            const isSelected = selectedLeadIds.has(lead.id);
+                                            const firstResponseMinutes =
+                                                getFirstResponseMinutes(lead);
                                             return (
-                                                <tr
+                                                <div
                                                     key={lead.id}
-                                                    className="border-t hover:bg-blue-50 transition-colors even:bg-gray-50"
+                                                    className={`border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-3 ${
+                                                        isSelected ? "border-blue-400" : ""
+                                                    }`}
                                                 >
-                                                <td className="p-3">
-                                                    <Link
-                                                        href={`/leads/${lead.id}`}
-                                                        className="text-blue-600 hover:underline"
-                                                    >
-                                                        {lead.name ?? "-"}
-                                                    </Link>
-                                                </td>
-                                                <td className="p-3">{lead.email ?? "-"}</td>
-                                                <td className="p-3">
-                                                    {lead.language ? (
-                                                        <span className="inline-flex items-center gap-2">
+                                                    <div className="flex items-center justify-between gap-3">
+                                                        <label className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="h-4 w-4 rounded border-gray-300"
+                                                                checked={isSelected}
+                                                                onChange={() =>
+                                                                    toggleLeadSelection(
+                                                                        lead.id,
+                                                                    )
+                                                                }
+                                                            />
+                                                            <Link href={`/leads/${lead.id}`}>
+                                                                {lead.name ?? "-"}
+                                                            </Link>
+                                                        </label>
+                                                        <span className="text-xs text-gray-500">
+                                                            {new Date(lead.createdAt).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-gray-500">
+                                                        {lead.phone ?? lead.email ?? "İletişim bilgisi yok"}
+                                                    </div>
+                                                    {lead.language && (
+                                                        <div className="flex items-center gap-2 text-xs text-gray-600">
                                                             <LanguageFlagIcon
                                                                 option={languageOption}
-                                                                size={18}
+                                                                size={14}
                                                             />
                                                             <span>
-                                                                {languageOption?.label ?? lead.language}
+                                                                {languageOption?.label ??
+                                                                    lead.language}
                                                             </span>
-                                                        </span>
-                                                    ) : (
-                                                        "-"
+                                                        </div>
                                                     )}
-                                                </td>
-                                                <td className="p-3">{lead.campaign?.name ?? "-"}</td>
-
-                                                <td className="p-3">
-                                                    <select
-                                                        className={`border rounded-lg p-1.5 text-xs font-medium ${STATUS_COLORS[lead.status as LeadStatus]} focus:ring-2 focus:ring-blue-200`}
-                                                        value={lead.status}
-                                                        onChange={(e) =>
-                                                            handleStatusChange(
-                                                                lead.id,
-                                                                e.target.value as LeadStatus
-                                                            )
-                                                        }
-                                                    >
-                                                        {Object.entries(STATUS_LABELS).map(
-                                                            ([val, label]) => (
-                                                                <option key={val} value={val}>
-                                                                    {label}
-                                                                </option>
-                                                            )
-                                                        )}
-                                                    </select>
-                                                </td>
-
-                                                <td className="p-3">
-                                                    <select
-                                                        className="border rounded-lg bg-white shadow-sm text-xs p-1.5"
-                                                        value={lead.assignedToUser?.id || ""}
-                                                        onChange={(e) =>
-                                                            handleAssign(
-                                                                lead.id,
-                                                                e.target.value ? e.target.value : null
-                                                            )
-                                                        }
-                                                    >
-                                                        <option value="">Atanmadı</option>
-                                                        {users.map((u) => (
-                                                            <option key={u.id} value={u.id}>
-                                                                {u.firstName} {u.lastName}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </td>
-
-                                                <td className="p-3 text-gray-700">
-                                                    {new Date(lead.createdAt).toLocaleString()}
-                                                </td>
-
-                                                <td className="p-3 text-center">
-                                                    <div className="flex justify-center gap-2">
-                                                        <Button size="sm" variant="outline" onClick={() => handleCall(lead.phone)}>
-                                                            <Phone className="h-4 w-4 text-blue-600" />
-                                                        </Button>
-                                                        <Button size="sm" variant="outline" onClick={() => handleWhatsApp(lead.phone)}>
-                                                            <MessageCircle className="h-4 w-4 text-green-600" />
-                                                        </Button>
-                                                        <Button size="sm" variant="outline" onClick={() => handleMessenger(lead.email)}>
-                                                            <Facebook className="h-4 w-4 text-indigo-600" />
-                                                        </Button>
-                                                        <Button
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="text-red-600 hover:bg-red-50"
-                                                            onClick={() => handleDeleteRequest(lead)}
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-
+                                                    <div className="text-xs text-gray-600">
+                                                        Reklam: {formatAdInfo(lead) || lead.campaign?.name || "-"}
                                                     </div>
-                                                </td>
-                                            </tr>
+                                                    <div className="flex flex-col gap-2">
+                                                        <select
+                                                            className={`border rounded-lg p-1.5 text-xs font-medium ${
+                                                                STATUS_COLORS[
+                                                                    lead.status as LeadStatus
+                                                                ]
+                                                            } focus:ring-2 focus:ring-blue-200`}
+                                                            value={lead.status}
+                                                            onChange={(e) =>
+                                                                handleStatusChange(
+                                                                    lead.id,
+                                                                    e.target
+                                                                        .value as LeadStatus,
+                                                                )
+                                                            }
+                                                        >
+                                                            {Object.entries(STATUS_LABELS).map(
+                                                                ([val, label]) => (
+                                                                    <option
+                                                                        key={val}
+                                                                        value={val}
+                                                                    >
+                                                                        {label}
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                        <select
+                                                            className="border rounded-lg bg-white shadow-sm text-xs p-1.5"
+                                                            value={lead.assignedToUser?.id || ""}
+                                                            onChange={(e) =>
+                                                                handleAssign(
+                                                                    lead.id,
+                                                                    e.target.value
+                                                                        ? e.target.value
+                                                                        : null,
+                                                                )
+                                                            }
+                                                        >
+                                                            <option value="">Atanmadı</option>
+                                                            {users.map((u) => (
+                                                                <option
+                                                                    key={u.id}
+                                                                    value={u.id}
+                                                                >
+                                                                    {u.firstName} {u.lastName}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="text-xs text-gray-600">
+                                                        Aksiyon Süresi: {" "}
+                                                        {formatFirstResponseDuration(
+                                                            firstResponseMinutes,
+                                                        )}
+                                                    </div>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {lead.phone && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => handleCall(lead)}
+                                                            >
+                                                                <Phone className="h-4 w-4 text-blue-600" />
+                                                            </Button>
+                                                        )}
+                                                        {lead.phone && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => handleWhatsApp(lead)}
+                                                            >
+                                                                <MessageCircle className="h-4 w-4 text-green-600" />
+                                                            </Button>
+                                                        )}
+                                                        {(lead.pageId || lead.email) && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => handleMessenger(lead)}
+                                                            >
+                                                                <Facebook className="h-4 w-4 text-indigo-600" />
+                                                            </Button>
+                                                        )}
+                                                        <Link
+                                                            href={`/leads/${lead.id}`}
+                                                            className="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-md border border-blue-200 bg-white text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        >
+                                                            Satışa Git
+                                                        </Link>
+                                                        {canDeleteLead && (
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline"
+                                                                onClick={() => handleDeleteRequest(lead)}
+                                                                className="text-red-600 hover:bg-red-50"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
                                             );
                                         })}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {/* 📱 Mobil görünüm (kartlar) */}
-                                <div className="md:hidden flex flex-col gap-4">
-                                    {leads.map((lead) => {
-                                        const languageOption = lead.language
-                                            ? getOptionByCode(lead.language) ??
-                                              enhanceLanguageOption({
-                                                  value: lead.language,
-                                                  label: lead.language,
-                                              })
-                                            : undefined;
-                                        return (
-                                            <div
-                                                key={lead.id}
-                                                className="border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-2"
-                                            >
-                                            <div className="flex justify-between items-center">
-                                                <Link
-                                                    href={`/leads/${lead.id}`}
-                                                    className="font-semibold text-blue-600 text-base"
-                                                >
-                                                    {lead.name ?? "-"}
-                                                </Link>
-                                                <span className="text-xs text-gray-500">
-                        {new Date(lead.createdAt).toLocaleDateString()}
-                      </span>
-                                            </div>
-
-                                            <div className="text-xs text-gray-600">
-                                                <div>Email: {lead.email ?? "-"}</div>
-                                                <div>
-                                                    Dil:{" "}
-                                                    {lead.language ? (
-                                                        <span className="inline-flex items-center gap-2">
-                                                            <LanguageFlagIcon
-                                                                option={languageOption}
-                                                                size={16}
-                                                            />
-                                                            <span>{languageOption?.label ?? lead.language}</span>
-                                                        </span>
-                                                    ) : (
-                                                        "-"
-                                                    )}
-                                                </div>
-                                                <div>Kampanya: {lead.campaign?.name ?? "-"}</div>
-                                            </div>
-
-                                            <div className="flex justify-between items-center mt-2">
-                                                <select
-                                                    className={`border rounded-md p-1 text-xs font-medium ${STATUS_COLORS[lead.status as LeadStatus]}`}
-                                                    value={lead.status}
-                                                    onChange={(e) =>
-                                                        handleStatusChange(
-                                                            lead.id,
-                                                            e.target.value as LeadStatus
-                                                        )
-                                                    }
-                                                >
-                                                    {Object.entries(STATUS_LABELS).map(([val, label]) => (
-                                                        <option key={val} value={val}>
-                                                            {label}
-                                                        </option>
-                                                    ))}
-                                                </select>
-
-                                                <select
-                                                    className="border rounded-md text-xs p-1 bg-white"
-                                                    value={lead.assignedToUser?.id || ""}
-                                                    onChange={(e) =>
-                                                        handleAssign(
-                                                            lead.id,
-                                                            e.target.value ? e.target.value : null
-                                                        )
-                                                    }
-                                                >
-                                                    <option value="">Atanmadı</option>
-                                                    {users.map((u) => (
-                                                        <option key={u.id} value={u.id}>
-                                                            {u.firstName} {u.lastName}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-
-                                            <div className="flex justify-end gap-2 mt-2">
-                                                <div className="flex justify-end gap-2 mt-2">
-                                                    {/* 📞 Telefon Araması */}
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleCall(lead.phone)}
-                                                        title="Telefon ile ara"
-                                                    >
-                                                        <Phone className="h-4 w-4 text-blue-600"/>
-                                                    </Button>
-
-                                                    {/* 💬 WhatsApp */}
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleWhatsApp(lead.phone)}
-                                                        title="WhatsApp ile mesaj gönder"
-                                                    >
-                                                        <MessageCircle className="h-4 w-4 text-green-600"/>
-                                                    </Button>
-
-                                                    {/* 💙 Messenger */}
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleMessenger(lead.email)}
-                                                        title="Messenger üzerinden mesaj gönder"
-                                                    >
-                                                        <Facebook className="h-4 w-4 text-indigo-600"/>
-                                                    </Button>
-
-                                                    {/* 🗑️ Silme */}
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => handleDeleteRequest(lead)}
-                                                        title="Lead'i sil"
-                                                    >
-                                                        <Trash2 className="h-4 w-4 text-red-600"/>
-                                                    </Button>
-                                                </div>
-
-                                            </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* 📄 Sayfalama */}
-            <div className="col-span-12 flex justify-start mt-6 mb-8">
-                <div
-                    className="flex items-center justify-center gap-4 bg-white border border-gray-200 rounded-lg px-6 py-2.5 shadow-sm w-full sm:w-auto">
-                    <Button
-                        disabled={page === 0}
-                        onClick={() => setPage((p) => Math.max(p - 1, 0))}
-                        variant="outline"
-                        className="min-w-[90px] h-9 flex items-center justify-center text-sm"
-                    >
-                        ← Önceki
-                    </Button>
-
-                    <span className="text-gray-700 font-medium text-sm min-w-[120px] text-center select-none">
-          Sayfa {page + 1} / {totalPages}
-        </span>
-
-                    <Button
-                        disabled={page + 1 >= totalPages}
-                        onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
-                        variant="outline"
-                        className="min-w-[90px] h-9 flex items-center justify-center text-sm"
-                    >
-                        Sonraki →
-                    </Button>
+                                    </div>
+                                </>
+                            )}
+                        </CardContent>
+                    </Card>
                 </div>
-            </div>
+
+                <div className="col-span-12 flex justify-start mt-6 mb-8">
+                    <div className="flex items-center justify-center gap-4 bg-white border border-gray-200 rounded-lg px-6 py-2.5 shadow-sm w-full sm:w-auto">
+                        <Button
+                            disabled={page === 0}
+                            onClick={() => setPage((p) => Math.max(p - 1, 0))}
+                            variant="outline"
+                            className="min-w-[90px] h-9 flex items-center justify-center text-sm"
+                        >
+                            ← Önceki
+                        </Button>
+
+                        <span className="text-gray-700 font-medium text-sm min-w-[120px] text-center select-none">
+                            Sayfa {page + 1} / {totalPages}
+                        </span>
+
+                        <Button
+                            disabled={page + 1 >= totalPages}
+                            onClick={() => setPage((p) => Math.min(p + 1, totalPages - 1))}
+                            variant="outline"
+                            className="min-w-[90px] h-9 flex items-center justify-center text-sm"
+                        >
+                            Sonraki →
+                        </Button>
+                    </div>
+                </div>
             </Layout>
+
             <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
             <Modal
                 isOpen={!!leadToDelete}
                 onClose={handleCloseDeleteModal}
@@ -940,7 +1465,156 @@ export default function LeadsPage() {
                     </div>
                 )}
             </Modal>
+
+            <Modal
+                isOpen={isBulkAssignOpen}
+                onClose={() => {
+                    if (bulkAssignLoading) return;
+                    setIsBulkAssignOpen(false);
+                }}
+                closeOnBackdrop={!bulkAssignLoading}
+                showCloseButton={!bulkAssignLoading}
+                title="Lead'leri Aktar"
+                description="Seçili lead'leri aktaracağınız kullanıcıyı seçiniz."
+                actions={[
+                    {
+                        label: "İptal",
+                        variant: "ghost",
+                        onClick: () => setIsBulkAssignOpen(false),
+                        disabled: bulkAssignLoading,
+                    },
+                    {
+                        label: "Aktar",
+                        onClick: handleBulkAssignConfirm,
+                        isLoading: bulkAssignLoading,
+                        disabled: bulkAssignLoading,
+                    },
+                ]}
+            >
+                <div className="space-y-3 text-sm">
+                    <p className="text-gray-600">
+                        Toplam {selectedCount} lead aktarılacak. Aktarımı yapmak istediğiniz kullanıcıyı seçiniz.
+                    </p>
+                    <select
+                        className="w-full border rounded-md p-2"
+                        value={bulkAssignUserId}
+                        onChange={(e) => setBulkAssignUserId(e.target.value)}
+                    >
+                        <option value="">Kullanıcı seçiniz</option>
+                        {users.map((u) => (
+                            <option key={u.id} value={u.id}>
+                                {u.firstName} {u.lastName}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+            </Modal>
+
+            <Modal
+                isOpen={isCreateModalOpen}
+                onClose={handleCreateModalClose}
+                closeOnBackdrop={!createLeadLoading}
+                showCloseButton={!createLeadLoading}
+                title="Yeni Lead Oluştur"
+                description="Yeni lead bilgilerini giriniz."
+                actions={[
+                    {
+                        label: "İptal",
+                        variant: "ghost",
+                        onClick: handleCreateModalClose,
+                        disabled: createLeadLoading,
+                    },
+                    {
+                        label: "Kaydet",
+                        onClick: handleCreateLead,
+                        isLoading: createLeadLoading,
+                        disabled: createLeadLoading,
+                    },
+                ]}
+            >
+                <div className="space-y-3 text-sm text-gray-700">
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                            İsim Soyisim
+                        </label>
+                        <Input
+                            value={createLeadForm.name}
+                            onChange={(e) => {
+                                setCreateLeadForm((prev) => ({
+                                    ...prev,
+                                    name: e.target.value,
+                                }));
+                                setCreateLeadError(null);
+                            }}
+                            placeholder="İsim Soyisim"
+                        />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Email
+                            </label>
+                            <Input
+                                type="email"
+                                value={createLeadForm.email}
+                                onChange={(e) =>
+                                    setCreateLeadForm((prev) => ({
+                                        ...prev,
+                                        email: e.target.value,
+                                    }))
+                                }
+                                placeholder="Email"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                                Telefon
+                            </label>
+                            <Input
+                                value={createLeadForm.phone}
+                                onChange={(e) =>
+                                    setCreateLeadForm((prev) => ({
+                                        ...prev,
+                                        phone: e.target.value,
+                                    }))
+                                }
+                                placeholder="Telefon"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">
+                            Dil
+                        </label>
+                        <select
+                            className="w-full border rounded-md p-2"
+                            value={createLeadForm.language}
+                            onChange={(e) =>
+                                setCreateLeadForm((prev) => ({
+                                    ...prev,
+                                    language: e.target.value,
+                                }))
+                            }
+                        >
+                            <option value="">Seçiniz</option>
+                            {languageOptions.map((lang) => (
+                                <option key={lang.value} value={lang.value}>
+                                    {lang.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    {createLeadError && (
+                        <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-600">
+                            {createLeadError}
+                        </div>
+                    )}
+                    <p className="text-xs text-gray-500">
+                        Lead oluşturulduktan sonra detay sayfasından kampanya bilgilerini ve diğer alanları güncelleyebilirsiniz.
+                    </p>
+                </div>
+            </Modal>
         </>
     );
-
 }
+
