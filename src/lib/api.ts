@@ -215,18 +215,44 @@ export interface HashPasswordResponse {
 export interface Hotel {
     id: string;
     name?: string;
+    starRating?: number | null;
+    nightlyRate?: number | null;
+    currency?: string | null;
+    address?: string | null;
     [key: string]: unknown;
 }
 
-export type HotelPayload = Record<string, unknown>;
+export interface HotelPayload {
+    name: string;
+    starRating?: number | null;
+    nightlyRate?: number | null;
+    currency?: string | null;
+    address?: string | null;
+}
 
 export interface TransferRoute {
     id: string;
     name?: string;
+    start?: string | null;
+    stops?: string[] | null;
+    final?: string | null;
+    price?: number | null;
+    currency?: string | null;
     [key: string]: unknown;
 }
 
-export type TransferRoutePayload = Record<string, unknown>;
+export interface TransferRoutePayload {
+    start: string;
+    final: string;
+    stops?: string[];
+    price?: number | null;
+    currency?: string | null;
+    /**
+     * Existing backend expects a `name` field in some places. We continue to send
+     * a composed value so the API remains backward compatible.
+     */
+    name?: string;
+}
 
 // ──────────────────────────────── HELPERS ────────────────────────────────
 const getStoredItem = (key: string): string | null => {

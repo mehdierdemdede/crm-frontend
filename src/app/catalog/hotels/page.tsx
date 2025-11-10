@@ -13,13 +13,26 @@ import {
     type Hotel,
 } from "@/lib/api";
 
+const currencyOptions = ["EUR", "USD", "TRY", "GBP"] as const;
+type CurrencyOption = (typeof currencyOptions)[number];
+
 interface HotelFormState {
     name: string;
+    starRating: number | "";
+    nightlyRate: number | "";
+    currency: CurrencyOption;
+    address: string;
 }
 
-const emptyForm: HotelFormState = {
+const defaultCurrency: CurrencyOption = "EUR";
+
+const createEmptyForm = (): HotelFormState => ({
     name: "",
-};
+    starRating: "",
+    nightlyRate: "",
+    currency: defaultCurrency,
+    address: "",
+});
 
 const sortHotels = (hotels: Hotel[]): Hotel[] =>
     [...hotels].sort((a, b) => {
@@ -31,7 +44,7 @@ const sortHotels = (hotels: Hotel[]): Hotel[] =>
 export default function HotelsPage() {
     const [hotels, setHotels] = useState<Hotel[]>([]);
     const [loading, setLoading] = useState(true);
-    const [form, setForm] = useState<HotelFormState>(emptyForm);
+    const [form, setForm] = useState<HotelFormState>(createEmptyForm());
     const [editingId, setEditingId] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -60,16 +73,35 @@ export default function HotelsPage() {
         return () => window.clearTimeout(timeout);
     }, [success]);
 
+    const resolveCurrency = (currency: string | null | undefined): CurrencyOption => {
+        if (!currency) return defaultCurrency;
+        return currencyOptions.includes(currency as CurrencyOption)
+            ? (currency as CurrencyOption)
+            : defaultCurrency;
+    };
+
     const startEdit = (hotel: Hotel) => {
         setEditingId(hotel.id);
-        setForm({ name: hotel.name ?? "" });
+        setForm({
+            name: hotel.name ?? "",
+            starRating:
+                typeof hotel.starRating === "number" && !Number.isNaN(hotel.starRating)
+                    ? hotel.starRating
+                    : "",
+            nightlyRate:
+                typeof hotel.nightlyRate === "number" && !Number.isNaN(hotel.nightlyRate)
+                    ? hotel.nightlyRate
+                    : "",
+            currency: resolveCurrency(hotel.currency as string | null | undefined),
+            address: hotel.address ?? "",
+        });
         setError(null);
         setSuccess(null);
     };
 
     const cancelEdit = () => {
         setEditingId(null);
-        setForm(emptyForm);
+        setForm(createEmptyForm());
         setError(null);
         setSuccess(null);
     };
@@ -77,16 +109,51 @@ export default function HotelsPage() {
     const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const trimmedName = form.name.trim();
+        const starRatingValue =
+            form.starRating === "" ? null : Number.parseInt(String(form.starRating), 10);
+        const nightlyRateValue =
+            form.nightlyRate === "" ? null : Number.parseFloat(String(form.nightlyRate));
+        const trimmedAddress = form.address.trim();
+
         if (!trimmedName) {
             setError("Lütfen otel adı girin.");
             return;
         }
+        if (
+            starRatingValue === null ||
+            Number.isNaN(starRatingValue) ||
+            starRatingValue < 1 ||
+            starRatingValue > 5
+        ) {
+            setError("Yıldız sayısı 1 ile 5 arasında olmalıdır.");
+            return;
+        }
+        if (
+            nightlyRateValue === null ||
+            Number.isNaN(nightlyRateValue) ||
+            nightlyRateValue <= 0
+        ) {
+            setError("Gecelik ücreti 0'dan büyük bir değer olmalıdır.");
+            return;
+        }
+        if (!trimmedAddress) {
+            setError("Lütfen otel adresi girin.");
+            return;
+        }
+
+        const payload = {
+            name: trimmedName,
+            starRating: starRatingValue,
+            nightlyRate: nightlyRateValue,
+            currency: form.currency,
+            address: trimmedAddress,
+        };
 
         setSaving(true);
         setError(null);
         try {
             if (editingId) {
-                const updated = await updateHotel(editingId, { name: trimmedName });
+                const updated = await updateHotel(editingId, payload);
                 if (!updated) {
                     throw new Error("Otel güncellenemedi.");
                 }
@@ -97,14 +164,14 @@ export default function HotelsPage() {
                 );
                 setSuccess("Otel bilgileri güncellendi.");
             } else {
-                const created = await createHotel({ name: trimmedName });
+                const created = await createHotel(payload);
                 if (!created) {
                     throw new Error("Otel oluşturulamadı.");
                 }
                 setHotels((prev) => sortHotels([...prev, created]));
                 setSuccess("Yeni otel oluşturuldu.");
             }
-            setForm(emptyForm);
+            setForm(createEmptyForm());
             setEditingId(null);
         } catch (err) {
             console.error(err);
@@ -145,6 +212,34 @@ export default function HotelsPage() {
 
     const sortedHotels = useMemo(() => sortHotels(hotels), [hotels]);
 
+    const formatNightlyRate = (hotel: Hotel): string => {
+        const rate =
+            typeof hotel.nightlyRate === "number" && !Number.isNaN(hotel.nightlyRate)
+                ? hotel.nightlyRate
+                : null;
+        if (rate === null) return "-";
+        const currency = (hotel.currency as string | null | undefined) ?? defaultCurrency;
+        try {
+            return new Intl.NumberFormat("tr-TR", {
+                style: "currency",
+                currency,
+                maximumFractionDigits: 2,
+            }).format(rate);
+        } catch (error) {
+            console.warn("Currency format error", error);
+            return `${rate} ${currency}`;
+        }
+    };
+
+    const formatStarRating = (hotel: Hotel): string => {
+        const rating =
+            typeof hotel.starRating === "number" && !Number.isNaN(hotel.starRating)
+                ? hotel.starRating
+                : null;
+        if (!rating) return "-";
+        return `${"★".repeat(Math.max(1, Math.min(5, Math.round(rating))))}`;
+    };
+
     return (
         <Layout
             title="Otel Yönetimi"
@@ -155,13 +250,95 @@ export default function HotelsPage() {
                     <CardHeader className="font-semibold">Otel Bilgileri</CardHeader>
                     <CardContent>
                         <form onSubmit={handleSubmit} className="space-y-4">
-                            <Input
-                                label="Otel Adı"
-                                placeholder="Örn. Panorama Resort"
-                                value={form.name}
-                                onChange={(event) => setForm({ name: event.target.value })}
-                                disabled={saving}
-                            />
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                <Input
+                                    label="Otel Adı"
+                                    placeholder="Örn. Panorama Resort"
+                                    value={form.name}
+                                    onChange={(event) =>
+                                        setForm((prev) => ({ ...prev, name: event.target.value }))
+                                    }
+                                    disabled={saving}
+                                />
+                                <Input
+                                    label="Yıldız Sayısı"
+                                    type="number"
+                                    min={1}
+                                    max={5}
+                                    placeholder="Örn. 5"
+                                    value={form.starRating}
+                                    onChange={(event) =>
+                                        setForm((prev) => ({
+                                            ...prev,
+                                            starRating:
+                                                event.target.value === ""
+                                                    ? ""
+                                                    : Number(event.target.value),
+                                        }))
+                                    }
+                                    disabled={saving}
+                                />
+                                <div className="grid gap-2 sm:grid-cols-[2fr,1fr] sm:items-end">
+                                    <Input
+                                        label="Gecelik Ücreti"
+                                        type="number"
+                                        min={0}
+                                        step="0.01"
+                                        placeholder="Örn. 120"
+                                        value={form.nightlyRate}
+                                        onChange={(event) =>
+                                            setForm((prev) => ({
+                                                ...prev,
+                                                nightlyRate:
+                                                    event.target.value === ""
+                                                        ? ""
+                                                        : Number(event.target.value),
+                                            }))
+                                        }
+                                        disabled={saving}
+                                    />
+                                    <label className="block">
+                                        <span className="mb-1 block text-sm font-medium text-gray-800">
+                                            Para Birimi
+                                        </span>
+                                        <select
+                                            className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-blue-500"
+                                            value={form.currency}
+                                            onChange={(event) =>
+                                                setForm((prev) => ({
+                                                    ...prev,
+                                                    currency: event.target.value as CurrencyOption,
+                                                }))
+                                            }
+                                            disabled={saving}
+                                        >
+                                            {currencyOptions.map((currency) => (
+                                                <option key={currency} value={currency}>
+                                                    {currency}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                </div>
+                            </div>
+                            <label className="block">
+                                <span className="mb-1 block text-sm font-medium text-gray-800">
+                                    Adres
+                                </span>
+                                <textarea
+                                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-blue-500"
+                                    rows={3}
+                                    placeholder="Örn. Atatürk Cad. No:12, Antalya"
+                                    value={form.address}
+                                    onChange={(event) =>
+                                        setForm((prev) => ({
+                                            ...prev,
+                                            address: event.target.value,
+                                        }))
+                                    }
+                                    disabled={saving}
+                                />
+                            </label>
                             {error && (
                                 <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                                     {error}
@@ -214,6 +391,9 @@ export default function HotelsPage() {
                                     <thead>
                                         <tr className="bg-gray-100 text-left text-xs uppercase tracking-wide text-gray-500">
                                             <th className="px-3 py-2">Otel Adı</th>
+                                            <th className="px-3 py-2">Yıldız</th>
+                                            <th className="px-3 py-2">Gecelik Ücret</th>
+                                            <th className="px-3 py-2">Adres</th>
                                             <th className="px-3 py-2 text-right">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -221,6 +401,11 @@ export default function HotelsPage() {
                                         {sortedHotels.map((hotel) => (
                                             <tr key={hotel.id} className="border-b last:border-0 hover:bg-gray-50">
                                                 <td className="px-3 py-2 text-gray-900">{hotel.name ?? "-"}</td>
+                                                <td className="px-3 py-2 text-gray-900">{formatStarRating(hotel)}</td>
+                                                <td className="px-3 py-2 text-gray-900">{formatNightlyRate(hotel)}</td>
+                                                <td className="px-3 py-2 text-gray-700">
+                                                    {hotel.address ?? "-"}
+                                                </td>
                                                 <td className="px-3 py-2 text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <Button
