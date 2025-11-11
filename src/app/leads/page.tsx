@@ -18,11 +18,15 @@ import {
     getUsers,
     addLeadAction,
     createLead,
+    initiateLeadCall,
+    sendLeadWhatsAppMessage,
     type LeadResponse,
     type LeadStatus,
     type SimpleUser,
+    type LeadCallResult,
+    type LeadWhatsAppMessageResponse,
 } from "@/lib/api";
-import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown } from "lucide-react";
+import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown, Send } from "lucide-react";
 import { useLanguages } from "@/contexts/LanguageContext";
 import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
 import useDebounce from "@/hooks/useDebounce";
@@ -142,6 +146,12 @@ const formatUserName = (user?: SimpleUser | null): string => {
     return user.email || "Atanmadı";
 };
 
+const getMaskedContactDisplay = (lead: LeadResponse): string => {
+    if (lead.email) return lead.email;
+    if (lead.phone) return "Telefon bilgisi gizlendi";
+    return "İletişim bilgisi yok";
+};
+
 export default function LeadsPage() {
     const [leads, setLeads] = useState<LeadResponse[]>([]);
     const [users, setUsers] = useState<SimpleUser[]>([]);
@@ -172,6 +182,17 @@ export default function LeadsPage() {
     const [createLeadLoading, setCreateLeadLoading] = useState(false);
     const [createLeadError, setCreateLeadError] = useState<string | null>(null);
     const [createLeadForm, setCreateLeadForm] = useState(INITIAL_CREATE_FORM);
+    const [activeCommunication, setActiveCommunication] = useState<{
+        lead: LeadResponse;
+        channel: "PHONE" | "WHATSAPP";
+    } | null>(null);
+    const [communicationLoading, setCommunicationLoading] = useState(false);
+    const [communicationError, setCommunicationError] = useState<string | null>(null);
+    const [communicationSuccess, setCommunicationSuccess] = useState<string | null>(null);
+    const [callSession, setCallSession] = useState<LeadCallResult | null>(null);
+    const [whatsAppMessage, setWhatsAppMessage] = useState("");
+    const [whatsAppResult, setWhatsAppResult] =
+        useState<LeadWhatsAppMessageResponse | null>(null);
 
     const debouncedSearch = useDebounce(search, 400);
     const isSearching = search !== debouncedSearch;
@@ -327,7 +348,7 @@ export default function LeadsPage() {
 
         return leads.filter((lead) => {
             const matchesSearch = searchValue
-                ? [lead.name, lead.email, lead.phone, lead.campaign?.name]
+                ? [lead.name, lead.email, lead.campaign?.name]
                       .filter(Boolean)
                       .some((field) =>
                           String(field).toLowerCase().includes(searchValue),
@@ -546,31 +567,127 @@ export default function LeadsPage() {
         });
     };
 
-    const handleCall = async (lead: LeadResponse) => {
-        if (!lead.phone) {
-            showToast({
-                title: "Telefon numarası yok",
-                description: "Telefon numarası bulunamadı.",
-                variant: "error",
-            });
-            return;
+    const openCommunication = (lead: LeadResponse, channel: "PHONE" | "WHATSAPP") => {
+        setActiveCommunication({ lead, channel });
+        setCommunicationError(null);
+        setCommunicationSuccess(null);
+        setCallSession(null);
+        setWhatsAppResult(null);
+        if (channel === "WHATSAPP") {
+            setWhatsAppMessage("");
         }
-        window.open(`tel:${lead.phone}`, "_self");
-        void addLeadAction(lead.id, "PHONE", "Telefon araması başlatıldı");
     };
 
-    const handleWhatsApp = async (lead: LeadResponse) => {
+    const closeCommunication = () => {
+        if (communicationLoading) return;
+        setActiveCommunication(null);
+        setCommunicationError(null);
+        setCommunicationSuccess(null);
+        setCallSession(null);
+        setWhatsAppResult(null);
+        setWhatsAppMessage("");
+    };
+
+    const handleCall = (lead: LeadResponse) => {
         if (!lead.phone) {
             showToast({
-                title: "Telefon numarası yok",
-                description: "WhatsApp için telefon numarası bulunamadı.",
+                title: "Telefon bilgisi bulunamadı",
+                description: "Bu lead için telefon bilgisi mevcut değil.",
                 variant: "error",
             });
             return;
         }
-        const formatted = lead.phone.replace(/\D/g, "");
-        window.open(`https://wa.me/${formatted}`, "_blank");
-        void addLeadAction(lead.id, "WHATSAPP", "WhatsApp mesajı gönderildi");
+        openCommunication(lead, "PHONE");
+    };
+
+    const handleWhatsApp = (lead: LeadResponse) => {
+        if (!lead.phone) {
+            showToast({
+                title: "Telefon bilgisi bulunamadı",
+                description: "Bu lead için WhatsApp kanalına erişilemiyor.",
+                variant: "error",
+            });
+            return;
+        }
+        openCommunication(lead, "WHATSAPP");
+    };
+
+    const handleInitiateSecureCall = async () => {
+        if (!activeCommunication || activeCommunication.channel !== "PHONE") return;
+        setCommunicationLoading(true);
+        setCommunicationError(null);
+        try {
+            const result = await initiateLeadCall(activeCommunication.lead.id);
+            if (!result) {
+                throw new Error("Arama başlatılamadı. Lütfen tekrar deneyin.");
+            }
+            setCallSession(result);
+            const statusLabel = result.status
+                ? result.status.replace(/_/g, " ").toLowerCase()
+                : "kuyruğa alındı";
+            const formattedStatus =
+                statusLabel.charAt(0).toUpperCase() + statusLabel.slice(1);
+            const successMessage = `Güvenli arama ${formattedStatus}.`;
+            setCommunicationSuccess(successMessage);
+            showToast({
+                title: "Arama başlatıldı",
+                description: "Güvenli arama kuyruğa alındı.",
+                variant: "success",
+            });
+            void addLeadAction(
+                activeCommunication.lead.id,
+                "PHONE",
+                `Güvenli arama oturumu başlatıldı (#${result.callId || ""}).`,
+            );
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Arama başlatılamadı. Lütfen tekrar deneyin.";
+            setCommunicationError(message);
+        } finally {
+            setCommunicationLoading(false);
+        }
+    };
+
+    const handleSendSecureWhatsApp = async () => {
+        if (!activeCommunication || activeCommunication.channel !== "WHATSAPP") return;
+        const trimmedMessage = whatsAppMessage.trim();
+        if (!trimmedMessage) {
+            setCommunicationError("Mesaj metni zorunludur.");
+            return;
+        }
+        setCommunicationLoading(true);
+        setCommunicationError(null);
+        try {
+            const result = await sendLeadWhatsAppMessage(activeCommunication.lead.id, {
+                message: trimmedMessage,
+            });
+            if (!result) {
+                throw new Error("Mesaj gönderilemedi. Lütfen tekrar deneyin.");
+            }
+            setWhatsAppResult(result);
+            setCommunicationSuccess("Mesaj güvenli hat üzerinden gönderildi.");
+            showToast({
+                title: "Mesaj gönderildi",
+                description: "WhatsApp mesajı başarıyla gönderildi.",
+                variant: "success",
+            });
+            setWhatsAppMessage("");
+            void addLeadAction(
+                activeCommunication.lead.id,
+                "WHATSAPP",
+                `Ürün içinden WhatsApp mesajı gönderildi (#${result.messageId || ""}).`,
+            );
+        } catch (error) {
+            const message =
+                error instanceof Error
+                    ? error.message
+                    : "Mesaj gönderilemedi. Lütfen tekrar deneyin.";
+            setCommunicationError(message);
+        } finally {
+            setCommunicationLoading(false);
+        }
     };
 
     const handleMessenger = async (lead: LeadResponse) => {
@@ -1164,7 +1281,7 @@ export default function LeadsPage() {
                                                                     )}
                                                                 </div>
                                                                 <div className="text-xs text-gray-500">
-                                                                    {lead.phone ?? lead.email ?? "İletişim bilgisi yok"}
+                                                                    {getMaskedContactDisplay(lead)}
                                                                 </div>
                                                             </td>
                                                             <td className="p-3 text-gray-700">
@@ -1340,7 +1457,7 @@ export default function LeadsPage() {
                                                         </span>
                                                     </div>
                                                     <div className="text-xs text-gray-500">
-                                                        {lead.phone ?? lead.email ?? "İletişim bilgisi yok"}
+                                                        {getMaskedContactDisplay(lead)}
                                                     </div>
                                                     {lead.language && (
                                                         <div className="flex items-center gap-2 text-xs text-gray-600">
@@ -1499,6 +1616,149 @@ export default function LeadsPage() {
             <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
             <Modal
+                isOpen={!!activeCommunication}
+                onClose={closeCommunication}
+                closeOnBackdrop={!communicationLoading}
+                showCloseButton={!communicationLoading}
+                title={
+                    activeCommunication?.channel === "PHONE"
+                        ? "Güvenli Arama Başlat"
+                        : "WhatsApp Mesajı Gönder"
+                }
+                description={
+                    activeCommunication?.channel === "PHONE"
+                        ? "Arama, sistem tarafından maskelenmiş numara üzerinden yönlendirilecektir."
+                        : "WhatsApp mesajınızı ürün içerisinden gönderin; numara kullanıcıya gösterilmeyecektir."
+                }
+                actions={
+                    activeCommunication
+                        ? [
+                              {
+                                  label: "Kapat",
+                                  variant: "ghost",
+                                  onClick: closeCommunication,
+                                  disabled: communicationLoading,
+                              },
+                              activeCommunication.channel === "PHONE"
+                                  ? {
+                                        label: callSession ? "Aramayı Yenile" : "Aramayı Başlat",
+                                        onClick: handleInitiateSecureCall,
+                                        isLoading: communicationLoading,
+                                        disabled: communicationLoading,
+                                    }
+                                  : {
+                                        label: "Mesaj Gönder",
+                                        onClick: handleSendSecureWhatsApp,
+                                        isLoading: communicationLoading,
+                                        disabled:
+                                            communicationLoading ||
+                                            !whatsAppMessage.trim().length,
+                                    },
+                          ]
+                        : []
+                }
+            >
+                {activeCommunication?.channel === "PHONE" ? (
+                    <div className="space-y-4">
+                        <div className="rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                            <p className="font-semibold">Numara maskelenmiştir.</p>
+                            <p className="mt-1">
+                                Arama, CRM üzerinden başlatılır ve ajanlara gerçek telefon
+                                bilgisi gösterilmez. Aramayı başlattığınızda sistem size
+                                yönlendirme yapacaktır.
+                            </p>
+                        </div>
+                        {communicationError && (
+                            <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+                                {communicationError}
+                            </div>
+                        )}
+                        {communicationSuccess && (
+                            <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+                                {communicationSuccess}
+                            </div>
+                        )}
+                        {callSession && (
+                            <div className="space-y-2 rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                                <div className="flex items-center justify-between">
+                                    <span className="font-medium text-gray-900">
+                                        Oturum Kodu
+                                    </span>
+                                    <span>{callSession.callId}</span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-gray-500">Durum</span>
+                                    <span className="uppercase tracking-wide text-xs text-blue-600">
+                                        {callSession.status}
+                                    </span>
+                                </div>
+                                {callSession.expiresAt && (
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-gray-500">Geçerlilik</span>
+                                        <span>
+                                            {new Date(callSession.expiresAt).toLocaleString()}
+                                        </span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        <div>
+                            <label
+                                htmlFor="whatsapp-message"
+                                className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500"
+                            >
+                                Mesaj İçeriği
+                            </label>
+                            <textarea
+                                id="whatsapp-message"
+                                className="h-32 w-full resize-none rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 shadow-inner focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-100"
+                                value={whatsAppMessage}
+                                onChange={(event) => {
+                                    setWhatsAppMessage(event.target.value);
+                                    setCommunicationError(null);
+                                }}
+                                placeholder="Merhaba, sizinle en kısa sürede iletişime geçeceğiz..."
+                                disabled={communicationLoading}
+                            />
+                            <p className="mt-2 text-xs text-gray-500">
+                                Mesaj, WhatsApp Business API üzerinden güvenli şekilde
+                                iletilecek ve numara maskeli kalacaktır.
+                            </p>
+                        </div>
+                        {communicationError && (
+                            <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-600">
+                                {communicationError}
+                            </div>
+                        )}
+                        {communicationSuccess && (
+                            <div className="rounded-md bg-green-50 px-3 py-2 text-sm text-green-700">
+                                {communicationSuccess}
+                            </div>
+                        )}
+                        {whatsAppResult && (
+                            <div className="flex items-start gap-3 rounded-lg border border-gray-200 px-4 py-3 text-sm text-gray-700">
+                                <Send className="mt-0.5 h-4 w-4 text-green-600" />
+                                <div>
+                                    <p className="font-medium text-gray-900">Mesaj gönderildi.</p>
+                                    <p className="text-xs text-gray-500">
+                                        ID: {whatsAppResult.messageId} · Durum: {whatsAppResult.status}
+                                    </p>
+                                    {whatsAppResult.deliveredAt && (
+                                        <p className="text-xs text-gray-500">
+                                            Teslim: {new Date(whatsAppResult.deliveredAt).toLocaleString()}
+                                        </p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </Modal>
+
+            <Modal
                 isOpen={!!leadToDelete}
                 onClose={handleCloseDeleteModal}
                 closeOnBackdrop={!deleteLoading}
@@ -1536,7 +1796,9 @@ export default function LeadsPage() {
                                 <p className="mt-1 text-xs text-gray-500">{leadToDelete.email}</p>
                             )}
                             {leadToDelete.phone && (
-                                <p className="mt-0.5 text-xs text-gray-500">{leadToDelete.phone}</p>
+                                <p className="mt-0.5 text-xs text-gray-500">
+                                    Telefon bilgisi gizlendi
+                                </p>
                             )}
                         </div>
                     </div>
