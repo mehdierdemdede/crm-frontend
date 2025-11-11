@@ -945,7 +945,7 @@ export default function LeadsPage() {
                                         <span className="text-sm font-medium text-gray-800">
                                             İlk Aksiyon Süresi
                                         </span>
-                                        <div className="grid gap-2 sm:grid-cols-2">
+                                        <div className="grid gap-2 sm:[grid-template-columns:repeat(2,minmax(0,1fr))_auto]">
                                             <Input
                                                 label="Min"
                                                 type="number"
@@ -966,26 +966,26 @@ export default function LeadsPage() {
                                                     setPage(0);
                                                 }}
                                             />
-                                        </div>
-                                        <div className="sm:w-40">
-                                            <label
-                                                htmlFor="lead-response-unit"
-                                                className="block text-sm font-medium text-gray-800"
-                                            >
-                                                Birim
-                                            </label>
-                                            <select
-                                                id="lead-response-unit"
-                                                className={FILTER_SELECT_CLASSES}
-                                                value={actionDurationUnit}
-                                                onChange={(e) => {
-                                                    setActionDurationUnit(e.target.value as DurationUnit);
-                                                    setPage(0);
-                                                }}
-                                            >
-                                                <option value="minutes">Dakika</option>
-                                                <option value="hours">Saat</option>
-                                            </select>
+                                            <div className="space-y-2 sm:self-end sm:justify-self-start sm:w-40">
+                                                <label
+                                                    htmlFor="lead-response-unit"
+                                                    className="block text-sm font-medium text-gray-800"
+                                                >
+                                                    Birim
+                                                </label>
+                                                <select
+                                                    id="lead-response-unit"
+                                                    className={FILTER_SELECT_CLASSES}
+                                                    value={actionDurationUnit}
+                                                    onChange={(e) => {
+                                                        setActionDurationUnit(e.target.value as DurationUnit);
+                                                        setPage(0);
+                                                    }}
+                                                >
+                                                    <option value="minutes">Dakika</option>
+                                                    <option value="hours">Saat</option>
+                                                </select>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
