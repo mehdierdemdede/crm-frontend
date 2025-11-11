@@ -95,6 +95,25 @@ export interface LeadAction {
     createdAt: string;
 }
 
+export interface LeadCallResult {
+    callId: string;
+    status: string;
+    expiresAt?: string | null;
+    dialUrl?: string | null;
+}
+
+export interface LeadWhatsAppMessageRequest {
+    message: string;
+    templateId?: string;
+    languageCode?: string;
+}
+
+export interface LeadWhatsAppMessageResponse {
+    messageId: string;
+    status: string;
+    deliveredAt?: string | null;
+}
+
 export interface LeadActivityLogEntry {
     id: string;
     type?: string | null;
@@ -1296,6 +1315,107 @@ export const addLeadAction = async (
     } catch (err) {
         console.error("addLeadAction error:", err);
         return false;
+    }
+};
+
+export const initiateLeadCall = async (
+    leadId: string,
+): Promise<LeadCallResult | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/leads/${leadId}/call`, {
+            method: "POST",
+            headers,
+        });
+
+        const body = await extractResponseBody(res);
+
+        if (!res.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Arama başlatılamadı. Lütfen tekrar deneyin."),
+            );
+        }
+
+        if (!body || typeof body !== "object") {
+            throw new Error("Geçersiz arama yanıtı alındı.");
+        }
+
+        const data = body as Record<string, unknown>;
+        const callIdRaw = data.callId ?? data.sessionId ?? data.id;
+        const statusRaw = data.status ?? data.state ?? "QUEUED";
+
+        const callId = typeof callIdRaw === "string" ? callIdRaw : String(callIdRaw ?? "");
+        const status = typeof statusRaw === "string" ? statusRaw : String(statusRaw ?? "QUEUED");
+
+        return {
+            callId,
+            status,
+            expiresAt:
+                typeof data.expiresAt === "string"
+                    ? data.expiresAt
+                    : typeof data.expireAt === "string"
+                    ? data.expireAt
+                    : null,
+            dialUrl:
+                typeof data.dialUrl === "string"
+                    ? data.dialUrl
+                    : typeof data.proxyUrl === "string"
+                    ? data.proxyUrl
+                    : null,
+        };
+    } catch (err) {
+        console.error("initiateLeadCall error:", err);
+        return null;
+    }
+};
+
+export const sendLeadWhatsAppMessage = async (
+    leadId: string,
+    payload: LeadWhatsAppMessageRequest,
+): Promise<LeadWhatsAppMessageResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/leads/${leadId}/whatsapp`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify(payload),
+        });
+
+        const body = await extractResponseBody(res);
+
+        if (!res.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Mesaj gönderilemedi. Lütfen tekrar deneyin."),
+            );
+        }
+
+        if (!body || typeof body !== "object") {
+            throw new Error("Geçersiz WhatsApp yanıtı alındı.");
+        }
+
+        const data = body as Record<string, unknown>;
+        const messageIdRaw = data.messageId ?? data.id;
+        const statusRaw = data.status ?? data.state ?? "SENT";
+
+        return {
+            messageId:
+                typeof messageIdRaw === "string"
+                    ? messageIdRaw
+                    : String(messageIdRaw ?? ""),
+            status:
+                typeof statusRaw === "string"
+                    ? statusRaw
+                    : String(statusRaw ?? "SENT"),
+            deliveredAt:
+                typeof data.deliveredAt === "string"
+                    ? data.deliveredAt
+                    : typeof data.sentAt === "string"
+                    ? data.sentAt
+                    : null,
+        };
+    } catch (err) {
+        console.error("sendLeadWhatsAppMessage error:", err);
+        return null;
     }
 };
 
