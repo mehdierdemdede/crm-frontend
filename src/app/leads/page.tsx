@@ -69,6 +69,9 @@ const TABLE_COLUMNS: Array<{ key: TableColumnKey; label: string; sortable?: bool
     { key: "actions", label: "Aksiyonlar" },
 ];
 
+const FILTER_SELECT_CLASSES =
+    "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-blue-500";
+
 const INITIAL_CREATE_FORM = {
     name: "",
     email: "",
@@ -726,6 +729,20 @@ export default function LeadsPage() {
         setIsCreateModalOpen(false);
     };
 
+    const handleResetFilters = useCallback(() => {
+        setSearch("");
+        setCampaignFilter("");
+        setLanguageFilter("");
+        setAssignedFilter("");
+        setCreatedFrom("");
+        setCreatedTo("");
+        setActionDurationMin("");
+        setActionDurationMax("");
+        setActionDurationUnit("minutes");
+        setStatusFilters([]);
+        setPage(0);
+    }, []);
+
     const hasActiveFilters =
         Boolean(debouncedSearch.trim()) ||
         Boolean(campaignFilter.trim()) ||
@@ -778,7 +795,204 @@ export default function LeadsPage() {
                                 </div>
                             </div>
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-6">
+                            <div className="space-y-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div>
+                                        <h3 className="text-sm font-semibold text-gray-700">Filtreler</h3>
+                                        <p className="text-xs text-gray-500">
+                                            Aradığınız lead’i hızlıca bulun.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {selectedCount > 0 && (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setSelectedLeadIds(new Set())}
+                                            >
+                                                Seçimleri temizle
+                                            </Button>
+                                        )}
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            disabled={!hasActiveFilters}
+                                            onClick={handleResetFilters}
+                                        >
+                                            Filtreleri sıfırla
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                                    <Input
+                                        label="Arama"
+                                        placeholder="İsim, email veya telefon..."
+                                        value={search}
+                                        onChange={(e) => {
+                                            setSearch(e.target.value);
+                                            setPage(0);
+                                        }}
+                                        hint={isSearching ? "Aranıyor..." : undefined}
+                                    />
+                                    <Input
+                                        label="Reklam"
+                                        placeholder="Reklam adı..."
+                                        value={campaignFilter}
+                                        onChange={(e) => {
+                                            setCampaignFilter(e.target.value);
+                                            setPage(0);
+                                        }}
+                                    />
+                                    <div className="space-y-2">
+                                        <label
+                                            htmlFor="lead-language-filter"
+                                            className="block text-sm font-medium text-gray-800"
+                                        >
+                                            Dil
+                                        </label>
+                                        <select
+                                            id="lead-language-filter"
+                                            className={FILTER_SELECT_CLASSES}
+                                            value={languageFilter}
+                                            onChange={(e) => {
+                                                setLanguageFilter(e.target.value);
+                                                setPage(0);
+                                            }}
+                                        >
+                                            <option value="">Tüm Diller</option>
+                                            {languageOptions.map((lang) => (
+                                                <option key={lang.value} value={lang.value}>
+                                                    {lang.label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2 xl:col-span-1">
+                                        <label
+                                            htmlFor="lead-status-filter"
+                                            className="block text-sm font-medium text-gray-800"
+                                        >
+                                            Lead Durumu
+                                        </label>
+                                        <select
+                                            id="lead-status-filter"
+                                            multiple
+                                            className={`${FILTER_SELECT_CLASSES} h-32`}
+                                            value={statusFilters}
+                                            onChange={handleStatusFilterChange}
+                                        >
+                                            {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                                                <option key={value} value={value}>
+                                                    {label}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <p className="text-xs text-gray-500">
+                                            Birden fazla seçim yapmak için Ctrl (Windows) veya Cmd (Mac) tuşunu kullanın.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <label
+                                            htmlFor="lead-assigned-filter"
+                                            className="block text-sm font-medium text-gray-800"
+                                        >
+                                            Danışman
+                                        </label>
+                                        <select
+                                            id="lead-assigned-filter"
+                                            className={FILTER_SELECT_CLASSES}
+                                            value={assignedFilter}
+                                            onChange={(e) => {
+                                                setAssignedFilter(e.target.value);
+                                                setPage(0);
+                                            }}
+                                        >
+                                            <option value="">Tümü</option>
+                                            <option value="__me__">Bana Atananlar</option>
+                                            <option value="__unassigned__">Atanmamış</option>
+                                            {users.map((u) => (
+                                                <option key={u.id} value={u.id}>
+                                                    {u.firstName} {u.lastName}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <span className="text-sm font-medium text-gray-800">
+                                            Lead Geliş Tarihi
+                                        </span>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            <Input
+                                                label="Başlangıç"
+                                                type="date"
+                                                value={createdFrom}
+                                                onChange={(e) => {
+                                                    setCreatedFrom(e.target.value);
+                                                    setPage(0);
+                                                }}
+                                            />
+                                            <Input
+                                                label="Bitiş"
+                                                type="date"
+                                                value={createdTo}
+                                                onChange={(e) => {
+                                                    setCreatedTo(e.target.value);
+                                                    setPage(0);
+                                                }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2 xl:col-span-1">
+                                        <span className="text-sm font-medium text-gray-800">
+                                            İlk Aksiyon Süresi
+                                        </span>
+                                        <div className="grid gap-2 sm:grid-cols-2">
+                                            <Input
+                                                label="Min"
+                                                type="number"
+                                                min={0}
+                                                value={actionDurationMin}
+                                                onChange={(e) => {
+                                                    setActionDurationMin(e.target.value);
+                                                    setPage(0);
+                                                }}
+                                            />
+                                            <Input
+                                                label="Maks"
+                                                type="number"
+                                                min={0}
+                                                value={actionDurationMax}
+                                                onChange={(e) => {
+                                                    setActionDurationMax(e.target.value);
+                                                    setPage(0);
+                                                }}
+                                            />
+                                        </div>
+                                        <div className="sm:w-40">
+                                            <label
+                                                htmlFor="lead-response-unit"
+                                                className="block text-sm font-medium text-gray-800"
+                                            >
+                                                Birim
+                                            </label>
+                                            <select
+                                                id="lead-response-unit"
+                                                className={FILTER_SELECT_CLASSES}
+                                                value={actionDurationUnit}
+                                                onChange={(e) => {
+                                                    setActionDurationUnit(e.target.value as DurationUnit);
+                                                    setPage(0);
+                                                }}
+                                            >
+                                                <option value="minutes">Dakika</option>
+                                                <option value="hours">Saat</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             {loading ? (
                                 <>
                                     <div className="hidden md:block overflow-x-auto">
@@ -831,7 +1045,7 @@ export default function LeadsPage() {
                                                         </td>
                                                     </tr>
                                                 ))}
-                                            </tbody>
+                                        </tbody>
                                         </table>
                                     </div>
 
@@ -866,10 +1080,6 @@ export default function LeadsPage() {
                                         ))}
                                     </div>
                                 </>
-                            ) : displayedLeads.length === 0 ? (
-                                <div className="text-center text-gray-500 py-10">
-                                    Kayıt bulunamadı.
-                                </div>
                             ) : (
                                 <>
                                     <div className="hidden md:block overflow-x-auto">
@@ -901,171 +1111,34 @@ export default function LeadsPage() {
                                                         </th>
                                                     ))}
                                                 </tr>
-                                                <tr className="bg-white text-xs text-gray-600">
-                                                    <th className="p-3">
-                                                        {selectedCount > 0 && (
-                                                            <button
-                                                                type="button"
-                                                                className="text-blue-600 hover:underline"
-                                                                onClick={() => setSelectedLeadIds(new Set())}
-                                                            >
-                                                                Seçimleri temizle
-                                                            </button>
-                                                        )}
-                                                    </th>
-                                                    <th className="p-3">
-                                                        <div className="flex flex-col gap-2">
-                                                            <Input
-                                                                className="flex-1"
-                                                                placeholder="İsim, email veya telefon..."
-                                                                value={search}
-                                                                onChange={(e) => {
-                                                                    setSearch(e.target.value);
-                                                                    setPage(0);
-                                                                }}
-                                                            />
-                                                            <select
-                                                                className="border rounded-md p-2 text-xs bg-white shadow-sm"
-                                                                value={languageFilter}
-                                                                onChange={(e) => {
-                                                                    setLanguageFilter(e.target.value);
-                                                                    setPage(0);
-                                                                }}
-                                                            >
-                                                                <option value="">Tüm Diller</option>
-                                                                {languageOptions.map((lang) => (
-                                                                    <option key={lang.value} value={lang.value}>
-                                                                        {lang.label}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
-                                                            {isSearching && (
-                                                                <span className="text-[10px] text-blue-500">
-                                                                    Aranıyor...
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    </th>
-                                                    <th className="p-3">
-                                                        <Input
-                                                            placeholder="Reklam adı..."
-                                                            value={campaignFilter}
-                                                            onChange={(e) => {
-                                                                setCampaignFilter(e.target.value);
-                                                                setPage(0);
-                                                            }}
-                                                        />
-                                                    </th>
-                                                    <th className="p-3">
-                                                        <select
-                                                            multiple
-                                                            className="border rounded-md p-2 text-xs bg-white shadow-sm h-24"
-                                                            value={statusFilters}
-                                                            onChange={handleStatusFilterChange}
-                                                        >
-                                                            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-                                                                <option key={k} value={k}>
-                                                                    {v}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </th>
-                                                    <th className="p-3">
-                                                        <select
-                                                            className="border rounded-md bg-white shadow-sm text-xs p-2"
-                                                            value={assignedFilter}
-                                                            onChange={(e) => {
-                                                                setAssignedFilter(e.target.value);
-                                                                setPage(0);
-                                                            }}
-                                                        >
-                                                            <option value="">Tümü</option>
-                                                            <option value="__me__">Bana Atananlar</option>
-                                                            <option value="__unassigned__">Atanmamış</option>
-                                                            {users.map((u) => (
-                                                                <option key={u.id} value={u.id}>
-                                                                    {u.firstName} {u.lastName}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </th>
-                                                    <th className="p-3">
-                                                        <div className="flex flex-col gap-2">
-                                                            <Input
-                                                                type="date"
-                                                                value={createdFrom}
-                                                                onChange={(e) => {
-                                                                    setCreatedFrom(e.target.value);
-                                                                    setPage(0);
-                                                                }}
-                                                            />
-                                                            <Input
-                                                                type="date"
-                                                                value={createdTo}
-                                                                onChange={(e) => {
-                                                                    setCreatedTo(e.target.value);
-                                                                    setPage(0);
-                                                                }}
-                                                            />
-                                                        </div>
-                                                    </th>
-                                                    <th className="p-3">
-                                                        <div className="grid gap-2">
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                <Input
-                                                                    type="number"
-                                                                    min={0}
-                                                                    placeholder="Min"
-                                                                    value={actionDurationMin}
-                                                                    onChange={(e) => {
-                                                                        setActionDurationMin(e.target.value);
-                                                                        setPage(0);
-                                                                    }}
-                                                                />
-                                                                <Input
-                                                                    type="number"
-                                                                    min={0}
-                                                                    placeholder="Maks"
-                                                                    value={actionDurationMax}
-                                                                    onChange={(e) => {
-                                                                        setActionDurationMax(e.target.value);
-                                                                        setPage(0);
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                            <select
-                                                                className="border rounded-md p-2 text-xs bg-white shadow-sm"
-                                                                value={actionDurationUnit}
-                                                                onChange={(e) => {
-                                                                    setActionDurationUnit(e.target.value as DurationUnit);
-                                                                    setPage(0);
-                                                                }}
-                                                            >
-                                                                <option value="minutes">Dakika</option>
-                                                                <option value="hours">Saat</option>
-                                                            </select>
-                                                        </div>
-                                                    </th>
-                                                    <th className="p-3" />
-                                                </tr>
                                             </thead>
                                             <tbody>
-                                                {displayedLeads.map((lead) => {
-                                                    const languageOption = lead.language
-                                                        ? getOptionByCode(lead.language) ??
-                                                          enhanceLanguageOption({
-                                                              value: lead.language,
-                                                              label: lead.language,
-                                                          })
-                                                        : undefined;
-                                                    const isSelected = selectedLeadIds.has(lead.id);
-                                                    const firstResponseMinutes = getFirstResponseMinutes(lead);
-                                                    return (
-                                                        <tr
-                                                            key={lead.id}
-                                                            className={`border-t transition-colors ${
-                                                                isSelected
-                                                                    ? "bg-blue-50"
+                                                {displayedLeads.length === 0 ? (
+                                                    <tr>
+                                                        <td
+                                                            className="p-8 text-center text-gray-500"
+                                                            colSpan={TABLE_COLUMNS.length + 1}
+                                                        >
+                                                            Kayıt bulunamadı.
+                                                        </td>
+                                                    </tr>
+                                                ) : (
+                                                    displayedLeads.map((lead) => {
+                                                        const languageOption = lead.language
+                                                            ? getOptionByCode(lead.language) ??
+                                                              enhanceLanguageOption({
+                                                                  value: lead.language,
+                                                                  label: lead.language,
+                                                              })
+                                                            : undefined;
+                                                        const isSelected = selectedLeadIds.has(lead.id);
+                                                        const firstResponseMinutes = getFirstResponseMinutes(lead);
+                                                        return (
+                                                            <tr
+                                                                key={lead.id}
+                                                                className={`border-t transition-colors ${
+                                                                    isSelected
+                                                                        ? "bg-blue-50"
                                                                     : "hover:bg-blue-50 even:bg-gray-50"
                                                             }`}
                                                         >
@@ -1219,32 +1292,37 @@ export default function LeadsPage() {
                                                             </td>
                                                         </tr>
                                                     );
-                                                })}
+                                                }))}
                                             </tbody>
                                         </table>
                                     </div>
 
                                     <div className="md:hidden flex flex-col gap-4">
-                                        {displayedLeads.map((lead) => {
-                                            const languageOption = lead.language
-                                                ? getOptionByCode(lead.language) ??
-                                                  enhanceLanguageOption({
-                                                      value: lead.language,
-                                                      label: lead.language,
-                                                  })
-                                                : undefined;
-                                            const isSelected = selectedLeadIds.has(lead.id);
-                                            const firstResponseMinutes =
-                                                getFirstResponseMinutes(lead);
-                                            return (
-                                                <div
-                                                    key={lead.id}
-                                                    className={`border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-3 ${
-                                                        isSelected ? "border-blue-400" : ""
-                                                    }`}
-                                                >
-                                                    <div className="flex items-center justify-between gap-3">
-                                                        <label className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600">
+                                        {displayedLeads.length === 0 ? (
+                                            <div className="text-center text-gray-500 py-10">
+                                                Kayıt bulunamadı.
+                                            </div>
+                                        ) : (
+                                            displayedLeads.map((lead) => {
+                                                const languageOption = lead.language
+                                                    ? getOptionByCode(lead.language) ??
+                                                      enhanceLanguageOption({
+                                                          value: lead.language,
+                                                          label: lead.language,
+                                                      })
+                                                    : undefined;
+                                                const isSelected = selectedLeadIds.has(lead.id);
+                                                const firstResponseMinutes =
+                                                    getFirstResponseMinutes(lead);
+                                                return (
+                                                    <div
+                                                        key={lead.id}
+                                                        className={`border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-3 ${
+                                                            isSelected ? "border-blue-400" : ""
+                                                        }`}
+                                                    >
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <label className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600">
                                                             <input
                                                                 type="checkbox"
                                                                 className="h-4 w-4 rounded border-gray-300"
@@ -1383,8 +1461,9 @@ export default function LeadsPage() {
                                                         )}
                                                     </div>
                                                 </div>
-                                            );
-                                        })}
+                                                );
+                                            })
+                                        )}
                                     </div>
                                 </>
                             )}
