@@ -147,7 +147,7 @@ export default function LeadsPage() {
     const [users, setUsers] = useState<SimpleUser[]>([]);
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
-    const [statusFilters, setStatusFilters] = useState<LeadStatus[]>([]);
+    const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
     const [languageFilter, setLanguageFilter] = useState("");
     const [campaignFilter, setCampaignFilter] = useState("");
     const [assignedFilter, setAssignedFilter] = useState("");
@@ -255,7 +255,7 @@ export default function LeadsPage() {
                     size: perPage,
                     sort: `${sortBy},${sortOrder}`,
                     search: debouncedSearch.trim() || undefined,
-                    statuses: statusFilters,
+                    statuses: statusFilter ? [statusFilter] : undefined,
                     language: languageFilter || undefined,
                     assignedUserId,
                     unassigned: assignedFilter === "__unassigned__",
@@ -289,7 +289,7 @@ export default function LeadsPage() {
         responseMinMinutes,
         sortBy,
         sortOrder,
-        statusFilters,
+        statusFilter,
         user?.id,
     ]);
 
@@ -337,10 +337,9 @@ export default function LeadsPage() {
             const adInfo = formatAdInfo(lead).toLowerCase();
             const matchesAd = campaignValue ? adInfo.includes(campaignValue) : true;
 
-            const matchesStatus =
-                statusFilters.length > 0
-                    ? statusFilters.includes(lead.status)
-                    : true;
+            const matchesStatus = statusFilter
+                ? lead.status === statusFilter
+                : true;
 
             const matchesLanguage = languageFilter
                 ? lead.language === languageFilter
@@ -395,7 +394,7 @@ export default function LeadsPage() {
         languageFilter,
         responseMaxMinutes,
         responseMinMinutes,
-        statusFilters,
+        statusFilter,
         user?.id,
     ]);
 
@@ -595,10 +594,8 @@ export default function LeadsPage() {
     const handleStatusFilterChange = (
         event: React.ChangeEvent<HTMLSelectElement>,
     ) => {
-        const values = Array.from(event.target.selectedOptions).map(
-            (option) => option.value as LeadStatus,
-        );
-        setStatusFilters(values);
+        const { value } = event.target;
+        setStatusFilter(value as LeadStatus | "");
         setPage(0);
     };
 
@@ -739,7 +736,7 @@ export default function LeadsPage() {
         setActionDurationMin("");
         setActionDurationMax("");
         setActionDurationUnit("minutes");
-        setStatusFilters([]);
+        setStatusFilter("");
         setPage(0);
     }, []);
 
@@ -750,7 +747,7 @@ export default function LeadsPage() {
         Boolean(assignedFilter) ||
         Boolean(createdFrom) ||
         Boolean(createdTo) ||
-        statusFilters.length > 0 ||
+        Boolean(statusFilter) ||
         responseMinMinutes !== undefined ||
         responseMaxMinutes !== undefined;
 
@@ -824,27 +821,31 @@ export default function LeadsPage() {
                                         </Button>
                                     </div>
                                 </div>
-                                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                                    <Input
-                                        label="Arama"
-                                        placeholder="İsim, email veya telefon..."
-                                        value={search}
-                                        onChange={(e) => {
-                                            setSearch(e.target.value);
-                                            setPage(0);
-                                        }}
-                                        hint={isSearching ? "Aranıyor..." : undefined}
-                                    />
-                                    <Input
-                                        label="Reklam"
-                                        placeholder="Reklam adı..."
-                                        value={campaignFilter}
-                                        onChange={(e) => {
-                                            setCampaignFilter(e.target.value);
-                                            setPage(0);
-                                        }}
-                                    />
-                                    <div className="space-y-2">
+                                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-12">
+                                    <div className="md:col-span-1 xl:col-span-3">
+                                        <Input
+                                            label="Arama"
+                                            placeholder="İsim, email veya telefon..."
+                                            value={search}
+                                            onChange={(e) => {
+                                                setSearch(e.target.value);
+                                                setPage(0);
+                                            }}
+                                            hint={isSearching ? "Aranıyor..." : undefined}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-1 xl:col-span-3">
+                                        <Input
+                                            label="Reklam"
+                                            placeholder="Reklam adı..."
+                                            value={campaignFilter}
+                                            onChange={(e) => {
+                                                setCampaignFilter(e.target.value);
+                                                setPage(0);
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="space-y-2 md:col-span-1 xl:col-span-2">
                                         <label
                                             htmlFor="lead-language-filter"
                                             className="block text-sm font-medium text-gray-800"
@@ -868,7 +869,7 @@ export default function LeadsPage() {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="space-y-2 md:col-span-2 xl:col-span-1">
+                                    <div className="space-y-2 md:col-span-1 xl:col-span-2">
                                         <label
                                             htmlFor="lead-status-filter"
                                             className="block text-sm font-medium text-gray-800"
@@ -877,22 +878,19 @@ export default function LeadsPage() {
                                         </label>
                                         <select
                                             id="lead-status-filter"
-                                            multiple
-                                            className={`${FILTER_SELECT_CLASSES} h-32`}
-                                            value={statusFilters}
+                                            className={FILTER_SELECT_CLASSES}
+                                            value={statusFilter}
                                             onChange={handleStatusFilterChange}
                                         >
+                                            <option value="">Tümü</option>
                                             {Object.entries(STATUS_LABELS).map(([value, label]) => (
                                                 <option key={value} value={value}>
                                                     {label}
                                                 </option>
                                             ))}
                                         </select>
-                                        <p className="text-xs text-gray-500">
-                                            Birden fazla seçim yapmak için Ctrl (Windows) veya Cmd (Mac) tuşunu kullanın.
-                                        </p>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-2 md:col-span-2 xl:col-span-2">
                                         <label
                                             htmlFor="lead-assigned-filter"
                                             className="block text-sm font-medium text-gray-800"
@@ -918,7 +916,7 @@ export default function LeadsPage() {
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="space-y-2 md:col-span-2">
+                                    <div className="space-y-2 md:col-span-2 xl:col-span-6">
                                         <span className="text-sm font-medium text-gray-800">
                                             Lead Geliş Tarihi
                                         </span>
@@ -943,7 +941,7 @@ export default function LeadsPage() {
                                             />
                                         </div>
                                     </div>
-                                    <div className="space-y-2 md:col-span-2 xl:col-span-1">
+                                    <div className="space-y-2 md:col-span-2 xl:col-span-6">
                                         <span className="text-sm font-medium text-gray-800">
                                             İlk Aksiyon Süresi
                                         </span>
