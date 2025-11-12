@@ -1,7 +1,7 @@
 "use client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import React, { useState } from "react";
+
 import {
     Home,
     Users,
@@ -16,8 +16,12 @@ import {
     X,
     LogOut,
 } from "lucide-react";
-import { Button } from "./Button";
+import React, { useState } from "react";
+
 import {useAuth} from "@/hooks/useAuth";
+
+import { Button } from "./Button";
+
 
 export default function Sidebar() {
     const pathname = usePathname() || "/dashboard";

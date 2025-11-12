@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useForm } from "react-hook-form";
+
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
     AlertCircle,
     ArrowLeft,
@@ -15,13 +13,16 @@ import {
     ShieldCheck,
     User,
 } from "lucide-react";
+import { Suspense, useEffect, useMemo } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
 import { dispatchToast } from "@/components/toaster";
 import { useOnboardingStore } from "@/hooks/useOnboardingStore";
-import { resolveBackendApiBaseUrl } from "@/lib/backendConfig";
 import { getAuthHeaders } from "@/lib/api";
+import { resolveBackendApiBaseUrl } from "@/lib/backendConfig";
 import type { BillingPeriod, Plan } from "@/lib/types";
 
 const cardFormSchema = z.object({
@@ -237,7 +238,7 @@ async function createSubscription(payload: {
     }
 }
 
-export default function CheckoutPage() {
+function CheckoutPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const selectedPlan = useOnboardingStore((state) => state.selectedPlan);
@@ -524,5 +525,19 @@ export default function CheckoutPage() {
                 </aside>
             </div>
         </div>
+    );
+}
+
+export default function CheckoutPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex min-h-screen items-center justify-center bg-slate-50 text-slate-500">
+                    Yükleniyor...
+                </div>
+            }
+        >
+            <CheckoutPageContent />
+        </Suspense>
     );
 }

@@ -1,13 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
-import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
-import { getAgentStats, type AgentStatsResponse } from "@/lib/api";
-import { useLanguages } from "@/contexts/LanguageContext";
-import { enhanceLanguageOption } from "@/lib/languages";
 import { CheckCircle, XCircle, Activity } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
     ResponsiveContainer,
     BarChart,
@@ -21,6 +15,14 @@ import {
     Cell,
     Legend,
 } from "recharts";
+
+import { Card, CardHeader, CardContent } from "@/components/Card";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+import Layout from "@/components/Layout";
+import { useLanguages } from "@/contexts/LanguageContext";
+import { getAgentStats, type AgentStatsResponse } from "@/lib/api";
+import { enhanceLanguageOption } from "@/lib/languages";
+
 
 const COLORS = ["#2563eb", "#16a34a", "#f59e0b", "#dc2626"];
 
@@ -36,7 +38,7 @@ export default function AutoAssignStatsPage() {
             setStats(data);
             setLoading(false);
         };
-        fetchStats();
+        void fetchStats();
     }, []);
 
     if (loading) {

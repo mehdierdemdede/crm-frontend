@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useQuery } from "@tanstack/react-query";
 import {
     AlertCircle,
@@ -11,7 +13,6 @@ import {
     PiggyBank,
     Users,
 } from "lucide-react";
-import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";

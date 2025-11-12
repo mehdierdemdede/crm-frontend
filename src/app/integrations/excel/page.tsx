@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
+
 import { Button } from "@/components/Button";
+import { Card, CardHeader, CardContent } from "@/components/Card";
+import Layout from "@/components/Layout";
 
 const CRM_COLUMNS = ["name", "email", "phone", "campaign", "lang", "status"];
 
@@ -13,9 +14,13 @@ export default function ExcelImportPage() {
     const [mapping, setMapping] = useState<{ [key: string]: string }>({});
 
     const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files?.length) {
-            setFileName(e.target.files[0].name);
-            setStep(2);
+        const { files } = e.target;
+        if (files && files.length > 0) {
+            const file = files.item(0);
+            if (file) {
+                setFileName(file.name);
+                setStep(2);
+            }
         }
     };
 

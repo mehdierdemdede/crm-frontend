@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
-import { Button } from "@/components/Button";
-import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
-import AddMemberModal from "@/components/AddMemberModal";
 import Link from "next/link";
-import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api"; // ✅ yeni servis
+
+import { useState, useEffect } from "react";
+
+import AddMemberModal from "@/components/AddMemberModal";
+import { Button } from "@/components/Button";
+import { Card, CardHeader, CardContent } from "@/components/Card";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+import Layout from "@/components/Layout";
 import { useLanguages } from "@/contexts/LanguageContext";
+import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api"; // ✅ yeni servis
 import { enhanceLanguageOption } from "@/lib/languages";
 
 export default function MembersPage() {
@@ -25,7 +27,7 @@ export default function MembersPage() {
             if (data) setMembers(data);
             setLoading(false);
         };
-        fetchData();
+        void fetchData();
     }, []);
 
     const handleSave = (newMember: AgentStatsResponse) => {

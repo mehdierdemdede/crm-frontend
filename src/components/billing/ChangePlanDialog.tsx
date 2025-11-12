@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, ArrowDownRight, CheckCircle2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-import Modal from "@/components/Modal";
 import { Button } from "@/components/Button";
-import { cn } from "@/lib/utils";
+import Modal from "@/components/Modal";
 import { changeSubscriptionPlan } from "@/lib/api";
 import type { BillingPeriod, Plan, Price, Subscription } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
 interface ChangePlanDialogProps {
     isOpen: boolean;
@@ -86,7 +86,10 @@ export default function ChangePlanDialog({
         if (planOptions.length === 0) return;
         const option = planOptions.find((item) => item.plan.id === selectedPlanId);
         if (!option) {
-            setSelectedPlanId(planOptions[0].plan.id);
+            const fallback = planOptions[0];
+            if (fallback) {
+                setSelectedPlanId(fallback.plan.id);
+            }
         }
     }, [planOptions, selectedPlanId]);
 
@@ -105,10 +108,12 @@ export default function ChangePlanDialog({
         mutationFn: ({ planId, priceId }: { planId: string; priceId: string }) =>
             changeSubscriptionPlan(subscription.id, { planId, priceId }),
         onSuccess: (updated) => {
-            queryClient.invalidateQueries({
+            void queryClient.invalidateQueries({
                 queryKey: ["customer-subscriptions", subscription.customerId],
             });
-            queryClient.invalidateQueries({ queryKey: ["subscription", subscription.id] });
+            void queryClient.invalidateQueries({
+                queryKey: ["subscription", subscription.id],
+            });
             onSuccess?.(updated);
             onClose();
         },
@@ -120,7 +125,10 @@ export default function ChangePlanDialog({
 
     const handleConfirm = () => {
         if (!selectedOption || isSamePlan) return;
-        mutation.mutate({ planId: selectedOption.plan.id, priceId: selectedOption.price.id });
+        void mutation.mutate({
+            planId: selectedOption.plan.id,
+            priceId: selectedOption.price.id,
+        });
     };
 
     return (

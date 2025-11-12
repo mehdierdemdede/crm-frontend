@@ -1,8 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
 import {
     Users,
     Flame,
@@ -11,6 +8,7 @@ import {
     Ban,
     AlertTriangle,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import {
     ResponsiveContainer,
     LineChart,
@@ -25,6 +23,9 @@ import {
     Pie,
     Cell,
 } from "recharts";
+
+import { Card, CardHeader, CardContent } from "@/components/Card";
+import Layout from "@/components/Layout";
 import { getLeadReports, LeadReportResponse } from "@/lib/api";
 
 const COLORS = [
@@ -50,7 +51,7 @@ export default function DashboardPage() {
             setStats(data);
             setLoading(false);
         };
-        fetchData();
+        void fetchData();
     }, []);
 
     if (loading || !stats) {

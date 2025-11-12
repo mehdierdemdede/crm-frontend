@@ -1,8 +1,8 @@
 "use client";
 
-import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Users } from "lucide-react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
 import {
     Bar,
     BarChart,
@@ -12,8 +12,8 @@ import {
     YAxis,
 } from "recharts";
 
-import Modal from "@/components/Modal";
 import { Input } from "@/components/Input";
+import Modal from "@/components/Modal";
 import { updateSubscriptionSeats } from "@/lib/api";
 import type { SeatProration, Subscription } from "@/lib/types";
 import { SeatProrationOptions } from "@/lib/types";
@@ -65,10 +65,12 @@ export default function UpdateSeatsDialog({
         mutationFn: (payload: { seatCount: number; proration: SeatProration }) =>
             updateSubscriptionSeats(subscription.id, payload),
         onSuccess: (updated) => {
-            queryClient.invalidateQueries({
+            void queryClient.invalidateQueries({
                 queryKey: ["customer-subscriptions", subscription.customerId],
             });
-            queryClient.invalidateQueries({ queryKey: ["subscription", subscription.id] });
+            void queryClient.invalidateQueries({
+                queryKey: ["subscription", subscription.id],
+            });
             onSuccess?.(updated);
             onClose();
         },
@@ -123,7 +125,7 @@ export default function UpdateSeatsDialog({
 
     const handleSubmit = () => {
         if (seatCount === subscription.seats) return;
-        mutation.mutate({ seatCount, proration });
+        void mutation.mutate({ seatCount, proration });
     };
 
     return (

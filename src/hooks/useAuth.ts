@@ -1,5 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+
+import { useState, useEffect, useCallback } from "react";
+
 import { api, LoginResponse, getCurrentUser } from "../lib/api";
 
 const AUTH_TOKEN_KEY = "authToken";
