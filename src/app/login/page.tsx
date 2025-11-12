@@ -70,8 +70,8 @@ export default function LoginPage() {
 
                     <div className="info-bar order-3 md:order-2">
                         <div>
-                            <p className="text-xs uppercase tracking-wide text-blue-600">Henüz hazır değil misiniz?</p>
-                            <p className="text-sm font-semibold text-blue-700">Planlara göz atın.</p>
+                            <p className="text-xs uppercase tracking-wide text-blue-700">Henüz hazır değil misiniz?</p>
+                            <p className="text-sm font-semibold text-blue-900">Planlara göz atın.</p>
                         </div>
                         <Link
                             href="/planlar"

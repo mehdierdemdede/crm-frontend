@@ -117,11 +117,11 @@ body {
 }
 
 .info-bar {
-  @apply flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm text-blue-700 shadow-sm;
+  @apply flex items-center justify-between gap-3 rounded-xl border border-blue-200 bg-blue-100 px-4 py-3 text-sm text-blue-900 shadow-sm;
 }
 
 .info-bar-link {
-  @apply inline-flex items-center gap-1 font-semibold text-blue-700 transition-colors hover:text-blue-800;
+  @apply inline-flex items-center gap-1 font-semibold text-blue-900 transition-colors hover:text-blue-950;
 }
 
 /* Dekorasyon şekilleri */
