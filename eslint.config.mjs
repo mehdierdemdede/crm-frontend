@@ -1,3 +1,4 @@
+// eslint.config.ts (flat)
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
@@ -34,9 +35,24 @@ const eslintConfig = [
       "import/order": [
         "error",
         {
-          groups: [["builtin", "external"], ["internal"], ["parent", "sibling", "index"]],
+          groups: [
+            "builtin",
+            "external",
+            "internal",
+            "parent",
+            "sibling",
+            "index",
+            "type" // keep type-only imports last
+          ],
+          pathGroups: [
+            { pattern: "next/**", group: "external", position: "before" },
+            { pattern: "@/**", group: "internal", position: "after" }
+          ],
+          // don't special-case "react" so it stays alphabetized:
+          pathGroupsExcludedImportTypes: ["react"],
           "newlines-between": "always",
           alphabetize: { order: "asc", caseInsensitive: true },
+          warnOnUnassignedImports: true
         },
       ],
       "import/no-unresolved": "error",
