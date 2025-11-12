@@ -1,10 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useId, useState } from "react";
+
+import { useLanguages } from "@/contexts/LanguageContext";
+import { DEFAULT_LANGUAGE_OPTIONS } from "@/lib/languages";
+
 import { Button } from "./Button";
 import { LanguageFlagIcon } from "./LanguageFlagIcon";
-import { DEFAULT_LANGUAGE_OPTIONS } from "@/lib/languages";
-import { useLanguages } from "@/contexts/LanguageContext";
 
 type Role = "USER" | "ADMIN" | "SUPER_ADMIN";
 
@@ -74,13 +76,26 @@ export default function MemberForm({
         onSubmit(form);
     };
 
+    const idPrefix = useId();
+    const firstNameId = `${idPrefix}-first-name`;
+    const lastNameId = `${idPrefix}-last-name`;
+    const emailId = `${idPrefix}-email`;
+    const roleId = `${idPrefix}-role`;
+    const languagesHintId = `${idPrefix}-languages-hint`;
+    const dailyCapacityId = `${idPrefix}-daily-capacity`;
+    const activeId = `${idPrefix}-active`;
+    const autoAssignId = `${idPrefix}-auto-assign`;
+
     return (
         <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Ad</label>
+                    <label className="block text-sm font-medium text-gray-700" htmlFor={firstNameId}>
+                        Ad
+                    </label>
                     <input
                         type="text"
+                        id={firstNameId}
                         className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
                         value={form.firstName}
                         onChange={(e) => setForm({ ...form, firstName: e.target.value })}
@@ -88,9 +103,12 @@ export default function MemberForm({
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Soyad</label>
+                    <label className="block text-sm font-medium text-gray-700" htmlFor={lastNameId}>
+                        Soyad
+                    </label>
                     <input
                         type="text"
+                        id={lastNameId}
                         className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
                         value={form.lastName}
                         onChange={(e) => setForm({ ...form, lastName: e.target.value })}
@@ -101,9 +119,12 @@ export default function MemberForm({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Email</label>
+                    <label className="block text-sm font-medium text-gray-700" htmlFor={emailId}>
+                        Email
+                    </label>
                     <input
                         type="email"
+                        id={emailId}
                         className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
                         value={form.email}
                         onChange={(e) => setForm({ ...form, email: e.target.value })}
@@ -111,8 +132,11 @@ export default function MemberForm({
                     />
                 </div>
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">Rol</label>
+                    <label className="block text-sm font-medium text-gray-700" htmlFor={roleId}>
+                        Rol
+                    </label>
                     <select
+                        id={roleId}
                         className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
                         value={form.role}
                         onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
@@ -125,14 +149,16 @@ export default function MemberForm({
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700">Diller</label>
-                <p className="mt-1 text-xs text-gray-500">
+                <span className="block text-sm font-medium text-gray-700">Diller</span>
+                <p id={languagesHintId} className="mt-1 text-xs text-gray-500">
                     Kullanıcının destekleyebileceği dilleri seçin.
                 </p>
                 {languagesLoading ? (
-                    <div className="mt-3 text-sm text-gray-500">Diller yükleniyor...</div>
+                    <div className="mt-3 text-sm text-gray-500" aria-live="polite" role="status">
+                        Diller yükleniyor...
+                    </div>
                 ) : languageOptions.length === 0 ? (
-                    <div className="mt-3 text-sm text-orange-600">
+                    <div className="mt-3 text-sm text-orange-600" aria-live="polite" role="status">
                         Henüz tanımlı dil bulunmuyor. Önce ayarlardan dil ekleyin.
                     </div>
                 ) : (
@@ -161,12 +187,13 @@ export default function MemberForm({
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div>
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-gray-700" htmlFor={dailyCapacityId}>
                         Günlük Kapasite
                     </label>
                     <input
                         type="number"
                         min={0}
+                        id={dailyCapacityId}
                         className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
                         value={form.dailyCapacity}
                         onChange={(e) =>
@@ -176,18 +203,20 @@ export default function MemberForm({
                     />
                 </div>
                 <div className="flex items-center gap-6">
-                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
                         <input
                             type="checkbox"
+                            id={activeId}
                             checked={form.active}
                             onChange={(e) => setForm({ ...form, active: e.target.checked })}
                             className="h-4 w-4"
                         />
-                        Aktif
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                        <label htmlFor={activeId}>Aktif</label>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-gray-700">
                         <input
                             type="checkbox"
+                            id={autoAssignId}
                             checked={form.autoAssignEnabled}
                             onChange={(e) =>
                                 setForm({
@@ -197,8 +226,8 @@ export default function MemberForm({
                             }
                             className="h-4 w-4"
                         />
-                        Auto-Assign
-                    </label>
+                        <label htmlFor={autoAssignId}>Auto-Assign</label>
+                    </div>
                 </div>
             </div>
 

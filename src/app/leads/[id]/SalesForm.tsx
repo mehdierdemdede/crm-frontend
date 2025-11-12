@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useId, useState } from "react";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
-import { Card, CardHeader, CardContent } from "@/components/Card";
+
 import { Button } from "@/components/Button";
+import { Card, CardContent, CardHeader } from "@/components/Card";
 import { Input } from "@/components/Input";
 import {
     createSale,
@@ -14,9 +15,9 @@ import {
     type TransferRoute,
 } from "@/lib/api";
 import {
-    resolveDocumentUrl,
     downloadDocumentWithAuth,
     inferDocumentFileName,
+    resolveDocumentUrl,
 } from "@/lib/document";
 
 type Currency = "TRY" | "USD" | "EUR" | "GBP";
@@ -79,6 +80,19 @@ export default function SalesForm({
     const [transferOptions, setTransferOptions] = useState<TransferRoute[]>([]);
     const [passportFile, setPassportFile] = useState<File | null>(null);
     const [flightTicketFile, setFlightTicketFile] = useState<File | null>(null);
+    const idPrefix = useId();
+    const fieldIds = {
+        operationDate: `${idPrefix}-operation-date`,
+        operationType: `${idPrefix}-operation-type`,
+        price: `${idPrefix}-price`,
+        currency: `${idPrefix}-currency`,
+        hotel: `${idPrefix}-hotel`,
+        nights: `${idPrefix}-nights`,
+        transferYes: `${idPrefix}-transfer-yes`,
+        transferNo: `${idPrefix}-transfer-no`,
+        passport: `${idPrefix}-passport`,
+        flight: `${idPrefix}-flight`,
+    } as const;
 
     const formatCurrency = (value: number | null | undefined, currency?: string | null) => {
         if (typeof value !== "number" || Number.isNaN(value)) return null;
@@ -179,7 +193,7 @@ export default function SalesForm({
     const next = () => validateStep() && setStep((s) => s + 1);
     const prev = () => setStep((s) => s - 1);
 
-    const submit = async (e: FormEvent) => {
+    const submit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         if (!validateStep()) return;
 
@@ -277,21 +291,33 @@ export default function SalesForm({
 
                 {/* ⚠️ Hata mesajları */}
                 {errors.length > 0 && (
-                    <div className="mb-3 bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md">
+                    <div
+                        className="mb-3 bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md"
+                        aria-live="polite"
+                        role="alert"
+                    >
                         {errors.map((e, i) => (
                             <p key={i}>• {e}</p>
                         ))}
                     </div>
                 )}
                 {submitError && (
-                    <div className="mb-3 bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md">
+                    <div
+                        className="mb-3 bg-red-50 text-red-700 text-sm px-3 py-2 rounded-md"
+                        aria-live="polite"
+                        role="alert"
+                    >
                         {submitError}
                     </div>
                 )}
 
                 {/* ✅ Başarı mesajı */}
-                        {success && (
-                    <div className="bg-green-50 text-green-700 text-sm px-3 py-2 rounded-md flex flex-wrap items-center gap-2">
+                {success && (
+                    <div
+                        className="bg-green-50 text-green-700 text-sm px-3 py-2 rounded-md flex flex-wrap items-center gap-2"
+                        aria-live="polite"
+                        role="status"
+                    >
                         <span>✅ Satış başarıyla kaydedildi.</span>
                         {documentUrl && (
                             <button
@@ -332,9 +358,10 @@ export default function SalesForm({
                 {step === 1 && (
                     <div className="space-y-4 animate-fade-in">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Operasyon Tarihi</label>
                             <Input
+                                label="Operasyon Tarihi"
                                 type="date"
+                                id={fieldIds.operationDate}
                                 value={form.operationDate}
                                 onChange={(e) =>
                                     setForm({ ...form, operationDate: e.target.value })
@@ -343,8 +370,11 @@ export default function SalesForm({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Operasyon Türü</label>
+                            <label className="block text-sm font-medium mb-1" htmlFor={fieldIds.operationType}>
+                                Operasyon Türü
+                            </label>
                             <select
+                                id={fieldIds.operationType}
                                 className="border rounded-lg p-2 w-full shadow-sm"
                                 value={form.operationType}
                                 onChange={(e) =>
@@ -379,9 +409,12 @@ export default function SalesForm({
                 {step === 2 && (
                     <div className="space-y-4 animate-fade-in">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Fiyat</label>
+                            <label className="block text-sm font-medium mb-1" htmlFor={fieldIds.price}>
+                                Fiyat
+                            </label>
                             <div className="flex gap-2">
                                 <Input
+                                    id={fieldIds.price}
                                     type="number"
                                     placeholder="0"
                                     value={form.price}
@@ -393,21 +426,27 @@ export default function SalesForm({
                                         })
                                     }
                                 />
-                                <select
-                                    className="border rounded-lg p-2 shadow-sm"
-                                    value={form.currency}
-                                    onChange={(e) =>
-                                        setForm({
-                                            ...form,
-                                            currency: e.target.value as Currency,
-                                        })
-                                    }
-                                >
-                                    <option value="TRY">₺</option>
-                                    <option value="USD">$</option>
-                                    <option value="EUR">€</option>
-                                    <option value="GBP">£</option>
-                                </select>
+                                <div className="flex flex-col">
+                                    <label className="sr-only" htmlFor={fieldIds.currency}>
+                                        Para birimi
+                                    </label>
+                                    <select
+                                        id={fieldIds.currency}
+                                        className="border rounded-lg p-2 shadow-sm"
+                                        value={form.currency}
+                                        onChange={(e) =>
+                                            setForm({
+                                                ...form,
+                                                currency: e.target.value as Currency,
+                                            })
+                                        }
+                                    >
+                                        <option value="TRY">₺</option>
+                                        <option value="USD">$</option>
+                                        <option value="EUR">€</option>
+                                        <option value="GBP">£</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -426,8 +465,11 @@ export default function SalesForm({
                 {step === 3 && (
                     <div className="space-y-4 animate-fade-in">
                         <div>
-                            <label className="block text-sm font-medium mb-1">Otel</label>
+                            <label className="block text-sm font-medium mb-1" htmlFor={fieldIds.hotel}>
+                                Otel
+                            </label>
                             <select
+                                id={fieldIds.hotel}
                                 className="border rounded-lg p-2 w-full shadow-sm"
                                 value={form.hotel}
                                 onChange={(e) => setForm({ ...form, hotel: e.target.value })}
@@ -466,8 +508,9 @@ export default function SalesForm({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Gece Sayısı</label>
                             <Input
+                                label="Gece Sayısı"
+                                id={fieldIds.nights}
                                 type="number"
                                 min={1}
                                 value={form.nights}
@@ -482,11 +525,12 @@ export default function SalesForm({
                         </div>
 
                         <div>
-                            <label className="block text-sm font-medium mb-1">Transfer</label>
+                            <span className="block text-sm font-medium mb-1">Transfer</span>
                             <div className="flex flex-wrap items-center gap-4 mb-3 text-sm">
-                                <label className="inline-flex items-center gap-2">
+                                <div className="inline-flex items-center gap-2">
                                     <input
                                         type="radio"
+                                        id={fieldIds.transferYes}
                                         name="transfer-preference"
                                         value="YES"
                                         checked={form.transferPreference === "YES"}
@@ -497,11 +541,12 @@ export default function SalesForm({
                                             }))
                                         }
                                     />
-                                    Evet
-                                </label>
-                                <label className="inline-flex items-center gap-2">
+                                    <label htmlFor={fieldIds.transferYes}>Evet</label>
+                                </div>
+                                <div className="inline-flex items-center gap-2">
                                     <input
                                         type="radio"
+                                        id={fieldIds.transferNo}
                                         name="transfer-preference"
                                         value="NO"
                                         checked={form.transferPreference === "NO"}
@@ -513,8 +558,8 @@ export default function SalesForm({
                                             }))
                                         }
                                     />
-                                    Hayır
-                                </label>
+                                    <label htmlFor={fieldIds.transferNo}>Hayır</label>
+                                </div>
                             </div>
 
                             {form.transferPreference === "YES" ? (
@@ -531,12 +576,13 @@ export default function SalesForm({
                                             normalizeValue(transfer.name) === "full" ||
                                             normalizeValue(transfer.id) === "full";
                                         return (
-                                            <label
+                                            <div
                                                 key={optionValue}
                                                 className="flex items-center text-sm gap-2"
                                             >
                                                 <input
                                                     type="checkbox"
+                                                    id={`${fieldIds.transferYes}-${optionValue}`}
                                                     checked={form.transfer.includes(optionValue)}
                                                     disabled={fullSelected && !isFullOption}
                                                     onChange={(e) => {
@@ -559,8 +605,10 @@ export default function SalesForm({
                                                         });
                                                     }}
                                                 />
-                                                {optionLabel}
-                                            </label>
+                                                <label htmlFor={`${fieldIds.transferYes}-${optionValue}`}>
+                                                    {optionLabel}
+                                                </label>
+                                            </div>
                                         );
                                     })}
                                 </div>
@@ -584,14 +632,20 @@ export default function SalesForm({
 
                 {/* 📎 Step 4: Belgeler */}
                 {step === 4 && (
-                    <form onSubmit={submit} className="space-y-4 animate-fade-in">
+                    <form
+                        onSubmit={(event) => {
+                            void submit(event);
+                        }}
+                        className="space-y-4 animate-fade-in"
+                    >
                         <div className="grid gap-4 md:grid-cols-2">
                             <div>
-                                <label className="block text-sm font-medium mb-1">
+                                <label className="block text-sm font-medium mb-1" htmlFor={fieldIds.passport}>
                                     Pasaport / Kimlik
                                 </label>
                                 <Input
                                     type="file"
+                                    id={fieldIds.passport}
                                     onChange={(e) =>
                                         setPassportFile(e.target.files?.[0] ?? null)
                                     }
@@ -603,11 +657,12 @@ export default function SalesForm({
                                 )}
                             </div>
                             <div>
-                                <label className="block text-sm font-medium mb-1">
+                                <label className="block text-sm font-medium mb-1" htmlFor={fieldIds.flight}>
                                     Uçuş Bileti
                                 </label>
                                 <Input
                                     type="file"
+                                    id={fieldIds.flight}
                                     onChange={(e) =>
                                         setFlightTicketFile(e.target.files?.[0] ?? null)
                                     }

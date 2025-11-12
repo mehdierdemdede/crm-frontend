@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useId, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
+import { ArrowLeft, Facebook, MessageCircle, Phone } from "lucide-react";
+
 import { Button } from "@/components/Button";
-import { Phone, MessageCircle, Facebook, ArrowLeft } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/components/Card";
+import Layout from "@/components/Layout";
 import {
     getLeadById,
     updateLeadStatus,
@@ -88,6 +89,8 @@ export default function LeadDetailPage() {
     const [showSalesForm, setShowSalesForm] = useState(false);
     const [sale, setSale] = useState<SaleResponse | null>(null);
     const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
+    const statusSelectId = useId();
+    const noteTextareaId = useId();
 
     // 📦 verileri yükle
     useEffect(() => {
@@ -182,20 +185,20 @@ export default function LeadDetailPage() {
     const handleCall = (phone?: string) => {
         if (!phone) return alert("Telefon numarası bulunamadı.");
         window.open(`tel:${phone}`, "_self");
-        handleAddAction("PHONE", "Telefon araması başlatıldı");
+        void handleAddAction("PHONE", "Telefon araması başlatıldı");
     };
 
     const handleWhatsApp = (phone?: string) => {
         if (!phone) return alert("Telefon numarası bulunamadı.");
         const formatted = phone.replace(/\D/g, "");
         window.open(`https://wa.me/${formatted}`, "_blank");
-        handleAddAction("WHATSAPP", "WhatsApp mesajı gönderildi");
+        void handleAddAction("WHATSAPP", "WhatsApp mesajı gönderildi");
     };
 
     const handleMessenger = (pageId?: string | null) => {
         if (!pageId) return alert("Messenger bağlantısı bulunamadı.");
         window.open(`https://m.me/${pageId}`, "_blank");
-        handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi");
+        void handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi");
     };
 
     if (loading || !lead) {
@@ -265,7 +268,11 @@ export default function LeadDetailPage() {
                         <p><b>Dil:</b> {lead.language ?? "-"}</p>
                         <p>
                             <b>Durum:</b>{" "}
+                            <label className="sr-only" htmlFor={statusSelectId}>
+                                Durum
+                            </label>
                             <select
+                                id={statusSelectId}
                                 className="border rounded-md p-1 text-xs"
                                 value={status}
                                 onChange={(e) => handleStatusChange(e.target.value as LeadStatus)}
@@ -443,16 +450,25 @@ export default function LeadDetailPage() {
                         <form
                             onSubmit={(e) => {
                                 e.preventDefault();
-                                if (noteText.trim()) handleAddAction("NOTE", noteText.trim());
+                                const trimmed = noteText.trim();
+                                if (trimmed) {
+                                    void handleAddAction("NOTE", trimmed);
+                                }
                             }}
                             className="mt-3 space-y-2"
                         >
-              <textarea
-                  className="w-full border rounded-md p-2 text-sm"
-                  placeholder="Not ekle..."
-                  value={noteText}
-                  onChange={(e) => setNoteText(e.target.value)}
-              />
+                            <div>
+                                <label className="sr-only" htmlFor={noteTextareaId}>
+                                    Not ekle
+                                </label>
+                                <textarea
+                                    id={noteTextareaId}
+                                    className="w-full border rounded-md p-2 text-sm"
+                                    placeholder="Not ekle..."
+                                    value={noteText}
+                                    onChange={(e) => setNoteText(e.target.value)}
+                                />
+                            </div>
                             <Button type="submit" size="sm" variant="primary" className="w-full">
                                 Kaydet
                             </Button>
