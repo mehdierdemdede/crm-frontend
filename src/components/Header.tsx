@@ -61,7 +61,7 @@ export default function Header({ className, title, subtitle }: HeaderProps) {
                 className
             )}
         >
-            <div className="mx-auto w-full max-w-6xl px-6 py-4">
+            <div className="mx-auto w-full max-w-screen-2xl px-4 sm:px-6 md:px-8 py-4">
                 {user ? (
                     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                         {title ? (

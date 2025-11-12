@@ -40,6 +40,7 @@ type DurationUnit = "minutes" | "hours";
 
 type TableColumnKey =
     | "name"
+    | "phone"
     | "adInfo"
     | "status"
     | "assignedToUser"
@@ -67,6 +68,7 @@ const STATUS_COLORS: Record<LeadStatus, string> = {
 
 const TABLE_COLUMNS: Array<{ key: TableColumnKey; label: string; sortable?: boolean }> = [
     { key: "name", label: "İsim Soyisim", sortable: true },
+    { key: "phone", label: "Telefon" },
     { key: "adInfo", label: "Reklam" },
     { key: "status", label: "Lead Durumu" },
     { key: "assignedToUser", label: "Danışman", sortable: true },
@@ -148,9 +150,9 @@ const formatUserName = (user?: SimpleUser | null): string => {
     return user.email || "Atanmadı";
 };
 
-const getMaskedContactDisplay = (lead: LeadResponse): string => {
+const getEmailDisplay = (lead: LeadResponse): string => {
     if (lead.email) return lead.email;
-    if (lead.phone) return "Telefon bilgisi gizlendi";
+    if (lead.phone) return "Email bilgisi yok";
     return "İletişim bilgisi yok";
 };
 
@@ -1136,6 +1138,9 @@ export default function LeadsPage() {
                                                             <Skeleton className="h-4 w-32" />
                                                         </td>
                                                         <td className="p-3">
+                                                            <Skeleton className="h-4 w-28" />
+                                                        </td>
+                                                        <td className="p-3">
                                                             <Skeleton className="h-4 w-40" />
                                                         </td>
                                                         <td className="p-3">
@@ -1283,8 +1288,13 @@ export default function LeadsPage() {
                                                                     )}
                                                                 </div>
                                                                 <div className="text-xs text-gray-500">
-                                                                    {getMaskedContactDisplay(lead)}
+                                                                    {getEmailDisplay(lead)}
                                                                 </div>
+                                                            </td>
+                                                            <td className="p-3 text-gray-700">
+                                                                <span className="block whitespace-nowrap">
+                                                                    {lead.phone ?? "-"}
+                                                                </span>
                                                             </td>
                                                             <td className="p-3 text-gray-700">
                                                                 {formatAdInfo(lead) || lead.campaign?.name || "-"}
@@ -1459,7 +1469,10 @@ export default function LeadsPage() {
                                                         </span>
                                                     </div>
                                                     <div className="text-xs text-gray-500">
-                                                        {getMaskedContactDisplay(lead)}
+                                                        {getEmailDisplay(lead)}
+                                                    </div>
+                                                    <div className="text-xs text-gray-600">
+                                                        Telefon: {lead.phone ?? "-"}
                                                     </div>
                                                     {lead.language && (
                                                         <div className="flex items-center gap-2 text-xs text-gray-600">
@@ -1805,7 +1818,7 @@ export default function LeadsPage() {
                             )}
                             {leadToDelete.phone && (
                                 <p className="mt-0.5 text-xs text-gray-500">
-                                    Telefon bilgisi gizlendi
+                                    Telefon: {leadToDelete.phone}
                                 </p>
                             )}
                         </div>

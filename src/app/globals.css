@@ -49,7 +49,7 @@ body {
 }
 
 .right-panel {
-  @apply flex-1 px-12 py-12 flex flex-col justify-center bg-white;
+  @apply flex-1 px-12 py-12 flex flex-col justify-center bg-white text-gray-900;
 }
 
 /* Logo & feature */
@@ -100,7 +100,7 @@ body {
 
 /* Form header */
 .form-header {
-  @apply text-center mb-10;
+  @apply text-left mb-10;
 }
 
 .form-header h1 {
@@ -113,7 +113,7 @@ body {
 
 /* Admin note */
 .admin-note {
-  @apply text-center mt-8 p-4 bg-gray-100 rounded-lg text-sm text-gray-600 flex items-center justify-center gap-2;
+  @apply mt-8 p-4 bg-gray-100 rounded-lg text-sm text-gray-600 flex items-center justify-center gap-2 text-left md:text-center;
 }
 
 .info-bar {
