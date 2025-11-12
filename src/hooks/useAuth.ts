@@ -46,6 +46,7 @@ export interface AuthUser {
     firstName?: string;
     lastName?: string;
     role?: string;
+    organizationId?: string;
 }
 
 export function useAuth() {

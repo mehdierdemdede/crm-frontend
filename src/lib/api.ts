@@ -4,13 +4,14 @@ import { z, type ZodSchema } from "zod";
 import {SalesPayload} from "@/app/leads/[id]/SalesForm";
 
 import { resolveBackendApiBaseUrl } from "./backendConfig";
-import type {Invoice, Plan, Subscription} from "./types";
+import type {Invoice, InvoiceDetail, Plan, Subscription} from "./types";
 import {
     ZCancelSub,
     ZCard,
     ZChangePlan,
     ZCreateSubscription,
     ZInvoice,
+    ZInvoiceDetail,
     ZPaymentMethod,
     ZPlan,
     ZSubscription,
@@ -2179,6 +2180,7 @@ const ZTokenizeResponse = z.object({
 const ZPlansResponse = z.array(ZPlan);
 const ZSubscriptionsResponse = z.array(ZSubscription);
 const ZInvoicesResponse = z.array(ZInvoice);
+const ZInvoiceDetailResponse = ZInvoiceDetail;
 
 export type TokenizeResponse = z.infer<typeof ZTokenizeResponse>;
 
@@ -2253,4 +2255,9 @@ export const getCustomerSubscriptions = async (customerId: string): Promise<Subs
 export const getCustomerInvoices = async (customerId: string): Promise<Invoice[]> =>
     fetchJson<void, Invoice[]>(`/billing/customers/${customerId}/invoices`, {
         responseSchema: ZInvoicesResponse,
+    });
+
+export const getInvoiceById = async (invoiceId: string): Promise<InvoiceDetail> =>
+    fetchJson<void, InvoiceDetail>(`/billing/invoices/${invoiceId}`, {
+        responseSchema: ZInvoiceDetailResponse,
     });

@@ -68,8 +68,26 @@ export const ZInvoice = z.object({
     issuedAt: z.string(),
     dueAt: z.string().nullable().optional(),
     pdfUrl: z.string().url().nullable().optional(),
+    periodStart: z.string().nullable().optional(),
+    periodEnd: z.string().nullable().optional(),
 });
 export type Invoice = z.infer<typeof ZInvoice>;
+
+export const ZInvoiceLineItem = z.object({
+    id: z.string(),
+    description: z.string(),
+    quantity: z.number().int().nonnegative().nullable().optional(),
+    unitAmount: z.number().nonnegative().nullable().optional(),
+    total: z.number().nonnegative(),
+});
+export type InvoiceLineItem = z.infer<typeof ZInvoiceLineItem>;
+
+export const ZInvoiceDetail = ZInvoice.extend({
+    customerName: z.string().nullable().optional(),
+    lineItems: z.array(ZInvoiceLineItem).optional().default([]),
+    notes: z.string().nullable().optional(),
+});
+export type InvoiceDetail = z.infer<typeof ZInvoiceDetail>;
 
 export const ZPaymentMethod = z.object({
     id: z.string(),
