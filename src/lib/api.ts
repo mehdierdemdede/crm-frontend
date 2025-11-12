@@ -2085,7 +2085,7 @@ export const getCurrentUser = async (): Promise<AuthUser | null> => {
 
 // ──────────────────────────────── BILLING API ────────────────────────────────
 
-const BILLING_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
+const BILLING_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL?.trim() || BASE_URL;
 
 export class ApiError<TDetails = unknown> extends Error {
     readonly status: number;
