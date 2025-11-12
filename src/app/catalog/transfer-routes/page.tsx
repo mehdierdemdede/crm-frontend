@@ -112,25 +112,33 @@ export default function TransferRoutesPage() {
 
     const startEdit = (route: TransferRoute) => {
         setEditingId(route.id);
-        const segments = getRouteSegments(route);
+
+        const rawSegments = getRouteSegments(route);
+        const segments = (Array.isArray(rawSegments) ? rawSegments.filter(Boolean) : []) as string[];
+
         const start = route.start ?? segments[0] ?? "";
-        const final = route.final ?? (segments.length > 0 ? segments[segments.length - 1] : "");
-        const stops = Array.isArray(route.stops) && route.stops.length > 0
-            ? route.stops.filter((stop) => stop && stop.trim() !== "")
-            : segments.slice(1, -1);
+        const final = route.final ?? segments.at(-1) ?? "";
+
+        const stops =
+            Array.isArray(route.stops) && route.stops.length > 0
+                ? route.stops.filter((stop) => stop && stop.trim() !== "")
+                : segments.slice(1, -1);
+
         setForm({
             start,
             stops,
-            final,
+            final, // artık tip olarak kesin string
             price:
                 typeof route.price === "number" && !Number.isNaN(route.price)
                     ? route.price
                     : "",
             currency: resolveCurrency(route.currency as string | null | undefined),
         });
+
         setError(null);
         setSuccess(null);
     };
+
 
     const cancelEdit = () => {
         setEditingId(null);
