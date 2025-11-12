@@ -110,8 +110,12 @@ export const ZChangePlan = z.object({
     priceId: z.string(),
 });
 
+export const SeatProrationOptions = ["IMMEDIATE", "AT_PERIOD_END"] as const;
+export type SeatProration = (typeof SeatProrationOptions)[number];
+
 export const ZUpdateSeats = z.object({
-    seats: z.number().int().positive(),
+    seatCount: z.number().int().positive(),
+    proration: z.enum(SeatProrationOptions),
 });
 
 export const ZCancelSub = z.object({
