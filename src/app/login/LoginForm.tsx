@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
-import { Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
+
+import { Lock, Mail } from "lucide-react";
+import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";

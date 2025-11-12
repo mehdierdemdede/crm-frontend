@@ -1,7 +1,8 @@
 "use client";
 
-import { Suspense, useId, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+
+import { Suspense, useId, useState } from "react";
 
 import { acceptInvite } from "@/lib/api";
 

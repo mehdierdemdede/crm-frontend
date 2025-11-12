@@ -1,15 +1,21 @@
 "use client";
 
+import Link from "next/link";
+
+import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
+
 import { Button } from "@/components/Button";
+import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+import Layout from "@/components/Layout";
 import Modal from "@/components/Modal";
+import { Skeleton } from "@/components/Skeleton";
 import { ToastContainer, type ToastMessage } from "@/components/Toast";
-import Link from "next/link";
+import { useLanguages } from "@/contexts/LanguageContext";
 import { useAuth } from "@/hooks/useAuth";
+import useDebounce from "@/hooks/useDebounce";
 import {
     getLeads,
     updateLeadStatus,
@@ -26,11 +32,7 @@ import {
     type LeadCallResult,
     type LeadWhatsAppMessageResponse,
 } from "@/lib/api";
-import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown, Send } from "lucide-react";
-import { useLanguages } from "@/contexts/LanguageContext";
 import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
-import useDebounce from "@/hooks/useDebounce";
-import { Skeleton } from "@/components/Skeleton";
 
 
 type SortableColumn = "name" | "assignedToUser" | "createdAt";
@@ -249,7 +251,7 @@ export default function LeadsPage() {
                 console.error("Kullanıcı listesi alınamadı:", err);
             }
         };
-        fetchUsers();
+        void fetchUsers();
     }, []);
 
     useEffect(() => {
@@ -1642,13 +1644,17 @@ export default function LeadsPage() {
                               activeCommunication.channel === "PHONE"
                                   ? {
                                         label: callSession ? "Aramayı Yenile" : "Aramayı Başlat",
-                                        onClick: handleInitiateSecureCall,
+                                        onClick: () => {
+                                            void handleInitiateSecureCall();
+                                        },
                                         isLoading: communicationLoading,
                                         disabled: communicationLoading,
                                     }
                                   : {
                                         label: "Mesaj Gönder",
-                                        onClick: handleSendSecureWhatsApp,
+                                        onClick: () => {
+                                            void handleSendSecureWhatsApp();
+                                        },
                                         isLoading: communicationLoading,
                                         disabled:
                                             communicationLoading ||
@@ -1779,7 +1785,9 @@ export default function LeadsPage() {
                     {
                         label: "Sil",
                         variant: "danger",
-                        onClick: handleDeleteConfirm,
+                        onClick: () => {
+                            void handleDeleteConfirm();
+                        },
                         isLoading: deleteLoading,
                         disabled: deleteLoading,
                     },
@@ -1824,7 +1832,9 @@ export default function LeadsPage() {
                     },
                     {
                         label: "Aktar",
-                        onClick: handleBulkAssignConfirm,
+                        onClick: () => {
+                            void handleBulkAssignConfirm();
+                        },
                         isLoading: bulkAssignLoading,
                         disabled: bulkAssignLoading,
                     },
@@ -1865,7 +1875,9 @@ export default function LeadsPage() {
                     },
                     {
                         label: "Kaydet",
-                        onClick: handleCreateLead,
+                        onClick: () => {
+                            void handleCreateLead();
+                        },
                         isLoading: createLeadLoading,
                         disabled: createLeadLoading,
                     },

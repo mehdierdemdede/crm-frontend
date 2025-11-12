@@ -1,9 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
-import { Button } from "@/components/Button";
 import {
     PieChart,
     Pie,
@@ -19,8 +16,12 @@ import {
     BarChart,
     Bar,
 } from "recharts";
-import { getLeadReports, LeadReportResponse } from "@/lib/api";
+
+import { Button } from "@/components/Button";
+import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Input } from "@/components/Input";
+import Layout from "@/components/Layout";
+import { getLeadReports, LeadReportResponse } from "@/lib/api";
 
 const COLORS = ["#16a34a", "#f59e0b", "#dc2626", "#0ea5e9", "#9333ea"];
 const DEFAULT_RANGE_MS = 7 * 24 * 60 * 60 * 1000;

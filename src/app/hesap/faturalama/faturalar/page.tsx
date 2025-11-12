@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, Loader2 } from "lucide-react";
+import { useMemo } from "react";
 import {
     Area,
     AreaChart,
@@ -14,8 +15,8 @@ import {
     YAxis,
 } from "recharts";
 
-import Layout from "@/components/Layout";
 import { Card, CardContent, CardHeader } from "@/components/Card";
+import Layout from "@/components/Layout";
 import { useAuth } from "@/hooks/useAuth";
 import { getCustomerInvoices } from "@/lib/api";
 import type { Invoice } from "@/lib/types";

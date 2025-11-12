@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
+
 import { useQuery } from "@tanstack/react-query";
 import {
     AlertCircle,
@@ -12,7 +13,8 @@ import {
     PiggyBank,
     Users,
 } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo } from "react";
+
 
 import { Button } from "@/components/Button";
 import { useOnboardingStore, MAX_SEAT_COUNT, MIN_SEAT_COUNT } from "@/hooks/useOnboardingStore";

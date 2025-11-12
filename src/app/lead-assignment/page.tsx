@@ -1,10 +1,13 @@
 "use client";
 
+import { ChevronDown, ChevronUp, Edit3, Loader2, PlusCircle, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardContent, CardHeader } from "@/components/Card";
+
 import { Button } from "@/components/Button";
+import { Card, CardContent, CardHeader } from "@/components/Card";
 import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+import Layout from "@/components/Layout";
+import { useLanguages } from "@/contexts/LanguageContext";
 import {
     deleteFacebookLeadRule,
     getAutoAssignStats,
@@ -19,9 +22,7 @@ import {
     type FacebookLeadTreePage,
     type SaveFacebookLeadRuleRequest,
 } from "@/lib/api";
-import { useLanguages } from "@/contexts/LanguageContext";
 import { enhanceLanguageOption } from "@/lib/languages";
-import { ChevronDown, ChevronUp, Edit3, Loader2, PlusCircle, Trash2 } from "lucide-react";
 
 interface UserSelectionState {
     selected: boolean;
@@ -104,7 +105,7 @@ export default function LeadAssignmentPage() {
             }
         };
 
-        loadData();
+        void loadData();
     }, []);
 
     useEffect(() => {
@@ -213,7 +214,10 @@ export default function LeadAssignmentPage() {
                         frequency: assignment ? assignment.frequency : 1,
                     };
                 } else {
-                    next[id] = { ...next[id], selected: false };
+                    next[id] = {
+                        selected: false,
+                        frequency: next[id]?.frequency ?? 1,
+                    };
                 }
             });
 
@@ -351,6 +355,9 @@ export default function LeadAssignmentPage() {
 
             const next = [...prev];
             const [removed] = next.splice(index, 1);
+            if (removed === undefined) {
+                return prev;
+            }
             next.splice(nextIndex, 0, removed);
             return next;
         });

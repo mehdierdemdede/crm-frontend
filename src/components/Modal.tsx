@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
 import { X } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 
 import { Button, type ButtonProps } from "./Button";
 

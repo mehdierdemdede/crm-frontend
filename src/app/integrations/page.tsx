@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
-import { Button } from "@/components/Button";
 import { Facebook, Globe, PlugZap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import { Button } from "@/components/Button";
+import { Card, CardHeader, CardContent } from "@/components/Card";
+import Layout from "@/components/Layout";
 import {
     getIntegrationStatuses,
     getFacebookOAuthUrl,

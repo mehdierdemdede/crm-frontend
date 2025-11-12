@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+
 import { ArrowLeft, Facebook, MessageCircle, Phone } from "lucide-react";
+import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader } from "@/components/Card";
@@ -22,6 +23,7 @@ import {
     inferDocumentFileName,
     downloadDocumentWithAuth,
 } from "@/lib/document";
+
 import SalesForm from "./SalesForm";
 
 const STATUS_LABELS: Record<LeadStatus, string> = {
@@ -139,7 +141,7 @@ export default function LeadDetailPage() {
             setLoading(false);
         };
 
-        fetchData();
+        void fetchData();
 
         return () => {
             ignore = true;

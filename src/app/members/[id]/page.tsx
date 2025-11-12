@@ -1,13 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Layout from "@/components/Layout";
-import { Card, CardHeader, CardContent } from "@/components/Card";
-import { Button } from "@/components/Button";
-import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+
 import { ArrowLeft } from "lucide-react";
-import EditMemberModal from "@/components/EditMemberModal";
+import { useEffect, useState } from "react";
 import {
     ResponsiveContainer,
     BarChart,
@@ -17,8 +13,14 @@ import {
     CartesianGrid,
     Tooltip,
 } from "recharts";
-import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api";
+
+import { Button } from "@/components/Button";
+import { Card, CardHeader, CardContent } from "@/components/Card";
+import EditMemberModal from "@/components/EditMemberModal";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+import Layout from "@/components/Layout";
 import { useLanguages } from "@/contexts/LanguageContext";
+import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api";
 import { enhanceLanguageOption } from "@/lib/languages";
 
 export default function MemberDetailPage() {
@@ -37,7 +39,7 @@ export default function MemberDetailPage() {
             setMember(found || null);
             setLoading(false);
         };
-        fetchData();
+        void fetchData();
     }, [id]);
 
     if (loading) {

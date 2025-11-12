@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
 import { CheckCircle2, Info, TriangleAlert, X } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 
 export type ToastVariant = "success" | "error" | "info";
 

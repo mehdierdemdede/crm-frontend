@@ -1,10 +1,9 @@
 // src/lib/api.ts
-import { z, type ZodSchema } from "zod";
+import { z, type ZodSchema, type ZodTypeDef } from "zod";
 
 import {SalesPayload} from "@/app/leads/[id]/SalesForm";
 
 import { resolveBackendApiBaseUrl } from "./backendConfig";
-import type {Invoice, InvoiceDetail, Plan, Subscription} from "./types";
 import {
     ZCancelSub,
     ZCard,
@@ -17,6 +16,8 @@ import {
     ZSubscription,
     ZUpdateSeats,
 } from "./types";
+
+import type {Invoice, InvoiceDetail, Plan, Subscription} from "./types";
 
 export const BASE_URL = resolveBackendApiBaseUrl();
 
@@ -2103,7 +2104,7 @@ interface FetchJsonOptions<TRequest, TResponse> {
     body?: TRequest;
     headers?: Record<string, string>;
     requestSchema?: ZodSchema<TRequest>;
-    responseSchema: ZodSchema<TResponse>;
+    responseSchema: ZodSchema<TResponse, ZodTypeDef, unknown>;
 }
 
 async function fetchJson<TRequest, TResponse>(
@@ -2184,10 +2185,19 @@ const ZInvoiceDetailResponse = ZInvoiceDetail;
 
 export type TokenizeResponse = z.infer<typeof ZTokenizeResponse>;
 
-export const getPublicPlans = async (): Promise<Plan[]> =>
-    fetchJson<void, Plan[]>("/billing/public/plans", {
-        responseSchema: ZPlansResponse,
-    });
+export const getPublicPlans = async (): Promise<Plan[]> => {
+    const plans = await fetchJson<void, z.infer<typeof ZPlansResponse>>(
+        "/billing/public/plans",
+        {
+            responseSchema: ZPlansResponse,
+        },
+    );
+
+    return plans.map((plan) => ({
+        ...plan,
+        features: plan.features ?? [],
+    }));
+};
 
 export const tokenizePaymentMethod = async (
     payload: z.infer<typeof ZCard>,

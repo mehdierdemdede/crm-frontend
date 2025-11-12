@@ -1,13 +1,10 @@
+import Link from "next/link";
+
 import "./globals.css";
+import { Providers } from "./providers";
 
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import Link from "next/link";
-import { Inter } from "next/font/google";
-
-import { Providers } from "./providers";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "CRM Platformu",
@@ -17,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="tr" suppressHydrationWarning>
-      <body className={`${inter.className} bg-background text-foreground`}> 
+      <body className="bg-background font-sans text-foreground">
         <Providers>
           <div className="flex min-h-screen flex-col">
             <header className="border-b border-border bg-white/80 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-slate-950/80">

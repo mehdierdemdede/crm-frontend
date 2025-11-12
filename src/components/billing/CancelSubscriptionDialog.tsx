@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import Modal from "@/components/Modal";
 import { cancelSubscription } from "@/lib/api";
@@ -43,10 +43,12 @@ export default function CancelSubscriptionDialog({
     const mutation = useMutation({
         mutationFn: () => cancelSubscription(subscription.id, { cancelAtPeriodEnd }),
         onSuccess: (updated) => {
-            queryClient.invalidateQueries({
+            void queryClient.invalidateQueries({
                 queryKey: ["customer-subscriptions", subscription.customerId],
             });
-            queryClient.invalidateQueries({ queryKey: ["subscription", subscription.id] });
+            void queryClient.invalidateQueries({
+                queryKey: ["subscription", subscription.id],
+            });
             onSuccess?.(updated);
             onClose();
         },
@@ -57,7 +59,7 @@ export default function CancelSubscriptionDialog({
     });
 
     const handleConfirm = () => {
-        mutation.mutate();
+        void mutation.mutate();
     };
 
     const periodEndFormatted = formatDate(subscription.currentPeriodEnd);

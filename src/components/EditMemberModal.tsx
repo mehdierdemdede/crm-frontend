@@ -1,6 +1,7 @@
 "use client";
 
 import { type AgentStatsResponse } from "@/lib/api";
+
 import MemberForm, { MemberFormData } from "./MemberForm";
 
 interface EditMemberModalProps {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+
 import { FACEBOOK_OAUTH_MESSAGE_TYPE } from "@/lib/facebookOAuth";
 
 const FacebookCallbackPage = () => {

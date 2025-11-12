@@ -98,8 +98,8 @@ const resolveCountryCode = (
 const computeWidthForHeight = (height: number): number => Math.round((height * 4) / 3);
 
 const getImageSizeToken = (height: number): string => {
-    const normalisedHeight = FLAG_HEIGHTS.find((candidate) => height <= candidate) ??
-        FLAG_HEIGHTS[FLAG_HEIGHTS.length - 1];
+    const fallbackHeight = FLAG_HEIGHTS[FLAG_HEIGHTS.length - 1] ?? height;
+    const normalisedHeight = FLAG_HEIGHTS.find((candidate) => height <= candidate) ?? fallbackHeight;
     const width = computeWidthForHeight(normalisedHeight);
     return `${width}x${normalisedHeight}`;
 };
