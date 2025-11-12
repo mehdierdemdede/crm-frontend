@@ -1,5 +1,7 @@
-import LoginForm from './LoginForm';
-import { Users, RefreshCw, BarChart2, Shield, Lock } from 'lucide-react';
+import { Users, RefreshCw, BarChart2, Shield, Lock, ArrowUpRight } from "lucide-react";
+import Link from "next/link";
+
+import LoginForm from "./LoginForm";
 
 export default function LoginPage() {
     return (
@@ -59,15 +61,31 @@ export default function LoginPage() {
                 </div>
                 </div>
 
-                <div className="right-panel">
-                    <div className="form-header">
+                <div className="right-panel gap-6">
+                    <div className="form-header order-1">
                         <h1>CRM Proya Hoş Geldiniz</h1>
                         <p>Lütfen hesabınıza giriş yapın</p>
                     </div>
 
-                    <LoginForm />
+                    <div className="info-bar order-3 md:order-2">
+                        <div>
+                            <p className="text-xs uppercase tracking-wide text-blue-600">Henüz hazır değil misiniz?</p>
+                            <p className="text-sm font-semibold text-blue-700">Planlara göz atın.</p>
+                        </div>
+                        <Link
+                            href="/planlar"
+                            className="info-bar-link"
+                        >
+                            Planlara göz at
+                            <ArrowUpRight className="h-4 w-4" />
+                        </Link>
+                    </div>
 
-                    <div className="admin-note flex items-center gap-2">
+                    <div className="order-2 md:order-3">
+                        <LoginForm />
+                    </div>
+
+                    <div className="admin-note order-4 flex items-center gap-2">
                         <Shield className="h-4 w-4 text-blue-600" />
                         Sadece yönetici tarafından oluşturulmuş hesaplarla giriş yapılabilir
                     </div>
