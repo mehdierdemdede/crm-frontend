@@ -1,10 +1,11 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardContent, CardHeader } from "@/components/Card";
+import { FormEvent, useCallback, useEffect, useId, useMemo, useState } from "react";
+
 import { Button } from "@/components/Button";
+import { Card, CardContent, CardHeader } from "@/components/Card";
 import { Input } from "@/components/Input";
+import Layout from "@/components/Layout";
 import {
     createHotel,
     deleteHotel,
@@ -49,6 +50,9 @@ export default function HotelsPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
+    const idPrefix = useId();
+    const currencySelectId = `${idPrefix}-currency`;
+    const addressTextareaId = `${idPrefix}-address`;
 
     const fetchHotels = useCallback(async () => {
         setLoading(true);
@@ -297,11 +301,15 @@ export default function HotelsPage() {
                                         }
                                         disabled={saving}
                                     />
-                                    <label className="block">
-                                        <span className="mb-1 block text-sm font-medium text-gray-800">
+                                    <div>
+                                        <label
+                                            className="mb-1 block text-sm font-medium text-gray-800"
+                                            htmlFor={currencySelectId}
+                                        >
                                             Para Birimi
-                                        </span>
+                                        </label>
                                         <select
+                                            id={currencySelectId}
                                             className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-blue-500"
                                             value={form.currency}
                                             onChange={(event) =>
@@ -318,14 +326,18 @@ export default function HotelsPage() {
                                                 </option>
                                             ))}
                                         </select>
-                                    </label>
+                                    </div>
                                 </div>
                             </div>
-                            <label className="block">
-                                <span className="mb-1 block text-sm font-medium text-gray-800">
+                            <div>
+                                <label
+                                    className="mb-1 block text-sm font-medium text-gray-800"
+                                    htmlFor={addressTextareaId}
+                                >
                                     Adres
-                                </span>
+                                </label>
                                 <textarea
+                                    id={addressTextareaId}
                                     className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-blue-500"
                                     rows={3}
                                     placeholder="Örn. Atatürk Cad. No:12, Antalya"
@@ -338,14 +350,22 @@ export default function HotelsPage() {
                                     }
                                     disabled={saving}
                                 />
-                            </label>
+                            </div>
                             {error && (
-                                <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                                <div
+                                    className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700"
+                                    aria-live="polite"
+                                    role="alert"
+                                >
                                     {error}
                                 </div>
                             )}
                             {success && (
-                                <div className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
+                                <div
+                                    className="rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700"
+                                    aria-live="polite"
+                                    role="status"
+                                >
                                     {success}
                                 </div>
                             )}

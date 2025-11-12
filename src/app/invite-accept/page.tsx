@@ -1,7 +1,8 @@
 "use client";
 
-import React, { Suspense, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useId, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+
 import { acceptInvite } from "@/lib/api";
 
 function InviteAcceptContent() {
@@ -14,14 +15,16 @@ function InviteAcceptContent() {
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
     const [busy, setBusy] = useState(false);
+    const idPrefix = useId();
+    const passwordId = `${idPrefix}-password`;
+    const confirmId = `${idPrefix}-confirm`;
 
     const validatePassword = (pwd: string) => {
         // Basit doğrulama -> prod'da daha katı kurallar öneririm
         return pwd.length >= 8;
     };
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async () => {
         setError(null);
 
         if (!token) {
@@ -63,19 +66,43 @@ function InviteAcceptContent() {
                 <h1 className="text-xl font-semibold mb-3">Hesabını aktive et</h1>
                 <p className="text-sm text-gray-600 mb-4">Lütfen yeni şifreni belirle. Şifre 8 karakterden uzun olmalı.</p>
 
-                <form onSubmit={handleSubmit} className="space-y-3">
+                <form onSubmit={(event) => { event.preventDefault(); void handleSubmit(); }} className="space-y-3">
                     <div>
-                        <label className="block text-sm mb-1">Yeni Şifre</label>
-                        <input value={password} onChange={(e) => setPassword(e.target.value)} type="password" className="w-full border px-3 py-2 rounded" />
+                        <label className="block text-sm mb-1" htmlFor={passwordId}>
+                            Yeni Şifre
+                        </label>
+                        <input
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            type="password"
+                            id={passwordId}
+                            className="w-full border px-3 py-2 rounded"
+                        />
                     </div>
 
                     <div>
-                        <label className="block text-sm mb-1">Şifre (Tekrar)</label>
-                        <input value={confirm} onChange={(e) => setConfirm(e.target.value)} type="password" className="w-full border px-3 py-2 rounded" />
+                        <label className="block text-sm mb-1" htmlFor={confirmId}>
+                            Şifre (Tekrar)
+                        </label>
+                        <input
+                            value={confirm}
+                            onChange={(e) => setConfirm(e.target.value)}
+                            type="password"
+                            id={confirmId}
+                            className="w-full border px-3 py-2 rounded"
+                        />
                     </div>
 
-                    {error && <div className="text-sm text-red-600">{error}</div>}
-                    {success && <div className="text-sm text-green-700">{success}</div>}
+                    {error && (
+                        <div className="text-sm text-red-600" aria-live="polite" role="alert">
+                            {error}
+                        </div>
+                    )}
+                    {success && (
+                        <div className="text-sm text-green-700" aria-live="polite" role="status">
+                            {success}
+                        </div>
+                    )}
 
                     <div className="flex justify-end">
                         <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded" disabled={busy}>

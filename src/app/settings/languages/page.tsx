@@ -1,17 +1,15 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
-import Layout from "@/components/Layout";
-import { Card, CardContent, CardHeader } from "@/components/Card";
+import { FormEvent, useEffect, useId, useRef, useState } from "react";
+
 import { Button } from "@/components/Button";
+import { Card, CardContent, CardHeader } from "@/components/Card";
 import { Input } from "@/components/Input";
 import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+import Layout from "@/components/Layout";
 import { useLanguages } from "@/contexts/LanguageContext";
+import { searchLanguageCatalog, type LanguageCatalogEntry } from "@/lib/api";
 import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
-import {
-    type LanguageCatalogEntry,
-    searchLanguageCatalog,
-} from "@/lib/api";
 
 interface LanguageFormState {
     code: string;
@@ -55,6 +53,9 @@ export default function LanguageSettingsPage() {
     const activeSearchId = useRef(0);
     const hideSuggestionsTimeout = useRef<number | undefined>(undefined);
     const skipNextSearch = useRef(false);
+    const idPrefix = useId();
+    const searchInputId = `${idPrefix}-language-search`;
+    const activeCheckboxId = `${idPrefix}-language-active`;
 
     const resetForm = () => {
         setForm(emptyForm);
@@ -296,7 +297,11 @@ export default function LanguageSettingsPage() {
         <Layout title="Dil Yönetimi" subtitle="Kullanılabilir dil seçeneklerini yönetin">
             {contextError && (
                 <div className="col-span-12">
-                    <div className="mb-4 flex items-start justify-between gap-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                    <div
+                        className="mb-4 flex items-start justify-between gap-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700"
+                        aria-live="polite"
+                        role="alert"
+                    >
                         <span>{contextError}</span>
                         <button
                             type="button"
@@ -321,12 +326,16 @@ export default function LanguageSettingsPage() {
                     <CardContent>
                         <form className="space-y-4" onSubmit={handleSubmit}>
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-800">
+                                <label
+                                    className="mb-1 block text-sm font-medium text-gray-800"
+                                    htmlFor={searchInputId}
+                                >
                                     Dil Ara ve Seç
                                 </label>
                                 <div className="relative">
                                     <input
                                         type="text"
+                                        id={searchInputId}
                                         value={searchTerm}
                                         onChange={(event) =>
                                             handleSearchChange(event.target.value)
@@ -345,7 +354,11 @@ export default function LanguageSettingsPage() {
                                     {suggestionsVisible && (
                                         <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-gray-200 bg-white shadow-lg">
                                             {searchError ? (
-                                                <div className="px-3 py-2 text-sm text-red-600">
+                                                <div
+                                                    className="px-3 py-2 text-sm text-red-600"
+                                                    aria-live="polite"
+                                                    role="alert"
+                                                >
                                                     {searchError}
                                                 </div>
                                             ) : searchResults.length === 0 ? (
@@ -430,9 +443,10 @@ export default function LanguageSettingsPage() {
                                 placeholder="Örn. 🇬🇧"
                                 maxLength={8}
                             />
-                            <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <div className="flex items-center gap-2 text-sm text-gray-700">
                                 <input
                                     type="checkbox"
+                                    id={activeCheckboxId}
                                     checked={form.active}
                                     onChange={(event) =>
                                         setForm((prev) => ({
@@ -441,15 +455,23 @@ export default function LanguageSettingsPage() {
                                         }))
                                     }
                                 />
-                                Aktif
-                            </label>
+                                <label htmlFor={activeCheckboxId}>Aktif</label>
+                            </div>
                             {formError && (
-                                <div className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-600">
+                                <div
+                                    className="rounded-md border border-red-200 bg-red-50 p-2 text-sm text-red-600"
+                                    aria-live="polite"
+                                    role="alert"
+                                >
                                     {formError}
                                 </div>
                             )}
                             {successMessage && (
-                                <div className="rounded-md border border-green-200 bg-green-50 p-2 text-sm text-green-700">
+                                <div
+                                    className="rounded-md border border-green-200 bg-green-50 p-2 text-sm text-green-700"
+                                    aria-live="polite"
+                                    role="status"
+                                >
                                     {successMessage}
                                 </div>
                             )}

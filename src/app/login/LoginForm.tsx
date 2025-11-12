@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useId, useState } from "react";
+import { Lock, Mail } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/Input";
+
 import { Button } from "@/components/Button";
-import { Mail, Lock } from "lucide-react";
+import { Input } from "@/components/Input";
+import { useAuth } from "@/hooks/useAuth";
 import {
     clearRememberedCredentials,
     persistRememberedEmail,
@@ -19,6 +20,7 @@ export default function LoginForm() {
     const [rememberMe, setRememberMe] = useState(false);
     const { login, isLoading, error } = useAuth();
     const router = useRouter();
+    const rememberMeId = useId();
 
     useEffect(() => {
         const { rememberMe: storedRemember, email: storedEmail } =
@@ -30,8 +32,8 @@ export default function LoginForm() {
         }
     }, []);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
         const success = await login(email, password, rememberMe);
         if (success) {
             if (rememberMe) {
@@ -45,9 +47,13 @@ export default function LoginForm() {
     };
 
     return (
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={(event) => { void handleSubmit(event); }} className="space-y-4">
             {error && (
-                <div className="text-red-700 bg-red-50 p-3 rounded-md border border-red-200">
+                <div
+                    className="text-red-700 bg-red-50 p-3 rounded-md border border-red-200"
+                    aria-live="polite"
+                    role="alert"
+                >
                     {error}
                 </div>
             )}
@@ -75,9 +81,10 @@ export default function LoginForm() {
             />
 
             <div className="flex items-center justify-between text-sm">
-                <label className="inline-flex items-center gap-2 select-none">
+                <div className="inline-flex items-center gap-2 select-none">
                     <input
                         type="checkbox"
+                        id={rememberMeId}
                         checked={rememberMe}
                         onChange={(e) => {
                             const isChecked = e.target.checked;
@@ -92,8 +99,8 @@ export default function LoginForm() {
                         disabled={isLoading}
                         className="rounded border-gray-300"
                     />
-                    Beni hatırla
-                </label>
+                    <label htmlFor={rememberMeId}>Beni hatırla</label>
+                </div>
                 <a href="#" className="text-blue-600 hover:underline">
                     Şifremi unuttum?
                 </a>

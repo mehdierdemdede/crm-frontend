@@ -16,23 +16,33 @@ export function Input({
                           error,
                           icon,
                           className,
+                          id,
                           ...props
                       }: InputProps) {
+    const generatedId = React.useId();
+    const inputId = id ?? generatedId;
+    const errorId = `${inputId}-error`;
+    const hintId = `${inputId}-hint`;
+    const descriptionId = error ? errorId : hint ? hintId : undefined;
+
     return (
-        <label className="block">
+        <div className="block">
             {label && (
-                <span className="mb-1 block text-sm font-medium text-gray-800">
-          {label}
-        </span>
+                <label htmlFor={inputId} className="mb-1 block text-sm font-medium text-gray-800">
+                    {label}
+                </label>
             )}
             <div className="relative">
                 {icon && (
                     <span className="absolute left-3 top-1/2 -translate-y-1/2">
-            {icon}
-          </span>
+                        {icon}
+                    </span>
                 )}
                 <input
                     {...props}
+                    id={inputId}
+                    aria-invalid={error ? "true" : undefined}
+                    aria-describedby={descriptionId}
                     className={cn(
                         "w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none transition focus:ring-2 focus:ring-blue-500",
                         icon ? "pl-9" : undefined,
@@ -42,10 +52,14 @@ export function Input({
                 />
             </div>
             {error ? (
-                <p className="mt-1 text-xs text-red-600">{error}</p>
+                <p id={errorId} className="mt-1 text-xs text-red-600" aria-live="polite" role="status">
+                    {error}
+                </p>
             ) : hint ? (
-                <p className="mt-1 text-xs text-gray-500">{hint}</p>
+                <p id={hintId} className="mt-1 text-xs text-gray-500">
+                    {hint}
+                </p>
             ) : null}
-        </label>
+        </div>
     );
 }

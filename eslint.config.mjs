@@ -3,7 +3,9 @@ import { dirname } from "path";
 import { fileURLToPath } from "url";
 import { FlatCompat } from "@eslint/eslintrc";
 import tsParser from "@typescript-eslint/parser";
+import tsPlugin from "@typescript-eslint/eslint-plugin";
 import pluginImport from "eslint-plugin-import";
+import reactHooksPlugin from "eslint-plugin-react-hooks";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -25,6 +27,8 @@ const eslintConfig = [
     },
     plugins: {
       import: pluginImport,
+      "@typescript-eslint": tsPlugin,
+      "react-hooks": reactHooksPlugin,
     },
     settings: {
       "import/resolver": {
@@ -59,14 +63,31 @@ const eslintConfig = [
       "import/no-extraneous-dependencies": [
         "error",
         {
-          devDependencies: ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "**/tests/**/*"],
+          devDependencies: [
+            "**/*.test.{ts,tsx}",
+            "**/*.spec.{ts,tsx}",
+            "**/tests/**/*",
+            "**/*.config.{js,ts,mjs}"
+          ],
           optionalDependencies: false,
         },
       ],
+      "@typescript-eslint/no-floating-promises": "error",
+      "@typescript-eslint/no-misused-promises": [
+        "error",
+        {
+          checksVoidReturn: {
+            attributes: false,
+            returns: true,
+            arguments: false,
+          },
+        },
+      ],
+      "react-hooks/exhaustive-deps": "error",
     },
   },
   {
-    ignores: ["next-env.d.ts"],
+    ignores: ["next-env.d.ts", "**/*.config.mjs"],
   },
 ];
 
