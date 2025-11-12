@@ -116,6 +116,14 @@ body {
   @apply text-center mt-8 p-4 bg-gray-100 rounded-lg text-sm text-gray-600 flex items-center justify-center gap-2;
 }
 
+.info-bar {
+  @apply flex items-center justify-between gap-3 rounded-xl border border-blue-100 bg-blue-50/80 px-4 py-3 text-sm text-blue-700 shadow-sm;
+}
+
+.info-bar-link {
+  @apply inline-flex items-center gap-1 font-semibold text-blue-700 transition-colors hover:text-blue-800;
+}
+
 /* Dekorasyon şekilleri */
 .decoration {
   @apply absolute opacity-10;
@@ -156,5 +164,8 @@ body {
   }
   .left-panel {
     display: none;
+  }
+  .info-bar {
+    @apply flex-col items-start gap-2;
   }
 }
