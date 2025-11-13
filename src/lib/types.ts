@@ -135,6 +135,34 @@ export const ZCreateSubscription = z.object({
     trialCouponCode: z.string().optional(),
 });
 
+export const ZPublicSignupPayload = z.object({
+    planId: z.string().min(1),
+    billingPeriod: z.enum(BillingPeriods),
+    seatCount: z.number().int().positive(),
+    organizationName: z.string().min(2),
+    admin: z.object({
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        email: z.string().email(),
+        phone: z.string().optional(),
+    }),
+});
+export type PublicSignupPayload = z.infer<typeof ZPublicSignupPayload>;
+
+export const ZPublicSignupResponse = z
+    .object({
+        signupId: z.string().optional(),
+        organizationId: z.string().optional(),
+        adminUserId: z.string().optional(),
+        adminEmail: z.string().email().optional(),
+        inviteToken: z.string().optional(),
+        inviteStatus: z.string().optional(),
+        status: z.enum(["PENDING", "COMPLETED", "FAILED"]).optional(),
+        message: z.string().optional(),
+    })
+    .passthrough();
+export type PublicSignupResponse = z.infer<typeof ZPublicSignupResponse>;
+
 export const ZChangePlan = z.object({
     planId: z.string(),
     priceId: z.string(),
