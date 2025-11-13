@@ -14,11 +14,21 @@ import {
     ZInvoiceDetail,
     ZPaymentMethod,
     ZPlan,
+    ZPublicSignupPayload,
+    ZPublicSignupResponse,
     ZSubscription,
     ZUpdateSeats,
 } from "./types";
 
-import type {Invoice, InvoiceDetail, Plan, Subscription, CreatePlanPayload} from "./types";
+import type {
+    Invoice,
+    InvoiceDetail,
+    Plan,
+    Subscription,
+    CreatePlanPayload,
+    PublicSignupPayload,
+    PublicSignupResponse,
+} from "./types";
 
 export const BASE_URL = resolveBackendApiBaseUrl();
 
@@ -2186,6 +2196,16 @@ export const getPublicPlans = async (): Promise<Plan[]> => {
         features: plan.features ?? [],
     }));
 };
+
+export const createPublicSignup = async (
+    payload: PublicSignupPayload,
+): Promise<PublicSignupResponse> =>
+    fetchJson<PublicSignupPayload, PublicSignupResponse>("/billing/public/signups", {
+        method: "POST",
+        body: payload,
+        requestSchema: ZPublicSignupPayload,
+        responseSchema: ZPublicSignupResponse,
+    });
 
 export const createBillingPlan = async (
     payload: CreatePlanPayload,
