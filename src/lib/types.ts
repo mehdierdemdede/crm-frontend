@@ -23,6 +23,16 @@ export const ZPlan = z.object({
 });
 export type Plan = z.infer<typeof ZPlan>;
 
+export const ZCreatePlanPayload = z.object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    description: z.string().nullable().optional(),
+    features: z.array(z.string()).optional().default([]),
+    prices: z.array(ZPrice),
+    metadata: z.record(z.any()).optional(),
+});
+export type CreatePlanPayload = z.infer<typeof ZCreatePlanPayload>;
+
 const subscriptionStatuses = [
     "TRIALING",
     "ACTIVE",
