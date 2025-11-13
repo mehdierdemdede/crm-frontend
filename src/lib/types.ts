@@ -31,7 +31,9 @@ export const ZCreatePlanPayload = z.object({
     prices: z.array(ZPrice),
     metadata: z.record(z.any()).optional(),
 });
-export type CreatePlanPayload = z.infer<typeof ZCreatePlanPayload>;
+// `z.input` is used here so optional fields with defaults (e.g. features)
+// remain compatible with the request schema typing expected by fetchJson.
+export type CreatePlanPayload = z.input<typeof ZCreatePlanPayload>;
 
 const subscriptionStatuses = [
     "TRIALING",
