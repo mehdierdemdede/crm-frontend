@@ -87,3 +87,4 @@ npm run start
 - [Next.js Dokümantasyonu](https://nextjs.org/docs)
 - [Next.js ile Deploy Rehberi](https://nextjs.org/docs/app/building-your-application/deploying)
 - Backend API gereksinimleri: [`docs/backend-sync-request.md`](./docs/backend-sync-request.md)
+- Billing plan listesi beklentileri: [`docs/billing-public-plans-contract.md`](./docs/billing-public-plans-contract.md)
