@@ -1492,19 +1492,6 @@ export const getLeadStatusLogs = async (leadId: string): Promise<LeadStatusLog[]
 
 // ──────────────────────────────── DASHBOARD & REPORTS ────────────────────────────────
 
-// 🧭 Agent kapasite / auto-assign istatistikleri
-export const getAgentStats = async (): Promise<AgentStatsResponse[]> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/auto-assign/stats`, { headers });
-        if (!res.ok) throw new Error("Agent istatistikleri alınamadı.");
-        return await res.json();
-    } catch (err) {
-        console.error("getAgentStats error:", err);
-        return [];
-    }
-};
-
 // 📈 Lead özet raporu
 export const getLeadReports = async (
     startDate: string,

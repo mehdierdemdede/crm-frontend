@@ -107,7 +107,6 @@ export default function Sidebar() {
                         {NavItem("/catalog/hotels", "Oteller", Building2)}
                         {NavItem("/catalog/transfer-routes", "Transfer Rotaları", Route)}
                         {NavItem("/reports", "Reports", BarChart2)}
-                        {NavItem("/auto-assign", "Auto Assign", Activity)}
                         {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
                         {isSuperAdmin ? NavItem("/settings/plan-management", "Plan Yönetimi", BadgeDollarSign) : null}
                     </ul>
@@ -145,7 +144,6 @@ export default function Sidebar() {
                                 {NavItem("/catalog/hotels", "Oteller", Building2)}
                                 {NavItem("/catalog/transfer-routes", "Transfer Rotaları", Route)}
                                 {NavItem("/reports", "Reports", BarChart2)}
-                                {NavItem("/auto-assign", "Auto Assign", Activity)}
                                 {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
                                 {isSuperAdmin ? NavItem("/settings/plan-management", "Plan Yönetimi", BadgeDollarSign) : null}
                             </ul>
