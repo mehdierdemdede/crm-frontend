@@ -8,6 +8,7 @@ import {
     ZCancelSub,
     ZCard,
     ZChangePlan,
+    ZCreatePlanPayload,
     ZCreateSubscription,
     ZInvoice,
     ZInvoiceDetail,
@@ -17,7 +18,7 @@ import {
     ZUpdateSeats,
 } from "./types";
 
-import type {Invoice, InvoiceDetail, Plan, Subscription} from "./types";
+import type {Invoice, InvoiceDetail, Plan, Subscription, CreatePlanPayload} from "./types";
 
 export const BASE_URL = resolveBackendApiBaseUrl();
 
@@ -2198,6 +2199,17 @@ export const getPublicPlans = async (): Promise<Plan[]> => {
         features: plan.features ?? [],
     }));
 };
+
+export const createBillingPlan = async (
+    payload: CreatePlanPayload,
+): Promise<Plan> =>
+    fetchJson<CreatePlanPayload, Plan>("/billing/plans", {
+        method: "POST",
+        body: payload,
+        headers: getAuthHeaders(),
+        requestSchema: ZCreatePlanPayload,
+        responseSchema: ZPlan,
+    });
 
 export const tokenizePaymentMethod = async (
     payload: z.infer<typeof ZCard>,
