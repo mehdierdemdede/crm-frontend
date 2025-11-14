@@ -6,13 +6,11 @@ import {SalesPayload} from "@/app/leads/[id]/SalesForm";
 import { resolveBackendApiBaseUrl } from "./backendConfig";
 import {
     ZCancelSub,
-    ZCard,
     ZChangePlan,
     ZCreatePlanPayload,
     ZCreateSubscription,
     ZInvoice,
     ZInvoiceDetail,
-    ZPaymentMethod,
     ZPlan,
     ZPublicSignupPayload,
     ZPublicSignupResponse,
@@ -141,31 +139,6 @@ export interface LeadWhatsAppMessageResponse {
     deliveredAt?: string | null;
 }
 
-export interface LeadActivityLogEntry {
-    id: string;
-    type?: string | null;
-    message?: string | null;
-    createdAt?: string;
-    createdBy?: SimpleUser | null;
-    [key: string]: unknown;
-}
-
-export interface LeadActivityLogRequest {
-    type?: string;
-    message: string;
-    metadata?: Record<string, unknown>;
-    [key: string]: unknown;
-}
-
-export interface LeadStatusLog {
-    id: string;
-    previousStatus?: LeadStatus | null;
-    newStatus?: LeadStatus | null;
-    changedAt?: string;
-    changedBy?: SimpleUser | null;
-    [key: string]: unknown;
-}
-
 export interface LeadCreateRequest {
     name: string;
     email?: string | null;
@@ -184,32 +157,6 @@ export interface LeadReportResponse {
     timeline: { date: string; leads: number }[];
     statusBreakdown: { status: string; count: number }[];
     userPerformance: { userName: string; sales: number; total: number }[];
-}
-
-export interface IntegrationLogEntry {
-    id: string;
-    platform?: IntegrationPlatform;
-    message?: string | null;
-    level?: string | null;
-    timestamp?: string;
-    [key: string]: unknown;
-}
-
-export interface IntegrationLogPage {
-    content: IntegrationLogEntry[];
-    totalElements?: number;
-    totalPages?: number;
-    number?: number;
-    size?: number;
-    [key: string]: unknown;
-}
-
-export interface IntegrationLogQuery {
-    platform?: IntegrationPlatform;
-    integrationId?: string;
-    page?: number;
-    size?: number;
-    search?: string;
 }
 
 export interface AgentStatsResponse {
@@ -245,28 +192,6 @@ export interface LanguageCatalogEntry {
     code: string;
     name: string;
     flagEmoji: string | null;
-}
-
-export interface UserCreateRequest {
-    firstName: string;
-    lastName: string;
-    email: string;
-    role: Role;
-    supportedLanguages: string[];
-    dailyCapacity: number;
-    active: boolean;
-    autoAssignEnabled: boolean;
-    password?: string;
-    [key: string]: unknown;
-}
-
-export type UserUpdateRequest = Partial<UserCreateRequest> & {
-    email?: string;
-};
-
-export interface HashPasswordResponse {
-    hashedPassword: string;
-    [key: string]: unknown;
 }
 
 export interface Hotel {
@@ -567,8 +492,6 @@ export interface IntegrationStatus {
     pageName?: string | null;
 }
 
-export type FacebookIntegrationStatus = Omit<IntegrationStatus, "platform">;
-
 export interface FacebookLeadFetchSummary {
     fetched: number;
     created: number;
@@ -594,38 +517,6 @@ export const getIntegrationStatuses = async (): Promise<
             return {
                 status: response.status,
                 data,
-            };
-        }
-
-        return {
-            status: response.status,
-            message: resolveErrorMessage(body),
-        };
-    } catch (error) {
-        return {
-            status: 0,
-            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
-        };
-    }
-};
-
-export const getFacebookIntegrationStatus = async (): Promise<
-    ApiResponse<FacebookIntegrationStatus | null>
-> => {
-    const headers = getAuthHeaders();
-
-    try {
-        const response = await fetch(`${BASE_URL}/integrations/facebook`, {
-            headers,
-            cache: "no-store",
-        });
-
-        const body = await extractResponseBody(response);
-
-        if (response.ok) {
-            return {
-                status: response.status,
-                data: (body as FacebookIntegrationStatus) ?? null,
             };
         }
 
@@ -749,82 +640,6 @@ export const getIntegration = async (
         return (await res.json()) as IntegrationStatus;
     } catch (error) {
         console.error("getIntegration error:", error);
-        return null;
-    }
-};
-
-export const deleteIntegration = async (
-    platform: IntegrationPlatform,
-    organizationId?: string,
-): Promise<boolean> => {
-    const headers = getAuthHeaders();
-    try {
-        const params = new URLSearchParams();
-        if (organizationId) {
-            params.append("organizationId", organizationId);
-        }
-        const query = params.toString();
-        const res = await fetch(
-            `${BASE_URL}/integrations/${platform}${query ? `?${query}` : ""}`,
-            {
-                method: "DELETE",
-                headers,
-            },
-        );
-        return res.ok;
-    } catch (error) {
-        console.error("deleteIntegration error:", error);
-        return false;
-    }
-};
-
-export const getIntegrationLogs = async (
-    params: IntegrationLogQuery = {},
-): Promise<IntegrationLogPage | null> => {
-    const headers = getAuthHeaders();
-    try {
-        const searchParams = new URLSearchParams();
-        if (params.platform) searchParams.append("platform", params.platform);
-        if (params.integrationId)
-            searchParams.append("integrationId", params.integrationId);
-        if (typeof params.page === "number")
-            searchParams.append("page", String(params.page));
-        if (typeof params.size === "number")
-            searchParams.append("size", String(params.size));
-        if (params.search) searchParams.append("search", params.search);
-
-        const query = searchParams.toString();
-        const res = await fetch(
-            `${BASE_URL}/integrations/logs${query ? `?${query}` : ""}`,
-            { headers },
-        );
-        if (!res.ok) {
-            const body = await extractResponseBody(res);
-            throw new Error(
-                resolveErrorMessage(
-                    body,
-                    "Entegrasyon logları alınırken bir hata oluştu.",
-                ),
-            );
-        }
-        const body = await extractResponseBody(res);
-        const unwrapped = unwrapApiData<unknown>(body);
-        if (!unwrapped || typeof unwrapped !== "object") {
-            return {
-                content: [],
-                totalElements: 0,
-                totalPages: 0,
-                number: 0,
-                size: params.size ?? 0,
-            };
-        }
-        const payload = unwrapped as IntegrationLogPage;
-        const content = Array.isArray(payload.content)
-            ? (payload.content as IntegrationLogEntry[])
-            : [];
-        return { ...payload, content };
-    } catch (error) {
-        console.error("getIntegrationLogs error:", error);
         return null;
     }
 };
@@ -1211,104 +1026,6 @@ export const getUsers = async (): Promise<SimpleUser[]> => {
     }
 };
 
-export const getUserById = async (userId: string): Promise<UserResponse | null> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/users/${userId}`, { headers });
-        if (res.status === 404) {
-            return null;
-        }
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Kullanıcı bilgisi alınamadı.");
-        }
-        return (await res.json()) as UserResponse;
-    } catch (err) {
-        console.error("getUserById error:", err);
-        return null;
-    }
-};
-
-export const createUser = async (
-    payload: UserCreateRequest,
-): Promise<UserResponse | null> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/users`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Kullanıcı oluşturulamadı.");
-        }
-        return (await res.json()) as UserResponse;
-    } catch (err) {
-        console.error("createUser error:", err);
-        return null;
-    }
-};
-
-export const updateUser = async (
-    userId: string,
-    payload: UserUpdateRequest,
-): Promise<UserResponse | null> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/users/${userId}`, {
-            method: "PUT",
-            headers,
-            body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Kullanıcı güncellenemedi.");
-        }
-        return (await res.json()) as UserResponse;
-    } catch (err) {
-        console.error("updateUser error:", err);
-        return null;
-    }
-};
-
-export const deleteUser = async (userId: string): Promise<boolean> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/users/${userId}`, {
-            method: "DELETE",
-            headers,
-        });
-        return res.ok;
-    } catch (err) {
-        console.error("deleteUser error:", err);
-        return false;
-    }
-};
-
-export const getMyHashedPassword = async (): Promise<string | null> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/users/getMyHashedPass`, { headers });
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Hash değerine ulaşılamadı.");
-        }
-        const body = await extractResponseBody(res);
-        if (typeof body === "string") {
-            return body;
-        }
-        if (body && typeof body === "object" && "hashedPassword" in body) {
-            const value = (body as { hashedPassword?: unknown }).hashedPassword;
-            return typeof value === "string" ? value : null;
-        }
-        return null;
-    } catch (err) {
-        console.error("getMyHashedPassword error:", err);
-        return null;
-    }
-};
-
 
 
 // ──────────────────────────────── LEAD ACTIONS (user actions) ────────────────────────────────
@@ -1443,60 +1160,6 @@ export const sendLeadWhatsAppMessage = async (
     } catch (err) {
         console.error("sendLeadWhatsAppMessage error:", err);
         return null;
-    }
-};
-
-// ──────────────────────────────── ACTIVITY LOGS (system logs) ────────────────────────────────
-
-export const getLeadActivityLogs = async (leadId: string) => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/leads/${leadId}/activity-logs`, { headers });
-        if (!res.ok) throw new Error("Aktivite geçmişi alınamadı.");
-        return await res.json();
-    } catch (err) {
-        console.error("getLeadActivityLogs error:", err);
-        return [];
-    }
-};
-
-export const addLeadActivityLog = async (
-    leadId: string,
-    payload: LeadActivityLogRequest,
-): Promise<LeadActivityLogEntry | null> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/leads/${leadId}/activity-logs`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Aktivite kaydı oluşturulamadı.");
-        }
-        return (await res.json()) as LeadActivityLogEntry;
-    } catch (err) {
-        console.error("addLeadActivityLog error:", err);
-        return null;
-    }
-};
-
-export const getLeadStatusLogs = async (leadId: string): Promise<LeadStatusLog[]> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/leads/${leadId}/status-logs`, { headers });
-        if (res.status === 204) {
-            return [];
-        }
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Durum geçmişi alınamadı.");
-        }
-        return (await res.json()) as LeadStatusLog[];
-    } catch (err) {
-        console.error("getLeadStatusLogs error:", err);
-        return [];
     }
 };
 
@@ -1764,62 +1427,6 @@ export const getAutoAssignStats = async (): Promise<AgentStatsResponse[]> => {
     }
 };
 
-// ──────────────────────────────── DASHBOARD COMPOSITE STATS ────────────────────────────────
-export interface DashboardStats {
-    totalLeads: number;
-    soldLeads: number;
-    hotLeads: number;
-    notInterested: number;
-    blocked: number;
-    wrongInfo: number;
-    timeline: { date: string; leads: number }[];
-    topAgents: { userName: string; total: number; sales: number }[];
-}
-
-export const getDashboardStats = async (): Promise<DashboardStats | null> => {
-    const headers = getAuthHeaders();
-    try {
-        // 🔹 Son 14 gün raporlarını çekelim
-        const now = new Date();
-        const start = new Date(now);
-        start.setDate(start.getDate() - 14);
-
-        const startIso = start.toISOString();
-        const endIso = now.toISOString();
-
-        const res = await fetch(
-            `${BASE_URL}/reports/lead-summary?start=${startIso}&end=${endIso}`,
-            { headers }
-        );
-        if (!res.ok) throw new Error("Dashboard verisi alınamadı");
-
-        const data: LeadReportResponse = await res.json();
-
-        // Backend’den gelen veriden özet metrikleri çıkaralım
-        const statusCounts: LeadReportResponse["statusBreakdown"] =
-            data.statusBreakdown || [];
-        const findCount = (s: string) =>
-            statusCounts.find((x) => x.status === s)?.count || 0;
-
-        return {
-            totalLeads: statusCounts.reduce(
-                (total, breakdown) => total + breakdown.count,
-                0
-            ),
-            soldLeads: findCount("SOLD"),
-            hotLeads: findCount("HOT"),
-            notInterested: findCount("NOT_INTERESTED"),
-            blocked: findCount("BLOCKED"),
-            wrongInfo: findCount("WRONG_INFO"),
-            timeline: data.timeline || [],
-            topAgents: data.userPerformance || [],
-        };
-    } catch (err) {
-        console.error("getDashboardStats error:", err);
-        return null;
-    }
-};
-
 
 // 📦 Satış oluşturma
 export interface CreateSaleRequest {
@@ -1970,93 +1577,6 @@ export const getTransferRoutes = async (): Promise<TransferRoute[]> => {
     }
 };
 
-export const createTransferRoute = async (
-    payload: TransferRoutePayload,
-): Promise<TransferRoute | null> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/transfer-routes`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Transfer rotası oluşturulamadı.");
-        }
-        return (await res.json()) as TransferRoute;
-    } catch (error) {
-        console.error("createTransferRoute error:", error);
-        return null;
-    }
-};
-
-export const updateTransferRoute = async (
-    transferId: string,
-    payload: TransferRoutePayload,
-): Promise<TransferRoute | null> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/transfer-routes/${transferId}`, {
-            method: "PUT",
-            headers,
-            body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Transfer rotası güncellenemedi.");
-        }
-        return (await res.json()) as TransferRoute;
-    } catch (error) {
-        console.error("updateTransferRoute error:", error);
-        return null;
-    }
-};
-
-export const deleteTransferRoute = async (transferId: string): Promise<boolean> => {
-    const headers = getAuthHeaders();
-    try {
-        const res = await fetch(`${BASE_URL}/transfer-routes/${transferId}`, {
-            method: "DELETE",
-            headers,
-        });
-        return res.ok;
-    } catch (error) {
-        console.error("deleteTransferRoute error:", error);
-        return false;
-    }
-};
-
-
-// ──────────────────────────────── AUTH UTILITIES ────────────────────────────────
-
-export const hashPassword = async (password: string): Promise<string | null> => {
-    const response = await api.post<HashPasswordResponse | string>(
-        "/auth/hash-password",
-        { password },
-    );
-
-    if (response.status >= 200 && response.status < 300 && response.data !== undefined) {
-        const data = response.data;
-        if (typeof data === "string") {
-            return data;
-        }
-        if (data && typeof data === "object" && "hashedPassword" in data) {
-            const value = (data as HashPasswordResponse).hashedPassword;
-            return typeof value === "string" ? value : null;
-        }
-    }
-
-    console.warn(
-        "hashPassword unexpected response:",
-        response.status,
-        response.message,
-        response.data,
-    );
-    return null;
-};
-
-
 export interface AuthUser {
     id: string;
     email: string;
@@ -2171,17 +1691,10 @@ async function fetchJson<TRequest, TResponse>(
     return parsedResponse.data;
 }
 
-const ZTokenizeResponse = z.object({
-    token: z.string(),
-    paymentMethod: ZPaymentMethod,
-});
-
 const ZPlansResponse = z.array(ZPlan);
 const ZSubscriptionsResponse = z.array(ZSubscription);
 const ZInvoicesResponse = z.array(ZInvoice);
 const ZInvoiceDetailResponse = ZInvoiceDetail;
-
-export type TokenizeResponse = z.infer<typeof ZTokenizeResponse>;
 
 export const getPublicPlans = async (): Promise<Plan[]> => {
     const plans = await fetchJson<void, z.infer<typeof ZPlansResponse>>(
@@ -2216,16 +1729,6 @@ export const createBillingPlan = async (
         headers: getAuthHeaders(),
         requestSchema: ZCreatePlanPayload,
         responseSchema: ZPlan,
-    });
-
-export const tokenizePaymentMethod = async (
-    payload: z.infer<typeof ZCard>,
-): Promise<TokenizeResponse> =>
-    fetchJson<typeof payload, TokenizeResponse>("/payment-methods/tokenize", {
-        method: "POST",
-        body: payload,
-        requestSchema: ZCard,
-        responseSchema: ZTokenizeResponse,
     });
 
 export const createSubscription = async (
@@ -2268,11 +1771,6 @@ export const cancelSubscription = async (
         method: "POST",
         body: payload,
         requestSchema: ZCancelSub,
-        responseSchema: ZSubscription,
-    });
-
-export const getSubscriptionById = async (subscriptionId: string): Promise<Subscription> =>
-    fetchJson<void, Subscription>(`/billing/subscriptions/${subscriptionId}`, {
         responseSchema: ZSubscription,
     });
 
