@@ -62,14 +62,14 @@ function InviteAcceptContent() {
 
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-            <div className="max-w-md w-full bg-white shadow-md rounded p-6">
-                <h1 className="text-xl font-semibold mb-3">Hesabını aktive et</h1>
-                <p className="text-sm text-gray-600 mb-4">Lütfen yeni şifreni belirle. Şifre 8 karakterden uzun olmalı.</p>
+        <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 text-slate-900">
+            <div className="max-w-md w-full bg-white shadow-md rounded p-6 text-slate-900">
+                <h1 className="text-xl font-semibold mb-3 text-slate-900">Hesabını aktive et</h1>
+                <p className="text-sm text-slate-600 mb-4">Lütfen yeni şifreni belirle. Şifre 8 karakterden uzun olmalı.</p>
 
                 <form onSubmit={(event) => { event.preventDefault(); void handleSubmit(); }} className="space-y-3">
                     <div>
-                        <label className="block text-sm mb-1" htmlFor={passwordId}>
+                        <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor={passwordId}>
                             Yeni Şifre
                         </label>
                         <input
@@ -77,12 +77,12 @@ function InviteAcceptContent() {
                             onChange={(e) => setPassword(e.target.value)}
                             type="password"
                             id={passwordId}
-                            className="w-full border px-3 py-2 rounded"
+                            className="w-full border border-slate-200 px-3 py-2 rounded text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm mb-1" htmlFor={confirmId}>
+                        <label className="block text-sm font-medium text-slate-700 mb-1" htmlFor={confirmId}>
                             Şifre (Tekrar)
                         </label>
                         <input
@@ -90,7 +90,7 @@ function InviteAcceptContent() {
                             onChange={(e) => setConfirm(e.target.value)}
                             type="password"
                             id={confirmId}
-                            className="w-full border px-3 py-2 rounded"
+                            className="w-full border border-slate-200 px-3 py-2 rounded text-slate-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-100"
                         />
                     </div>
 
