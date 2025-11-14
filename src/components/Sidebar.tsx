@@ -11,7 +11,6 @@ import {
     Activity,
     Globe,
     Building2,
-    Route,
     Menu,
     X,
     LogOut,
@@ -105,7 +104,6 @@ export default function Sidebar() {
                         {NavItem("/integrations", "Integrations", Plug)}
                         {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
                         {NavItem("/catalog/hotels", "Oteller", Building2)}
-                        {NavItem("/catalog/transfer-routes", "Transfer Rotaları", Route)}
                         {NavItem("/reports", "Reports", BarChart2)}
                         {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
                         {isSuperAdmin ? NavItem("/settings/plan-management", "Plan Yönetimi", BadgeDollarSign) : null}
@@ -142,7 +140,6 @@ export default function Sidebar() {
                                 {NavItem("/integrations", "Integrations", Plug)}
                                 {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
                                 {NavItem("/catalog/hotels", "Oteller", Building2)}
-                                {NavItem("/catalog/transfer-routes", "Transfer Rotaları", Route)}
                                 {NavItem("/reports", "Reports", BarChart2)}
                                 {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
                                 {isSuperAdmin ? NavItem("/settings/plan-management", "Plan Yönetimi", BadgeDollarSign) : null}
