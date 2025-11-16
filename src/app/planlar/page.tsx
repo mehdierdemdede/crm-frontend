@@ -1,32 +1,15 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import {
-    AlertCircle,
-    ArrowRight,
-    Building2,
-    Calculator,
-    CalendarRange,
-    CheckCircle2,
-    Loader2,
-    Mail,
-    Phone,
-    PiggyBank,
-    User,
-    Users,
-} from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { AlertCircle, ArrowRight, Calculator, CalendarRange, CheckCircle2, Loader2, PiggyBank, Users } from "lucide-react";
+import { useMemo, useState } from "react";
 
-import { Button } from "@/components/Button";
-import { Input } from "@/components/Input";
-import Modal from "@/components/Modal";
 import { useAuth } from "@/hooks/useAuth";
-import { createPublicSignup, getPublicPlans } from "@/lib/api";
+import { usePublicSignupStore } from "@/hooks/usePublicSignupStore";
+import { getPublicPlans } from "@/lib/api";
 import type { BillingPeriod, Plan } from "@/lib/types";
 
 const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
@@ -42,30 +25,8 @@ type PlanPricing = {
     basePrice: number;
     perSeatPrice: number;
     currency: string;
+    trialDays?: number | null;
 };
-
-const publicSignupFormSchema = z.object({
-    organizationName: z
-        .string()
-        .min(2, "Şirket adı gerekli")
-        .max(150, "Şirket adı en fazla 150 karakter olabilir")
-        .trim(),
-    firstName: z.string().min(2, "Ad gerekli").max(60, "Ad en fazla 60 karakter olabilir").trim(),
-    lastName: z
-        .string()
-        .min(2, "Soyad gerekli")
-        .max(60, "Soyad en fazla 60 karakter olabilir")
-        .trim(),
-    email: z
-        .string()
-        .min(3, "E-posta gerekli")
-        .max(200, "E-posta en fazla 200 karakter olabilir")
-        .email("Geçerli bir e-posta girin")
-        .trim(),
-    phone: z.string().max(40, "Telefon numarası en fazla 40 karakter olabilir").optional(),
-});
-
-type PublicSignupFormValues = z.infer<typeof publicSignupFormSchema>;
 
 const toNumber = (value: unknown): number | null => {
     if (typeof value === "number" && Number.isFinite(value)) {
@@ -102,6 +63,7 @@ const getPricingForPeriod = (plan: Plan, billingPeriod: BillingPeriod): PlanPric
         basePrice,
         perSeatPrice,
         currency: price.currency || "TRY",
+        trialDays: price.trialDays,
     };
 };
 
@@ -196,239 +158,18 @@ function SeatCounter({ value, onChange }: { value: number; onChange: (value: num
     );
 }
 
-function PublicSignupModal({
-    plan,
-    isOpen,
-    onClose,
-    seatCount,
-    billingPeriod,
-}: {
-    plan: Plan | null;
-    isOpen: boolean;
-    onClose: () => void;
-    seatCount: number;
-    billingPeriod: BillingPeriod;
-}) {
-    const pricing = useMemo(
-        () => (plan ? getPricingForPeriod(plan, billingPeriod) : null),
-        [plan, billingPeriod],
-    );
-    const total = pricing ? pricing.basePrice + pricing.perSeatPrice * seatCount : 0;
-    const [submitError, setSubmitError] = useState<string | null>(null);
-    const [isSuccess, setIsSuccess] = useState(false);
-    const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
-
-    const {
-        register,
-        handleSubmit,
-        reset,
-        formState: { errors, isSubmitting },
-    } = useForm<PublicSignupFormValues>({
-        resolver: zodResolver(publicSignupFormSchema),
-        defaultValues: {
-            organizationName: "",
-            firstName: "",
-            lastName: "",
-            email: "",
-            phone: "",
-        },
-    });
-
-    useEffect(() => {
-        if (!isOpen) {
-            return;
-        }
-
-        reset({ organizationName: "", firstName: "", lastName: "", email: "", phone: "" });
-        setSubmitError(null);
-        setIsSuccess(false);
-        setSuccessMessage(null);
-        setSubmittedEmail(null);
-    }, [isOpen, plan?.id, reset]);
-
-    if (!plan) {
-        return null;
-    }
-
-    const handleClose = () => {
-        onClose();
-        reset({ organizationName: "", firstName: "", lastName: "", email: "", phone: "" });
-        setSubmitError(null);
-        setIsSuccess(false);
-        setSuccessMessage(null);
-        setSubmittedEmail(null);
-    };
-
-    const onSubmit = async (values: PublicSignupFormValues) => {
-        if (!plan || !pricing) {
-            return;
-        }
-
-        setSubmitError(null);
-
-        try {
-            const response = await createPublicSignup({
-                planId: plan.id,
-                billingPeriod,
-                seatCount,
-                organizationName: values.organizationName,
-                admin: {
-                    firstName: values.firstName,
-                    lastName: values.lastName,
-                    email: values.email,
-                    ...(values.phone && values.phone.trim().length > 0
-                        ? { phone: values.phone.trim() }
-                        : {}),
-                },
-            });
-
-            setIsSuccess(true);
-            setSubmittedEmail(values.email);
-            setSuccessMessage(
-                response.message ??
-                    `${values.email} adresine davet bağlantısı gönderdik. Gelen kutunuzu kontrol etmeyi unutmayın.`,
-            );
-        } catch (error) {
-            const message =
-                error instanceof Error
-                    ? error.message
-                    : "Kaydınız oluşturulurken bir hata meydana geldi.";
-            setSubmitError(message);
-        }
-    };
-
-    return (
-        <Modal
-            isOpen={isOpen}
-            onClose={handleClose}
-            title={isSuccess ? "Ön kaydınız oluşturuldu" : `${plan.name} planına kaydolun`}
-            description={
-                isSuccess
-                    ? undefined
-                    : "İletişim bilgilerinizi paylaşın; satın alma tamamlandığında davet bağlantısı gönderelim."
-            }
-        >
-            <div className="space-y-5 text-gray-800">
-                {pricing ? (
-                    <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-                        <div className="flex items-center justify-between text-slate-900">
-                            <span className="font-semibold">{plan.name}</span>
-                            <span className="text-sm font-medium">{BILLING_PERIOD_LABELS[billingPeriod]}</span>
-                        </div>
-                        <dl className="mt-3 space-y-2 text-sm">
-                            <div className="flex items-center justify-between">
-                                <dt>Koltuk</dt>
-                                <dd className="font-medium text-slate-900">{seatCount} kişi</dd>
-                            </div>
-                            <div className="flex items-center justify-between">
-                                <dt>Toplam</dt>
-                                <dd className="font-semibold text-slate-900">
-                                    {formatCurrency(total, pricing.currency)}
-                                </dd>
-                            </div>
-                        </dl>
-                    </div>
-                ) : (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                        Bu plan için fiyatlandırma bilgisi bulunamadı.
-                    </div>
-                )}
-
-                {isSuccess ? (
-                    <div className="space-y-4 text-sm text-slate-600">
-                        <div className="flex items-center gap-2 text-emerald-600">
-                            <CheckCircle2 className="h-5 w-5" />
-                            <span>Ön kaydınız alındı</span>
-                        </div>
-                        <p>
-                            {successMessage}
-                            {submittedEmail ? ` (${submittedEmail})` : null}
-                        </p>
-                        <Button type="button" className="w-full" onClick={handleClose}>
-                            Kapat
-                        </Button>
-                    </div>
-                ) : (
-                    <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-                        <div className="grid gap-4">
-                            <Input
-                                label="Şirket / Organizasyon Adı"
-                                placeholder="Örn. Blue CRM"
-                                {...register("organizationName")}
-                                error={errors.organizationName?.message}
-                                icon={<Building2 className="h-4 w-4 text-slate-400" />}
-                            />
-                            <div className="grid gap-4 md:grid-cols-2">
-                                <Input
-                                    label="Ad"
-                                    placeholder="Ad"
-                                    {...register("firstName")}
-                                    error={errors.firstName?.message}
-                                    icon={<User className="h-4 w-4 text-slate-400" />}
-                                />
-                                <Input
-                                    label="Soyad"
-                                    placeholder="Soyad"
-                                    {...register("lastName")}
-                                    error={errors.lastName?.message}
-                                    icon={<User className="h-4 w-4 text-slate-400" />}
-                                />
-                            </div>
-                            <Input
-                                label="İş E-postası"
-                                placeholder="ornek@firma.com"
-                                {...register("email")}
-                                error={errors.email?.message}
-                                icon={<Mail className="h-4 w-4 text-slate-400" />}
-                                inputMode="email"
-                                autoComplete="email"
-                            />
-                            <Input
-                                label="Telefon (opsiyonel)"
-                                placeholder="0 (5xx) xxx xx xx"
-                                {...register("phone")}
-                                error={errors.phone?.message}
-                                icon={<Phone className="h-4 w-4 text-slate-400" />}
-                                inputMode="tel"
-                                autoComplete="tel"
-                            />
-                        </div>
-
-                        <p className="text-xs text-slate-500">
-                            Satın alma sonrası yöneticiniz için bir davet maili gönderilecek. Daveti kabul eden kullanıcıya yeni
-                            organizasyonda admin rolü verilir.
-                        </p>
-
-                        {submitError ? (
-                            <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                                <AlertCircle className="mt-0.5 h-4 w-4" />
-                                <span>{submitError}</span>
-                            </div>
-                        ) : null}
-
-                        <Button type="submit" className="w-full" isLoading={isSubmitting} disabled={!pricing || isSubmitting}>
-                            Ön Kaydı Oluştur
-                        </Button>
-                    </form>
-                )}
-            </div>
-        </Modal>
-    );
-}
-
 function PlanCard({
     plan,
     seatCount,
     billingPeriod,
     isAuthenticated,
-    onPublicSignup,
+    onSelect,
 }: {
     plan: Plan;
     seatCount: number;
     billingPeriod: BillingPeriod;
     isAuthenticated: boolean;
-    onPublicSignup?: (plan: Plan) => void;
+    onSelect: (plan: Plan) => void;
 }) {
     const pricing = useMemo(() => getPricingForPeriod(plan, billingPeriod), [plan, billingPeriod]);
 
@@ -436,7 +177,7 @@ function PlanCard({
         return null;
     }
 
-    const { basePrice, perSeatPrice, currency } = pricing;
+    const { basePrice, perSeatPrice, currency, trialDays } = pricing;
     const total = basePrice + perSeatPrice * seatCount;
 
     return (
@@ -470,6 +211,12 @@ function PlanCard({
                         <dt>Toplam ({seatCount} kişi):</dt>
                         <dd className="ml-1">{formatCurrency(total, currency)}</dd>
                     </div>
+                    {trialDays ? (
+                        <div className="flex items-center gap-2 text-sm font-medium text-emerald-600">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span>{trialDays} gün ücretsiz deneme</span>
+                        </div>
+                    ) : null}
                 </dl>
 
                 {plan.features && plan.features.length > 0 ? (
@@ -492,23 +239,15 @@ function PlanCard({
                     Abone Ol
                     <ArrowRight className="h-4 w-4" />
                 </Link>
-            ) : onPublicSignup ? (
+            ) : (
                 <button
                     type="button"
-                    onClick={() => onPublicSignup(plan)}
+                    onClick={() => onSelect(plan)}
                     className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
                 >
                     Kaydol ve Abone Ol
                     <ArrowRight className="h-4 w-4" />
                 </button>
-            ) : (
-                <Link
-                    href="/login"
-                    className="mt-8 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-offset-2"
-                >
-                    Kaydol ve Abone Ol
-                    <ArrowRight className="h-4 w-4" />
-                </Link>
             )}
         </div>
     );
@@ -517,14 +256,29 @@ function PlanCard({
 export default function PlansPage() {
     const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("MONTH");
     const [seatCount, setSeatCount] = useState<number>(DEFAULT_SEAT_COUNT);
-    const [publicSignupPlan, setPublicSignupPlan] = useState<Plan | null>(null);
+    const router = useRouter();
     const { user } = useAuth();
+    const setPlanSelection = usePublicSignupStore((state) => state.setPlanSelection);
+    const clearPaymentResult = usePublicSignupStore((state) => state.setPaymentResult);
 
     const { data: plans, isLoading, isError } = useQuery({
-        queryKey: ["public-plans"],
-        queryFn: getPublicPlans,
+        queryKey: ["public-plans", billingPeriod, seatCount],
+        queryFn: () => getPublicPlans({ billingPeriod, seatCount }),
         staleTime: 1000 * 60 * 5,
     });
+
+    const handlePlanSelect = (plan: Plan) => {
+        clearPaymentResult(null);
+        setPlanSelection({ plan, billingPeriod, seatCount });
+
+        const params = new URLSearchParams({
+            planId: plan.id,
+            seats: String(seatCount),
+            billingPeriod,
+        });
+
+        router.push(`/signup?${params.toString()}`);
+    };
 
     return (
         <div className="max-w-5xl mx-auto grid gap-6 p-6">
@@ -558,7 +312,7 @@ export default function PlansPage() {
                             seatCount={seatCount}
                             billingPeriod={billingPeriod}
                             isAuthenticated={Boolean(user)}
-                            onPublicSignup={(nextPlan) => setPublicSignupPlan(nextPlan)}
+                            onSelect={handlePlanSelect}
                         />
                     ))}
                 </div>
@@ -567,14 +321,6 @@ export default function PlansPage() {
                     Şu anda görüntülenecek plan bulunmuyor.
                 </div>
             )}
-
-            <PublicSignupModal
-                plan={publicSignupPlan}
-                isOpen={Boolean(publicSignupPlan)}
-                onClose={() => setPublicSignupPlan(null)}
-                seatCount={seatCount}
-                billingPeriod={billingPeriod}
-            />
         </div>
     );
 }
