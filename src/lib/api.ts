@@ -13,6 +13,8 @@ import {
     ZInvoiceDetail,
     ZPlan,
     ZPublicSignupPayload,
+    ZPublicSignupPaymentPayload,
+    ZPublicSignupPaymentResponse,
     ZPublicSignupResponse,
     ZSubscription,
     ZUpdateSeats,
@@ -21,10 +23,13 @@ import {
 import type {
     Invoice,
     InvoiceDetail,
+    BillingPeriod,
     Plan,
     Subscription,
     CreatePlanPayload,
     PublicSignupPayload,
+    PublicSignupPaymentPayload,
+    PublicSignupPaymentResponse,
     PublicSignupResponse,
 } from "./types";
 
@@ -1696,9 +1701,24 @@ const ZSubscriptionsResponse = z.array(ZSubscription);
 const ZInvoicesResponse = z.array(ZInvoice);
 const ZInvoiceDetailResponse = ZInvoiceDetail;
 
-export const getPublicPlans = async (): Promise<Plan[]> => {
+export const getPublicPlans = async (params?: {
+    billingPeriod?: BillingPeriod;
+    seatCount?: number;
+}): Promise<Plan[]> => {
+    const searchParams = new URLSearchParams();
+
+    if (params?.billingPeriod) {
+        searchParams.set("billingPeriod", params.billingPeriod);
+    }
+
+    if (typeof params?.seatCount === "number" && Number.isFinite(params.seatCount)) {
+        searchParams.set("seatCount", String(params.seatCount));
+    }
+
+    const query = searchParams.toString();
+
     const plans = await fetchJson<void, z.infer<typeof ZPlansResponse>>(
-        "/billing/public/plans",
+        query ? `/billing/public/plans?${query}` : "/billing/public/plans",
         {
             responseSchema: ZPlansResponse,
         },
@@ -1710,6 +1730,11 @@ export const getPublicPlans = async (): Promise<Plan[]> => {
     }));
 };
 
+export const getPublicPlanById = async (planId: string): Promise<Plan> =>
+    fetchJson<void, Plan>(`/billing/public/plans/${encodeURIComponent(planId)}`, {
+        responseSchema: ZPlan,
+    });
+
 export const createPublicSignup = async (
     payload: PublicSignupPayload,
 ): Promise<PublicSignupResponse> =>
@@ -1718,6 +1743,16 @@ export const createPublicSignup = async (
         body: payload,
         requestSchema: ZPublicSignupPayload,
         responseSchema: ZPublicSignupResponse,
+    });
+
+export const initializePublicSignupPayment = async (
+    payload: PublicSignupPaymentPayload,
+): Promise<PublicSignupPaymentResponse> =>
+    fetchJson<PublicSignupPaymentPayload, PublicSignupPaymentResponse>("/payments/initialize", {
+        method: "POST",
+        body: payload,
+        requestSchema: ZPublicSignupPaymentPayload,
+        responseSchema: ZPublicSignupPaymentResponse,
     });
 
 export const createBillingPlan = async (

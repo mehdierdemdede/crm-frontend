@@ -163,6 +163,43 @@ export const ZPublicSignupResponse = z
     .passthrough();
 export type PublicSignupResponse = z.infer<typeof ZPublicSignupResponse>;
 
+export const ZPublicSignupPaymentPayload = z.object({
+    planId: z.string().min(1),
+    billingPeriod: z.enum(BillingPeriods),
+    seatCount: z.number().int().positive(),
+    account: z.object({
+        firstName: z.string().min(1),
+        lastName: z.string().min(1),
+        email: z.string().email(),
+        password: z.string().min(8),
+        phone: z.string().optional(),
+    }),
+    organization: z.object({
+        organizationName: z.string().min(2),
+        country: z.string().min(2),
+        taxNumber: z.string().min(1),
+        companySize: z.string().optional(),
+    }),
+    card: z.object({
+        cardholderName: z.string().min(1),
+        cardNumber: z.string().min(12).max(23),
+        expMonth: z.number().int().min(1).max(12),
+        expYear: z.number().int().min(new Date().getFullYear()).max(2100),
+        cvc: z.string().min(3).max(4),
+    }),
+});
+export type PublicSignupPaymentPayload = z.infer<typeof ZPublicSignupPaymentPayload>;
+
+export const ZPublicSignupPaymentResponse = z.object({
+    status: z.enum(["SUCCESS", "FAILURE"]),
+    subscriptionId: z.string().optional(),
+    iyzicoSubscriptionId: z.string().optional(),
+    iyzicoCustomerId: z.string().optional(),
+    message: z.string().optional(),
+    hasTrial: z.boolean().optional(),
+});
+export type PublicSignupPaymentResponse = z.infer<typeof ZPublicSignupPaymentResponse>;
+
 export const ZChangePlan = z.object({
     planId: z.string(),
     priceId: z.string(),
