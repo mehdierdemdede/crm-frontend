@@ -327,8 +327,8 @@ export default function SelectPlanPage() {
     const setSeatCount = useOnboardingStore((state) => state.setSeatCount);
 
     const { data: plans, isLoading, isError } = useQuery({
-        queryKey: ["onboarding", "plans"],
-        queryFn: getPublicPlans,
+        queryKey: ["onboarding", "plans", billingPeriod, seatCount],
+        queryFn: () => getPublicPlans({ billingPeriod, seatCount }),
         staleTime: 1000 * 60 * 5,
     });
 
