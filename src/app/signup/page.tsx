@@ -22,15 +22,19 @@ import {
     User,
     Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
-import { usePublicSignupStore } from "@/hooks/usePublicSignupStore";
+import {
+    usePublicSignupStore,
+    type SignupAccountInfo,
+    type SignupOrganizationInfo,
+} from "@/hooks/usePublicSignupStore";
 import { getPublicPlanById, initializePublicSignupPayment } from "@/lib/api";
-import type { BillingPeriod, Plan } from "@/lib/types";
+import type { BillingPeriod, Plan, PublicSignupPaymentPayload } from "@/lib/types";
 
 const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
     MONTH: "Aylık",
@@ -185,6 +189,42 @@ const steps: { key: StepKey; title: string; description: string }[] = [
 
 const sanitizeCardNumber = (value: string) => value.replace(/[^\d]/g, "");
 
+const getAccountFormDefaultValues = (info: SignupAccountInfo | null): AccountFormValues => ({
+    firstName: info?.firstName ?? "",
+    lastName: info?.lastName ?? "",
+    email: info?.email ?? "",
+    password: info?.password ?? "",
+    phone: info?.phone ?? "",
+});
+
+const getOrganizationFormDefaultValues = (
+    info: SignupOrganizationInfo | null,
+): OrganizationFormValues => ({
+    organizationName: info?.organizationName ?? "",
+    country: info?.country ?? "",
+    taxNumber: info?.taxNumber ?? "",
+    companySize: info?.companySize ?? "",
+});
+
+const toPaymentAccountPayload = (
+    info: SignupAccountInfo,
+): PublicSignupPaymentPayload["account"] => ({
+    firstName: info.firstName,
+    lastName: info.lastName,
+    email: info.email,
+    password: info.password,
+    ...(info.phone ? { phone: info.phone } : {}),
+});
+
+const toPaymentOrganizationPayload = (
+    info: SignupOrganizationInfo,
+): PublicSignupPaymentPayload["organization"] => ({
+    organizationName: info.organizationName,
+    country: info.country,
+    taxNumber: info.taxNumber,
+    ...(info.companySize ? { companySize: info.companySize } : {}),
+});
+
 const parseBillingPeriod = (value: string | null): BillingPeriod | null => {
     if (!value) {
         return null;
@@ -316,7 +356,7 @@ function PlanSummary({ plan, seatCount, billingPeriod }: { plan: Plan | null; se
     );
 }
 
-export default function SignupWizardPage() {
+function SignupWizardContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [currentStepIndex, setCurrentStepIndex] = useState(0);
@@ -388,35 +428,20 @@ export default function SignupWizardPage() {
 
     const accountForm = useForm<AccountFormValues>({
         resolver: zodResolver(accountSchema),
-        defaultValues: accountInfo ?? {
-            firstName: "",
-            lastName: "",
-            email: "",
-            password: "",
-            phone: "",
-        },
+        defaultValues: getAccountFormDefaultValues(accountInfo),
     });
 
     useEffect(() => {
-        if (accountInfo) {
-            accountForm.reset(accountInfo);
-        }
+        accountForm.reset(getAccountFormDefaultValues(accountInfo));
     }, [accountInfo, accountForm]);
 
     const organizationForm = useForm<OrganizationFormValues>({
         resolver: zodResolver(organizationSchema),
-        defaultValues: organizationInfo ?? {
-            organizationName: "",
-            country: "",
-            taxNumber: "",
-            companySize: "",
-        },
+        defaultValues: getOrganizationFormDefaultValues(organizationInfo),
     });
 
     useEffect(() => {
-        if (organizationInfo) {
-            organizationForm.reset(organizationInfo);
-        }
+        organizationForm.reset(getOrganizationFormDefaultValues(organizationInfo));
     }, [organizationInfo, organizationForm]);
 
     const paymentForm = useForm<PaymentFormValues>({
@@ -430,7 +455,7 @@ export default function SignupWizardPage() {
         },
     });
 
-    const currentStep = steps[currentStepIndex];
+    const currentStep = steps[currentStepIndex] ?? steps[0]!;
 
     const goToStep = (index: number) => {
         if (index >= 0 && index < steps.length) {
@@ -467,13 +492,8 @@ export default function SignupWizardPage() {
                 planId: plan.id,
                 billingPeriod,
                 seatCount,
-                account: accountInfo,
-                organization: {
-                    organizationName: organizationInfo.organizationName,
-                    country: organizationInfo.country,
-                    taxNumber: organizationInfo.taxNumber,
-                    ...(organizationInfo.companySize ? { companySize: organizationInfo.companySize } : {}),
-                },
+                account: toPaymentAccountPayload(accountInfo),
+                organization: toPaymentOrganizationPayload(organizationInfo),
                 card: {
                     cardholderName: values.cardholderName,
                     cardNumber: sanitizedCard,
@@ -793,8 +813,8 @@ export default function SignupWizardPage() {
                     <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
                         <header className="mb-6 space-y-2">
                             <p className="text-xs font-semibold uppercase tracking-wide text-blue-600">{currentStep.title}</p>
-                            <h2 className="text-xl font-semibold text-slate-900">{steps[currentStepIndex].title}</h2>
-                            <p className="text-sm text-slate-600">{steps[currentStepIndex].description}</p>
+                            <h2 className="text-xl font-semibold text-slate-900">{currentStep.title}</h2>
+                            <p className="text-sm text-slate-600">{currentStep.description}</p>
                         </header>
 
                         {selectedPlan || fetchedPlan ? (
@@ -818,6 +838,20 @@ export default function SignupWizardPage() {
                 </main>
             </div>
         </div>
+    );
+}
+
+export default function SignupWizardPage() {
+    return (
+        <Suspense
+            fallback={
+                <div className="flex h-64 items-center justify-center text-sm text-slate-500">
+                    İçerik yükleniyor...
+                </div>
+            }
+        >
+            <SignupWizardContent />
+        </Suspense>
     );
 }
 
