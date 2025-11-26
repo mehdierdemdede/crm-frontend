@@ -535,7 +535,7 @@ function SignupWizardContent() {
 
             setPaymentResult({
                 status: response.status,
-                subscriptionId: response.subscriptionId,
+                subscriptionId: response.subscriptionId ?? undefined,
                 iyzicoSubscriptionId: response.iyzicoSubscriptionId,
                 iyzicoCustomerId: response.iyzicoCustomerId,
                 message: response.message,
