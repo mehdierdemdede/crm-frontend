@@ -162,6 +162,7 @@ async function tokenizeCard(payload: {
         method: "POST",
         headers: {
             Accept: "application/json",
+            "Content-Type": "application/json",
             ...getAuthHeaders(),
         },
         body: JSON.stringify(payload),
@@ -212,6 +213,7 @@ async function createSubscription(payload: {
         method: "POST",
         headers: {
             Accept: "application/json",
+            "Content-Type": "application/json",
             ...getAuthHeaders(),
         },
         body: JSON.stringify(payload),
