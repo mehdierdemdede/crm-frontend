@@ -125,20 +125,20 @@ const organizationSchema = z.object({
 });
 
 const paymentSchema = z.object({
-    cardholderName: z.string().min(1, "Kart üzerindeki isim gerekli").trim(),
+    cardHolderName: z.string().min(1, "Kart üzerindeki isim gerekli").trim(),
     cardNumber: z
         .string()
         .min(12, "Kart numarası en az 12 haneli olmalıdır")
         .max(23, "Kart numarası en fazla 23 karakter olabilir")
         .refine((value) => /^[-\d\s]+$/.test(value), "Kart numarası yalnızca rakam ve boşluk içerebilir"),
-    expMonth: z
+    expireMonth: z
         .string()
         .min(1, "Ay gerekli")
         .refine((value) => {
             const month = Number(value);
             return Number.isInteger(month) && month >= 1 && month <= 12;
         }, "Geçerli bir ay girin"),
-    expYear: z
+    expireYear: z
         .string()
         .min(2, "Yıl gerekli")
         .refine((value) => {
@@ -447,10 +447,10 @@ function SignupWizardContent() {
     const paymentForm = useForm<PaymentFormValues>({
         resolver: zodResolver(paymentSchema),
         defaultValues: {
-            cardholderName: "",
+            cardHolderName: "",
             cardNumber: "",
-            expMonth: "",
-            expYear: "",
+            expireMonth: "",
+            expireYear: "",
             cvc: "",
         },
     });
@@ -495,10 +495,10 @@ function SignupWizardContent() {
                 account: toPaymentAccountPayload(accountInfo),
                 organization: toPaymentOrganizationPayload(organizationInfo),
                 card: {
-                    cardholderName: values.cardholderName,
+                    cardHolderName: values.cardHolderName,
                     cardNumber: sanitizedCard,
-                    expMonth: Number(values.expMonth),
-                    expYear: Number(values.expYear),
+                    expireMonth: Number(values.expireMonth),
+                    expireYear: Number(values.expireYear),
                     cvc: values.cvc,
                 },
             });
@@ -680,8 +680,8 @@ function SignupWizardContent() {
                                 <Input
                                     label="Kart Üzerindeki İsim"
                                     placeholder="Ad Soyad"
-                                    {...paymentForm.register("cardholderName")}
-                                    error={paymentForm.formState.errors.cardholderName?.message}
+                                    {...paymentForm.register("cardHolderName")}
+                                    error={paymentForm.formState.errors.cardHolderName?.message}
                                 />
                                 <Input
                                     label="Kart Numarası"
@@ -694,16 +694,16 @@ function SignupWizardContent() {
                                     <Input
                                         label="Ay"
                                         placeholder="MM"
-                                        {...paymentForm.register("expMonth")}
-                                        error={paymentForm.formState.errors.expMonth?.message}
+                                        {...paymentForm.register("expireMonth")}
+                                        error={paymentForm.formState.errors.expireMonth?.message}
                                         inputMode="numeric"
                                         maxLength={2}
                                     />
                                     <Input
                                         label="Yıl"
                                         placeholder="YYYY"
-                                        {...paymentForm.register("expYear")}
-                                        error={paymentForm.formState.errors.expYear?.message}
+                                        {...paymentForm.register("expireYear")}
+                                        error={paymentForm.formState.errors.expireYear?.message}
                                         inputMode="numeric"
                                         maxLength={4}
                                     />
