@@ -181,10 +181,10 @@ export const ZPublicSignupPaymentPayload = z.object({
         companySize: z.string().optional(),
     }),
     card: z.object({
-        cardholderName: z.string().min(1),
+        cardHolderName: z.string().min(1),
         cardNumber: z.string().min(12).max(23),
-        expMonth: z.number().int().min(1).max(12),
-        expYear: z.number().int().min(new Date().getFullYear()).max(2100),
+        expireMonth: z.number().int().min(1).max(12),
+        expireYear: z.number().int().min(new Date().getFullYear()).max(2100),
         cvc: z.string().min(3).max(4),
     }),
 });
