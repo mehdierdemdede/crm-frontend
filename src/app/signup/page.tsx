@@ -103,13 +103,17 @@ const formatCurrency = (amount: number, currency: string) =>
 const calculateTotal = (pricing: PlanPricing, seatCount: number) => pricing.basePrice + pricing.perSeatPrice * seatCount;
 
 const accountSchema = z.object({
-    firstName: z.string().min(2, "Ad gerekli").max(60, "Ad en fazla 60 karakter olabilir").trim(),
-    lastName: z.string().min(2, "Soyad gerekli").max(60, "Soyad en fazla 60 karakter olabilir").trim(),
-    email: z.string().email("Geçerli bir e-posta girin").max(200).trim(),
+    firstName: z.string().min(1, "Ad gerekli").max(100, "Ad en fazla 100 karakter olabilir").trim(),
+    lastName: z
+        .string()
+        .min(1, "Soyad gerekli")
+        .max(100, "Soyad en fazla 100 karakter olabilir")
+        .trim(),
+    email: z.string().email("Geçerli bir e-posta girin").max(255).trim(),
     password: z
         .string()
         .min(8, "Parola en az 8 karakter olmalıdır")
-        .max(128, "Parola en fazla 128 karakter olabilir"),
+        .max(255, "Parola en fazla 255 karakter olabilir"),
     phone: z
         .string()
         .max(40, "Telefon numarası en fazla 40 karakter olabilir")
@@ -118,19 +122,42 @@ const accountSchema = z.object({
 });
 
 const organizationSchema = z.object({
-    organizationName: z.string().min(2, "Organizasyon adı gerekli").max(150).trim(),
-    country: z.string().min(2, "Ülke bilgisi gerekli").max(80).trim(),
-    taxNumber: z.string().min(2, "Vergi numarası gerekli").max(60).trim(),
-    companySize: z.string().max(100).optional().transform((value) => (value ? value.trim() : value)),
+    organizationName: z
+        .string()
+        .min(1, "Organizasyon adı gerekli")
+        .max(255, "Organizasyon adı en fazla 255 karakter olabilir")
+        .trim(),
+    country: z
+        .string()
+        .trim()
+        .transform((value) => value.toUpperCase())
+        .refine((value) => /^[A-Z]{2,3}$/.test(value), "Ülke kodu 2 veya 3 harf olmalıdır"),
+    taxNumber: z
+        .string()
+        .min(1, "Vergi numarası gerekli")
+        .max(50, "Vergi numarası en fazla 50 karakter olabilir")
+        .trim(),
+    companySize: z
+        .string()
+        .max(50, "Şirket büyüklüğü en fazla 50 karakter olabilir")
+        .optional()
+        .transform((value) => (value ? value.trim() : value)),
 });
 
 const paymentSchema = z.object({
-    cardHolderName: z.string().min(1, "Kart üzerindeki isim gerekli").trim(),
+    cardHolderName: z
+        .string()
+        .min(1, "Kart üzerindeki isim gerekli")
+        .max(255, "Kart üzerindeki isim en fazla 255 karakter olabilir")
+        .trim(),
     cardNumber: z
         .string()
         .min(12, "Kart numarası en az 12 haneli olmalıdır")
         .max(23, "Kart numarası en fazla 23 karakter olabilir")
-        .refine((value) => /^[-\d\s]+$/.test(value), "Kart numarası yalnızca rakam ve boşluk içerebilir"),
+        .refine(
+            (value) => /^\d{12,19}$/.test(sanitizeCardNumber(value)),
+            "Kart numarası yalnızca 12-19 rakamdan oluşmalıdır",
+        ),
     expireMonth: z
         .string()
         .min(1, "Ay gerekli")
@@ -143,9 +170,8 @@ const paymentSchema = z.object({
         .min(2, "Yıl gerekli")
         .refine((value) => {
             const year = Number(value);
-            const currentYear = new Date().getFullYear();
-            return Number.isInteger(year) && year >= currentYear && year <= currentYear + 20;
-        }, "Geçerli bir yıl girin"),
+            return Number.isInteger(year) && year >= 2000 && year <= 2100;
+        }, "Yıl 2000 ile 2100 arasında olmalıdır"),
     cvc: z
         .string()
         .min(3, "CVC en az 3 hane olmalıdır")
