@@ -166,26 +166,32 @@ export type PublicSignupResponse = z.infer<typeof ZPublicSignupResponse>;
 export const ZPublicSignupPaymentPayload = z.object({
     planId: z.string().min(1),
     billingPeriod: z.enum(BillingPeriods),
-    seatCount: z.number().int().positive(),
+    seatCount: z.number().int().min(1).max(200),
     account: z.object({
-        firstName: z.string().min(1),
-        lastName: z.string().min(1),
-        email: z.string().email(),
-        password: z.string().min(8),
-        phone: z.string().optional(),
+        firstName: z.string().trim().min(1).max(100),
+        lastName: z.string().trim().min(1).max(100),
+        email: z.string().trim().email().max(255),
+        password: z.string().min(8).max(255),
+        phone: z.string().trim().max(40).optional(),
     }),
     organization: z.object({
-        organizationName: z.string().min(2),
-        country: z.string().min(2),
-        taxNumber: z.string().min(1),
-        companySize: z.string().optional(),
+        organizationName: z.string().trim().min(1).max(255),
+        country: z
+            .string()
+            .trim()
+            .transform((value) => value.toUpperCase())
+            .refine((value) => /^[A-Z]{2,3}$/.test(value), {
+                message: "Ülke kodu 2 veya 3 harf olmalıdır",
+            }),
+        taxNumber: z.string().trim().min(1).max(50),
+        companySize: z.string().trim().max(50).optional(),
     }),
     card: z.object({
-        cardHolderName: z.string().min(1),
-        cardNumber: z.string().min(12).max(23),
+        cardHolderName: z.string().trim().min(1).max(255),
+        cardNumber: z.string().trim().regex(/^\d{12,19}$/),
         expireMonth: z.number().int().min(1).max(12),
-        expireYear: z.number().int().min(new Date().getFullYear()).max(2100),
-        cvc: z.string().min(3).max(4),
+        expireYear: z.number().int().min(2000).max(2100),
+        cvc: z.string().trim().regex(/^\d{3,4}$/),
     }),
 });
 export type PublicSignupPaymentPayload = z.infer<typeof ZPublicSignupPaymentPayload>;
