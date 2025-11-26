@@ -198,10 +198,10 @@ export type PublicSignupPaymentPayload = z.infer<typeof ZPublicSignupPaymentPayl
 
 export const ZPublicSignupPaymentResponse = z.object({
     status: z.enum(["SUCCESS", "FAILURE"]),
-    subscriptionId: z.string().optional(),
-    iyzicoSubscriptionId: z.string().optional(),
-    iyzicoCustomerId: z.string().optional(),
-    message: z.string().optional(),
+    subscriptionId: z.string().nullish(),
+    iyzicoSubscriptionId: z.string().nullish(),
+    iyzicoCustomerId: z.string().nullish(),
+    message: z.string().nullish(),
     hasTrial: z.boolean().optional(),
 });
 export type PublicSignupPaymentResponse = z.infer<typeof ZPublicSignupPaymentResponse>;
