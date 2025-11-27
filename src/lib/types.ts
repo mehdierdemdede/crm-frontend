@@ -137,6 +137,7 @@ export const ZCreateSubscription = z.object({
 
 export const ZPublicSignupPayload = z.object({
     planId: z.string().min(1),
+    priceId: z.string().min(1).optional(),
     billingPeriod: z.enum(BillingPeriods),
     seatCount: z.number().int().positive(),
     organizationName: z.string().min(2),
@@ -187,6 +188,7 @@ export const ZPublicSignupPaymentPayload = z.object({
     planId: z.string().min(1),
     billingPeriod: z.enum(BillingPeriods),
     seatCount: z.number().int().min(1).max(200),
+    priceId: z.string().min(1),
     account: z.object({
         firstName: z.string().trim().min(1).max(100),
         lastName: z.string().trim().min(1).max(100),

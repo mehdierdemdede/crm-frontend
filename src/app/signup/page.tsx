@@ -45,6 +45,7 @@ const MIN_SEAT_COUNT = 1;
 const MAX_SEAT_COUNT = 200;
 
 type PlanPricing = {
+    priceId: string;
     basePrice: number;
     perSeatPrice: number;
     currency: string;
@@ -85,6 +86,7 @@ const getPricingForPeriod = (plan: Plan | null, billingPeriod: BillingPeriod): P
     const perSeatPrice = perSeatFromMetadata ?? price.amount;
 
     return {
+        priceId: price.id,
         basePrice,
         perSeatPrice,
         currency: price.currency || "TRY",
@@ -536,12 +538,22 @@ function SignupWizardContent() {
         }
 
         const plan = selectedPlan ?? fetchedPlan!;
+        const priceId = pricing?.priceId;
+
+        if (!priceId) {
+            setPaymentResult({
+                status: "FAILURE",
+                message: "Seçtiğiniz faturalama dönemi için fiyat bilgisi bulunamadı.",
+            });
+            return;
+        }
         const sanitizedCard = sanitizeCardNumber(values.cardNumber);
 
         try {
             setPaymentResult(null);
             const response = await initializePublicSignupPayment({
                 planId: plan.id,
+                priceId,
                 billingPeriod,
                 seatCount,
                 account: toPaymentAccountPayload(accountInfo),
@@ -577,6 +589,7 @@ function SignupWizardContent() {
                     ...(accountInfo.phone ? { phone: accountInfo.phone } : {}),
                     password: accountInfo.password,
                 },
+                priceId,
                 ...(inviteToken ? { inviteToken } : {}),
                 ...(response.subscriptionId ? { subscriptionId: response.subscriptionId } : {}),
                 ...(response.iyzicoSubscriptionId ? { iyzicoSubscriptionId: response.iyzicoSubscriptionId } : {}),
