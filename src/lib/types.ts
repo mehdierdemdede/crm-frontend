@@ -160,6 +160,7 @@ export const ZPublicSignupPayload = z.object({
         email: z.string().email(),
         phone: z.string().optional(),
         password: z.string().min(8).max(255).optional(),
+        role: z.literal("ADMIN").default("ADMIN"),
     }),
     subscriptionId: z.string().optional(),
     iyzicoSubscriptionId: z.string().optional(),
@@ -192,6 +193,7 @@ export const ZPublicSignupPaymentPayload = z.object({
         email: z.string().trim().email().max(255),
         password: z.string().min(8).max(255),
         phone: z.string().trim().max(40).optional(),
+        role: z.literal("ADMIN").default("ADMIN"),
     }),
     organization: z.object({
         organizationName: z.string().trim().min(1).max(255),

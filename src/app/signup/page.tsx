@@ -33,7 +33,7 @@ import {
     type SignupAccountInfo,
     type SignupOrganizationInfo,
 } from "@/hooks/usePublicSignupStore";
-import { createPublicSignup, getPublicPlanById, initializePublicSignupPayment } from "@/lib/api";
+import { ApiError, createPublicSignup, getPublicPlanById, initializePublicSignupPayment } from "@/lib/api";
 import type { BillingPeriod, Plan, PublicSignupPaymentPayload } from "@/lib/types";
 
 const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
@@ -232,13 +232,12 @@ const getOrganizationFormDefaultValues = (
     companySize: info?.companySize ?? "",
 });
 
-const toPaymentAccountPayload = (
-    info: SignupAccountInfo,
-): PublicSignupPaymentPayload["account"] => ({
+const toPaymentAccountPayload = (info: SignupAccountInfo): PublicSignupPaymentPayload["account"] => ({
     firstName: info.firstName,
     lastName: info.lastName,
     email: info.email,
     password: info.password,
+    role: "ADMIN",
     ...(info.phone ? { phone: info.phone } : {}),
 });
 
@@ -267,6 +266,32 @@ const parseBillingPeriod = (value: string | null): BillingPeriod | null => {
     }
 
     return null;
+};
+
+const getFriendlyPaymentError = (error: unknown): string => {
+    if (error instanceof ApiError) {
+        if (error.status === 400) {
+            return "Kart bilgileri veya kayıt bilgileri eksik görünüyor. Lütfen alanları kontrol ederek tekrar deneyin.";
+        }
+
+        if (error.status === 402) {
+            return "Kartınız doğrulanamadı. Bankanızla iletişime geçerek çevrimiçi ödemeye açık olduğundan emin olun.";
+        }
+
+        if (error.status === 409) {
+            return "Bu e-posta adresiyle zaten bir kullanıcı var. Giriş yapmayı veya farklı bir e-posta kullanmayı deneyin.";
+        }
+
+        if (error.status >= 500) {
+            return "Şu anda ödeme servisine ulaşılamıyor. Lütfen birkaç dakika sonra tekrar deneyin.";
+        }
+    }
+
+    if (error instanceof Error && error.message) {
+        return error.message;
+    }
+
+    return "İşlem sırasında beklenmeyen bir hata oluştu. Lütfen tekrar deneyin.";
 };
 
 function StepHeader({ currentStep }: { currentStep: StepKey }) {
@@ -548,6 +573,7 @@ function SignupWizardContent() {
                     firstName: accountInfo.firstName,
                     lastName: accountInfo.lastName,
                     email: accountInfo.email,
+                    role: "ADMIN" as const,
                     ...(accountInfo.phone ? { phone: accountInfo.phone } : {}),
                     password: accountInfo.password,
                 },
@@ -574,7 +600,7 @@ function SignupWizardContent() {
 
             goToStep(currentStepIndex + 1);
         } catch (error) {
-            const message = error instanceof Error ? error.message : "Kart bilgileri doğrulanamadı";
+            const message = getFriendlyPaymentError(error);
             setPaymentResult({
                 status: "FAILURE",
                 message,
@@ -731,6 +757,20 @@ function SignupWizardContent() {
             case "PAYMENT":
                 return (
                     <form onSubmit={handlePaymentSubmit} className="space-y-5">
+                        {paymentResult?.status === "FAILURE" ? (
+                            <div className="flex items-start gap-3 rounded-3xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+                                <AlertCircle className="mt-0.5 h-5 w-5" />
+                                <div className="space-y-1">
+                                    <p className="font-semibold text-rose-800">İşlem tamamlanamadı</p>
+                                    <p>{paymentResult.message ?? "Kart bilgileri doğrulanamadı. Lütfen tekrar deneyin."}</p>
+                                    <p className="text-xs text-rose-600">
+                                        Bilgilerinizi kontrol ettikten sonra tekrar deneyebilir veya farklı bir kartla işlemi
+                                        tamamlayabilirsiniz.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : null}
+
                         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                             <div className="flex items-center gap-3">
                                 <CreditCard className="h-5 w-5 text-blue-500" />
@@ -778,6 +818,20 @@ function SignupWizardContent() {
                                 </div>
                             </div>
                         </div>
+
+                        {pricing?.trialDays ? (
+                            <div className="flex items-start gap-2 rounded-3xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
+                                <ShieldCheck className="mt-0.5 h-5 w-5 text-emerald-600" />
+                                <div>
+                                    <p className="font-semibold text-emerald-800">{pricing.trialDays} günlük deneme süresi</p>
+                                    <p className="mt-1">
+                                        Kartınız yalnızca deneme süresi bittikten sonra seçtiğiniz plana göre ücretlendirilecektir.
+                                        Deneme süresi boyunca ödeme doğrulama hatası alırsanız tekrar deneyebilir veya destekle
+                                        iletişime geçebilirsiniz.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : null}
 
                         <div className="flex items-start gap-2 rounded-3xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
                             <ShieldCheck className="mt-0.5 h-5 w-5 text-blue-500" />
