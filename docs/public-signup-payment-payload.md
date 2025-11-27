@@ -5,6 +5,7 @@ When the signup wizard submits card details, it calls [`initializePublicSignupPa
 ```json
 {
   "planId": "<selected plan id>",
+  "priceId": "<plan price id for the selected period>",
   "billingPeriod": "MONTH" | "YEAR",
   "seatCount": <number of seats>,
   "account": {
@@ -31,6 +32,8 @@ When the signup wizard submits card details, it calls [`initializePublicSignupPa
 ```
 
 Notes:
+- `priceId` must be the price entry that matches the chosen billing period so the server can create the iyzico subscription
+  with the right product.
 - `cardNumber` is sanitized to digits only before sending (spaces and dashes are stripped).
 - `expireMonth` and `expireYear` are sent as numbers.
 - All fields are validated on the client against the schema in [`src/lib/types.ts`](../src/lib/types.ts) before the request is made.
