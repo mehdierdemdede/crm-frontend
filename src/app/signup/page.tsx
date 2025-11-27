@@ -33,7 +33,7 @@ import {
     type SignupAccountInfo,
     type SignupOrganizationInfo,
 } from "@/hooks/usePublicSignupStore";
-import { getPublicPlanById, initializePublicSignupPayment } from "@/lib/api";
+import { createPublicSignup, getPublicPlanById, initializePublicSignupPayment } from "@/lib/api";
 import type { BillingPeriod, Plan, PublicSignupPaymentPayload } from "@/lib/types";
 
 const BILLING_PERIOD_LABELS: Record<BillingPeriod, string> = {
@@ -404,6 +404,7 @@ function SignupWizardContent() {
     const planId = searchParams?.get("planId") ?? selectedPlan?.id ?? "";
     const seatsParam = searchParams?.get("seats");
     const billingParam = searchParams?.get("billingPeriod");
+    const inviteToken = searchParams?.get("inviteToken") ?? undefined;
 
     const parsedSeats = useMemo(() => {
         if (!seatsParam) {
@@ -532,19 +533,52 @@ function SignupWizardContent() {
             if (response.status === "FAILURE") {
                 throw new Error(response.message ?? "Ödeme işlemi tamamlanamadı");
             }
+            const signupPayload = {
+                planId: plan.id,
+                billingPeriod,
+                seatCount,
+                organizationName: organizationInfo.organizationName,
+                organization: {
+                    organizationName: organizationInfo.organizationName,
+                    country: organizationInfo.country,
+                    taxNumber: organizationInfo.taxNumber,
+                    ...(organizationInfo.companySize ? { companySize: organizationInfo.companySize } : {}),
+                },
+                admin: {
+                    firstName: accountInfo.firstName,
+                    lastName: accountInfo.lastName,
+                    email: accountInfo.email,
+                    ...(accountInfo.phone ? { phone: accountInfo.phone } : {}),
+                    password: accountInfo.password,
+                },
+                ...(inviteToken ? { inviteToken } : {}),
+                ...(response.subscriptionId ? { subscriptionId: response.subscriptionId } : {}),
+                ...(response.iyzicoSubscriptionId ? { iyzicoSubscriptionId: response.iyzicoSubscriptionId } : {}),
+                ...(response.iyzicoCustomerId ? { iyzicoCustomerId: response.iyzicoCustomerId } : {}),
+            } as const;
+
+            const signupResponse = await createPublicSignup(signupPayload);
+
+            if (signupResponse.status === "FAILED") {
+                throw new Error(signupResponse.message ?? "Kayıt işlemi tamamlanamadı");
+            }
 
             setPaymentResult({
                 status: response.status,
                 subscriptionId: response.subscriptionId ?? undefined,
                 iyzicoSubscriptionId: response.iyzicoSubscriptionId,
                 iyzicoCustomerId: response.iyzicoCustomerId,
-                message: response.message,
+                message: signupResponse.message ?? response.message,
                 hasTrial: response.hasTrial ?? Boolean(pricing?.trialDays && pricing.trialDays > 0),
             });
 
             goToStep(currentStepIndex + 1);
         } catch (error) {
             const message = error instanceof Error ? error.message : "Kart bilgileri doğrulanamadı";
+            setPaymentResult({
+                status: "FAILURE",
+                message,
+            });
             paymentForm.setError("cardNumber", { message });
         }
     });

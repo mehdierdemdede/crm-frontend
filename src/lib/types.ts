@@ -140,12 +140,31 @@ export const ZPublicSignupPayload = z.object({
     billingPeriod: z.enum(BillingPeriods),
     seatCount: z.number().int().positive(),
     organizationName: z.string().min(2),
+    organization: z
+        .object({
+            organizationName: z.string().trim().min(1).max(255),
+            country: z
+                .string()
+                .trim()
+                .transform((value) => value.toUpperCase())
+                .refine((value) => /^[A-Z]{2,3}$/.test(value), {
+                    message: "Ülke kodu 2 veya 3 harf olmalıdır",
+                }),
+            taxNumber: z.string().trim().min(1).max(50),
+            companySize: z.string().trim().max(50).optional(),
+        })
+        .optional(),
     admin: z.object({
         firstName: z.string().min(1),
         lastName: z.string().min(1),
         email: z.string().email(),
         phone: z.string().optional(),
+        password: z.string().min(8).max(255).optional(),
     }),
+    subscriptionId: z.string().optional(),
+    iyzicoSubscriptionId: z.string().optional(),
+    iyzicoCustomerId: z.string().optional(),
+    inviteToken: z.string().optional(),
 });
 export type PublicSignupPayload = z.infer<typeof ZPublicSignupPayload>;
 
