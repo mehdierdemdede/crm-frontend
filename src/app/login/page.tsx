@@ -2,9 +2,13 @@ import Link from "next/link";
 
 import { Users, RefreshCw, BarChart2, Shield, Lock, ArrowUpRight } from "lucide-react";
 
+import { useI18n } from "@/contexts/I18nContext";
+
 import LoginForm from "./LoginForm";
 
 export default function LoginPage() {
+    const { t } = useI18n();
+
     return (
         <div className="login-page">
             <div className="login-container">
@@ -13,10 +17,10 @@ export default function LoginPage() {
                     <div>
                         <div className="logo flex items-center gap-2 text-lg font-bold">
                             <Users className="h-6 w-6" />
-                            CRM Pro
+                            {t("common.brand")}
                     </div>
 
-                    <h2>Google & Facebook Entegrasyonlu CRM Çözümü</h2>
+                    <h2>{t("loginPage.hero.title")}</h2>
                 </div>
 
                 <div>
@@ -26,8 +30,8 @@ export default function LoginPage() {
                                 <RefreshCw className="h-5 w-5" />
                             </div>
                             <div>
-                                <h3>Gerçek Zamanlı Veri Senkronizasyonu</h3>
-                                <p>Google ve Facebooktan anlık lead çekme</p>
+                                <h3>{t("loginPage.features.realtime.title")}</h3>
+                                <p>{t("loginPage.features.realtime.description")}</p>
                             </div>
                         </div>
 
@@ -36,8 +40,8 @@ export default function LoginPage() {
                                 <BarChart2 className="h-5 w-5" />
                             </div>
                             <div>
-                                <h3>Detaylı Analiz ve Raporlama</h3>
-                                <p>Kapsamlı müşteri analizleri ve raporlar</p>
+                                <h3>{t("loginPage.features.analytics.title")}</h3>
+                                <p>{t("loginPage.features.analytics.description")}</p>
                             </div>
                         </div>
 
@@ -46,8 +50,8 @@ export default function LoginPage() {
                                 <Shield className="h-5 w-5" />
                             </div>
                             <div>
-                                <h3>Güvenli Veri Saklama</h3>
-                                <p>Bankacılık düzeyinde şifreleme</p>
+                                <h3>{t("loginPage.features.security.title")}</h3>
+                                <p>{t("loginPage.features.security.description")}</p>
                             </div>
                         </div>
                     </div>
@@ -55,8 +59,8 @@ export default function LoginPage() {
                     <div className="security-badge">
                         <Lock className="h-5 w-5 text-green-500" />
                         <div>
-                            <h3>%100 Güvenli Giriş</h3>
-                            <p>SSL şifreli bağlantı ile korunmaktasınız</p>
+                            <h3>{t("loginPage.securityBadge.title")}</h3>
+                            <p>{t("loginPage.securityBadge.description")}</p>
                         </div>
                     </div>
                 </div>
@@ -64,20 +68,20 @@ export default function LoginPage() {
 
                 <div className="right-panel gap-6">
                     <div className="form-header order-1">
-                        <h1>CRM Proya Hoş Geldiniz</h1>
-                        <p>Lütfen hesabınıza giriş yapın</p>
+                        <h1>{t("common.brand")}</h1>
+                        <p>{t("loginPage.hero.subtitle")}</p>
                     </div>
 
                     <div className="info-bar order-3 md:order-2">
                         <div>
-                            <p className="text-xs uppercase tracking-wide text-blue-700">Henüz hazır değil misiniz?</p>
-                            <p className="text-sm font-semibold text-blue-900">Planlara göz atın.</p>
+                            <p className="text-xs uppercase tracking-wide text-blue-700">{t("loginPage.cta.title")}</p>
+                            <p className="text-sm font-semibold text-blue-900">{t("loginPage.cta.subtitle")}</p>
                         </div>
                         <Link
                             href="/planlar"
                             className="info-bar-link"
                         >
-                            Planlara göz at
+                            {t("loginPage.cta.button")}
                             <ArrowUpRight className="h-4 w-4" />
                         </Link>
                     </div>
@@ -88,7 +92,7 @@ export default function LoginPage() {
 
                     <div className="admin-note order-4 flex items-center gap-2">
                         <Shield className="h-4 w-4 text-blue-600" />
-                        Sadece yönetici tarafından oluşturulmuş hesaplarla giriş yapılabilir
+                        {t("loginPage.adminNote")}
                     </div>
                 </div>
             </div>

@@ -1,3 +1,4 @@
+import { LanguageAttributes } from "@/components/LanguageAttributes";
 import PublicHeader from "@/components/PublicHeader";
 
 import "./globals.css";
@@ -12,16 +13,17 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
-  return (
-    <html lang="tr" suppressHydrationWarning>
-      <body className="bg-background font-sans text-foreground">
-        <Providers>
-          <div className="flex min-h-screen flex-col">
-            <PublicHeader />
-            <main className="flex-1">{children}</main>
-          </div>
-        </Providers>
-      </body>
-    </html>
-  );
+    return (
+        <html lang="tr" suppressHydrationWarning>
+            <body className="bg-background font-sans text-foreground">
+                <Providers>
+                    <LanguageAttributes />
+                    <div className="flex min-h-screen flex-col">
+                        <PublicHeader />
+                        <main className="flex-1">{children}</main>
+                    </div>
+                </Providers>
+            </body>
+        </html>
+    );
 }
