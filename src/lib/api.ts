@@ -1626,7 +1626,7 @@ interface FetchJsonOptions<TRequest, TResponse> {
     method?: string;
     body?: TRequest;
     headers?: Record<string, string>;
-    requestSchema?: ZodSchema<TRequest>;
+    requestSchema?: ZodSchema<TRequest, ZodTypeDef, unknown>;
     responseSchema: ZodSchema<TResponse, ZodTypeDef, unknown>;
 }
 
