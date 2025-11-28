@@ -19,7 +19,7 @@ import {
 import { useLanguages } from "./LanguageContext";
 
 const STORAGE_KEY = "crm.locale";
-const DEFAULT_LOCALE: LocaleCode = "tr";
+const DEFAULT_LOCALE: LocaleCode = "en";
 const RTL_LANGS = new Set<LocaleCode>([]);
 
 type TranslationValues = Record<string, string | number>;
@@ -84,11 +84,20 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
             .map((language) => normaliseLocale(language.value) ?? undefined)
             .filter((locale): locale is LocaleCode => Boolean(locale));
 
-        if (activeLocales.length === 0) {
-            return supportedLocales;
+        const filteredActiveLocales = activeLocales.filter((locale) =>
+            supportedLocales.includes(locale),
+        );
+
+        if (filteredActiveLocales.length >= 2) {
+            return filteredActiveLocales;
         }
 
-        return activeLocales.filter((locale) => supportedLocales.includes(locale));
+        const mergedLocales = new Set<LocaleCode>([
+            ...filteredActiveLocales,
+            ...supportedLocales,
+        ]);
+
+        return Array.from(mergedLocales);
     }, [languages, supportedLocales]);
 
     const [locale, setLocaleState] = useState<LocaleCode>(DEFAULT_LOCALE);
@@ -111,8 +120,19 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
         if (navigatorLocale && availableLocales.includes(navigatorLocale)) {
             setLocaleState(navigatorLocale);
+            return;
+        }
+
+        if (availableLocales.length > 0) {
+            setLocaleState(availableLocales[0]);
         }
     }, [availableLocales]);
+
+    useEffect(() => {
+        if (availableLocales.length === 0) return;
+        if (availableLocales.includes(locale)) return;
+        setLocaleState(availableLocales[0]);
+    }, [availableLocales, locale]);
 
     const setLocale = useCallback(
         (newLocale: LocaleCode) => {
