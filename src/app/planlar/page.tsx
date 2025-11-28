@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { useQuery } from "@tanstack/react-query";
-import { AlertCircle, ArrowRight, Calculator, CalendarRange, CheckCircle2, Loader2, PiggyBank, Users } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Calculator, CalendarRange, CheckCircle2, Loader2, PiggyBank, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { useAuth } from "@/hooks/useAuth";
@@ -267,6 +267,15 @@ export default function PlansPage() {
         staleTime: 1000 * 60 * 5,
     });
 
+    const handleGoBack = () => {
+        if (typeof window !== "undefined" && window.history.length > 1) {
+            router.back();
+            return;
+        }
+
+        router.push("/");
+    };
+
     const handlePlanSelect = (plan: Plan) => {
         clearPaymentResult(null);
         setPlanSelection({ plan, billingPeriod, seatCount });
@@ -282,6 +291,15 @@ export default function PlansPage() {
 
     return (
         <div className="max-w-5xl mx-auto grid gap-6 p-6">
+            <button
+                type="button"
+                onClick={handleGoBack}
+                className="group inline-flex w-fit items-center gap-2 self-start rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-x-0.5 hover:bg-slate-50"
+            >
+                <ArrowLeft className="h-4 w-4 transition group-hover:-translate-x-0.5" />
+                Geri dön
+            </button>
+
             <header className="text-center">
                 <h1 className="text-3xl font-bold text-slate-900">Planlarımızı Keşfedin</h1>
                 <p className="mt-2 text-sm text-slate-600">

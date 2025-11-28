@@ -22,13 +22,13 @@ export default function PublicHeader() {
                     CRM Platformu
                 </Link>
                 <nav className="flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-200">
-                    <Link href="/plans" className="transition hover:text-primary">
+                    <Link href="/planlar" className="transition hover:text-primary">
                         Planlar
                     </Link>
                     <Link href="/login" className="transition hover:text-primary">
                         Giriş/Kaydol
                     </Link>
-                    <Link href="/account" className="transition hover:text-primary">
+                    <Link href="/hesap" className="transition hover:text-primary">
                         Hesap/Çıkış
                     </Link>
                 </nav>
