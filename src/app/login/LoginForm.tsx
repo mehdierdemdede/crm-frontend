@@ -7,6 +7,7 @@ import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { Input } from "@/components/Input";
+import { useI18n } from "@/contexts/I18nContext";
 import { useAuth } from "@/hooks/useAuth";
 import {
     clearRememberedCredentials,
@@ -22,6 +23,7 @@ export default function LoginForm() {
     const { login, isLoading, error } = useAuth();
     const router = useRouter();
     const rememberMeId = useId();
+    const { t } = useI18n();
 
     useEffect(() => {
         const { rememberMe: storedRemember, email: storedEmail } =
@@ -60,9 +62,9 @@ export default function LoginForm() {
             )}
 
             <Input
-                label="E-posta Adresi"
+                label={t("loginForm.emailLabel")}
                 type="email"
-                placeholder="ornek@firma.com"
+                placeholder={t("loginForm.emailPlaceholder")}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -71,9 +73,9 @@ export default function LoginForm() {
             />
 
             <Input
-                label="Şifre"
+                label={t("loginForm.passwordLabel")}
                 type="password"
-                placeholder="••••••••"
+                placeholder={t("loginForm.passwordPlaceholder")}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -100,15 +102,15 @@ export default function LoginForm() {
                         disabled={isLoading}
                         className="rounded border-gray-300"
                     />
-                    <label htmlFor={rememberMeId}>Beni hatırla</label>
+                    <label htmlFor={rememberMeId}>{t("loginForm.rememberMe")}</label>
                 </div>
                 <a href="#" className="text-blue-600 hover:underline">
-                    Şifremi unuttum?
+                    {t("loginForm.forgotPassword")}
                 </a>
             </div>
 
             <Button type="submit" variant="primary" size="md" isLoading={isLoading}>
-                Giriş Yap
+                {t("loginForm.submitLabel")}
             </Button>
         </form>
     );
