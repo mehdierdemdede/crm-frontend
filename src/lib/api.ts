@@ -1553,10 +1553,18 @@ export const deleteHotel = async (hotelId: string): Promise<boolean> => {
             method: "DELETE",
             headers,
         });
-        return res.ok;
+
+        const body = await extractResponseBody(res);
+        if (!res.ok) {
+            throw new Error(resolveErrorMessage(body, "Otel silinemedi."));
+        }
+
+        return true;
     } catch (error) {
         console.error("deleteHotel error:", error);
-        return false;
+        throw error instanceof Error
+            ? error
+            : new Error("Otel silme işleminde bir sorun oluştu.");
     }
 };
 
