@@ -204,7 +204,8 @@ export default function LeadsPage() {
     const debouncedSearch = useDebounce(search, 400);
     const isSearching = search !== debouncedSearch;
     const selectAllRef = useRef<HTMLInputElement>(null);
-    const perPage = 10;
+    const PAGE_SIZE_OPTIONS = [20, 50, 100] as const;
+    const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
 
     const { user } = useAuth();
     const { languages } = useLanguages();
@@ -280,7 +281,7 @@ export default function LeadsPage() {
 
                 const leadPage = await getLeads({
                     page,
-                    size: perPage,
+                    size: pageSize,
                     sort: `${sortBy},${sortOrder}`,
                     search: debouncedSearch.trim() || undefined,
                     statuses: statusFilter ? [statusFilter] : undefined,
@@ -311,6 +312,7 @@ export default function LeadsPage() {
         createdTo,
         debouncedSearch,
         page,
+        pageSize,
         responseMaxMinutes,
         responseMinMinutes,
         sortBy,
@@ -1553,7 +1555,26 @@ export default function LeadsPage() {
                     </Card>
                 </div>
 
-                <div className="col-span-12 flex justify-start mt-6 mb-8">
+                <div className="col-span-12 flex flex-col lg:flex-row lg:items-center gap-4 justify-between mt-6 mb-8">
+                    <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-sm w-full sm:w-auto">
+                        <span className="text-sm text-gray-600">Sayfa başına:</span>
+                        <select
+                            className="border border-gray-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-100"
+                            value={pageSize}
+                            onChange={(e) => {
+                                const nextSize = Number(e.target.value) as (typeof PAGE_SIZE_OPTIONS)[number];
+                                setPageSize(nextSize);
+                                setPage(0);
+                            }}
+                        >
+                            {PAGE_SIZE_OPTIONS.map((size) => (
+                                <option key={size} value={size}>
+                                    {size}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
                     <div className="flex items-center justify-center gap-4 bg-white border border-gray-200 rounded-lg px-6 py-2.5 shadow-sm w-full sm:w-auto">
                         <Button
                             disabled={page === 0}
@@ -1815,7 +1836,7 @@ export default function LeadsPage() {
                     </p>
                     {bulkAssignScope === "filtered" && (
                         <p className="text-xs text-gray-500">
-                            Aktarım, mevcut filtrelere uyan tüm lead'ler için uygulanacaktır.
+                            Aktarım, mevcut filtrelere uyan tüm lead’ler için uygulanacaktır.
                         </p>
                     )}
                     <select
