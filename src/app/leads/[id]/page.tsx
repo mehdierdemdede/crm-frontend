@@ -3,11 +3,13 @@
 import { useParams, useRouter } from "next/navigation";
 
 import { ArrowLeft, Facebook, MessageCircle, Phone } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader } from "@/components/Card";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import Layout from "@/components/Layout";
+import { useLanguages } from "@/contexts/LanguageContext";
 import {
     getLeadById,
     updateLeadStatus,
@@ -23,6 +25,7 @@ import {
     inferDocumentFileName,
     downloadDocumentWithAuth,
 } from "@/lib/document";
+import { enhanceLanguageOption } from "@/lib/languages";
 
 import SalesForm from "./SalesForm";
 
@@ -79,9 +82,17 @@ interface LeadAction {
     createdAt: string;
 }
 
+const formatAdInfo = (lead: LeadResponse): string => {
+    const parts = [lead.campaign?.name, lead.adsetName, lead.adName]
+        .filter((part) => part && part.trim() !== "")
+        .map((part) => part!.trim());
+    return parts.join(" / ");
+};
+
 export default function LeadDetailPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
+    const { getOptionByCode } = useLanguages();
 
     const [lead, setLead] = useState<LeadResponse | null>(null);
     const [actions, setActions] = useState<LeadAction[]>([]);
@@ -93,6 +104,18 @@ export default function LeadDetailPage() {
     const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
     const statusSelectId = useId();
     const noteTextareaId = useId();
+
+    const languageOption = useMemo(() => {
+        if (!lead?.language) return null;
+
+        return (
+            getOptionByCode(lead.language) ??
+            enhanceLanguageOption({
+                value: lead.language,
+                label: lead.language,
+            })
+        );
+    }, [getOptionByCode, lead?.language]);
 
     // 📦 verileri yükle
     useEffect(() => {
@@ -266,8 +289,18 @@ export default function LeadDetailPage() {
                     <CardContent className="space-y-3 text-sm">
                         <p><b>Email:</b> {lead.email ?? "-"}</p>
                         <p><b>Telefon:</b> {lead.phone ?? "-"}</p>
-                        <p><b>Kampanya:</b> {lead.campaign?.name ?? "-"}</p>
-                        <p><b>Dil:</b> {lead.language ?? "-"}</p>
+                        <p><b>Kampanya:</b> {formatAdInfo(lead) || "-"}</p>
+                        <p className="flex items-center gap-2">
+                            <b>Dil:</b>
+                            {languageOption ? (
+                                <span className="inline-flex items-center gap-2">
+                                    <LanguageFlagIcon option={languageOption} size={16} />
+                                    <span>{languageOption.label}</span>
+                                </span>
+                            ) : (
+                                <span>-</span>
+                            )}
+                        </p>
                         <p>
                             <b>Durum:</b>{" "}
                             <label className="sr-only" htmlFor={statusSelectId}>
