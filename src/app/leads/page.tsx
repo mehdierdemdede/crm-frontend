@@ -817,7 +817,7 @@ export default function LeadsPage() {
             if (page === 0) {
                 setLeads((prev) => {
                     const withoutNew = prev.filter((lead) => lead.id !== newLead.id);
-                    return [newLead, ...withoutNew].slice(0, perPage);
+                    return [newLead, ...withoutNew].slice(0, pageSize);
                 });
             } else {
                 setPage(0);
@@ -1127,7 +1127,7 @@ export default function LeadsPage() {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {Array.from({ length: perPage }).map((_, idx) => (
+                                                {Array.from({ length: pageSize }).map((_, idx) => (
                                                     <tr key={idx} className="border-t">
                                                         <td className="p-3">
                                                             <Skeleton className="h-4 w-4 rounded" />
