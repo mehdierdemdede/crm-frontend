@@ -124,14 +124,16 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
         }
 
         if (availableLocales.length > 0) {
-            setLocaleState(availableLocales[0]);
+            const [preferredLocale] = availableLocales;
+            setLocaleState(preferredLocale ?? DEFAULT_LOCALE);
         }
     }, [availableLocales]);
 
     useEffect(() => {
         if (availableLocales.length === 0) return;
         if (availableLocales.includes(locale)) return;
-        setLocaleState(availableLocales[0]);
+        const [firstAvailableLocale] = availableLocales;
+        setLocaleState(firstAvailableLocale ?? DEFAULT_LOCALE);
     }, [availableLocales, locale]);
 
     const setLocale = useCallback(
