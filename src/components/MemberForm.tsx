@@ -213,21 +213,7 @@ export default function MemberForm({
                         />
                         <label htmlFor={activeId}>Aktif</label>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                        <input
-                            type="checkbox"
-                            id={autoAssignId}
-                            checked={form.autoAssignEnabled}
-                            onChange={(e) =>
-                                setForm({
-                                    ...form,
-                                    autoAssignEnabled: e.target.checked,
-                                })
-                            }
-                            className="h-4 w-4"
-                        />
-                        <label htmlFor={autoAssignId}>Auto-Assign</label>
-                    </div>
+                    <input type="hidden" id={autoAssignId} value={form.autoAssignEnabled ? "on" : ""} />
                 </div>
             </div>
 
