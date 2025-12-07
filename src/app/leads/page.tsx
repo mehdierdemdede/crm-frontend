@@ -180,6 +180,9 @@ export default function LeadsPage() {
     const [deleteLoading, setDeleteLoading] = useState(false);
     const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
     const [isBulkAssignOpen, setIsBulkAssignOpen] = useState(false);
+    const [bulkAssignScope, setBulkAssignScope] = useState<"selected" | "filtered">(
+        "selected",
+    );
     const [bulkAssignUserId, setBulkAssignUserId] = useState("");
     const [bulkAssignLoading, setBulkAssignLoading] = useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -416,6 +419,7 @@ export default function LeadsPage() {
     ]);
 
     const selectedCount = selectedLeadIds.size;
+    const filteredCount = displayedLeads.length;
     const allDisplayedSelected =
         displayedLeads.length > 0 &&
         displayedLeads.every((lead) => selectedLeadIds.has(lead.id));
@@ -717,7 +721,11 @@ export default function LeadsPage() {
     };
 
     const handleBulkAssignConfirm = async () => {
-        const leadIds = Array.from(selectedLeadIds);
+        const leadIds =
+            bulkAssignScope === "selected"
+                ? Array.from(selectedLeadIds)
+                : displayedLeads.map((lead) => lead.id);
+
         if (leadIds.length === 0) return;
         if (!bulkAssignUserId) {
             showToast({
@@ -866,6 +874,9 @@ export default function LeadsPage() {
         responseMinMinutes !== undefined ||
         responseMaxMinutes !== undefined;
 
+    const bulkAssignCount =
+        bulkAssignScope === "selected" ? selectedCount : filteredCount;
+
     return (
         <>
             <Layout
@@ -894,9 +905,24 @@ export default function LeadsPage() {
                                         <Button
                                             variant="secondary"
                                             disabled={selectedCount === 0}
-                                            onClick={() => setIsBulkAssignOpen(true)}
+                                            onClick={() => {
+                                                setBulkAssignScope("selected");
+                                                setIsBulkAssignOpen(true);
+                                            }}
                                         >
                                             Aktar
+                                        </Button>
+                                    )}
+                                    {canBulkAssign && hasActiveFilters && (
+                                        <Button
+                                            variant="secondary"
+                                            disabled={filteredCount === 0}
+                                            onClick={() => {
+                                                setBulkAssignScope("filtered");
+                                                setIsBulkAssignOpen(true);
+                                            }}
+                                        >
+                                            Filtrelenenleri Aktar
                                         </Button>
                                     )}
                                     {canCreateLead && (
@@ -1761,7 +1787,11 @@ export default function LeadsPage() {
                 closeOnBackdrop={!bulkAssignLoading}
                 showCloseButton={!bulkAssignLoading}
                 title="Lead'leri Aktar"
-                description="Seçili lead'leri aktaracağınız kullanıcıyı seçiniz."
+                description={
+                    bulkAssignScope === "filtered"
+                        ? "Filtrelenen lead'leri aktaracağınız kullanıcıyı seçiniz."
+                        : "Seçili lead'leri aktaracağınız kullanıcıyı seçiniz."
+                }
                 actions={[
                     {
                         label: "İptal",
@@ -1781,8 +1811,13 @@ export default function LeadsPage() {
             >
                 <div className="space-y-3 text-sm">
                     <p className="text-gray-600">
-                        Toplam {selectedCount} lead aktarılacak. Aktarımı yapmak istediğiniz kullanıcıyı seçiniz.
+                        Toplam {bulkAssignCount} lead aktarılacak. Aktarımı yapmak istediğiniz kullanıcıyı seçiniz.
                     </p>
+                    {bulkAssignScope === "filtered" && (
+                        <p className="text-xs text-gray-500">
+                            Aktarım, mevcut filtrelere uyan tüm lead'ler için uygulanacaktır.
+                        </p>
+                    )}
                     <select
                         className="w-full border rounded-md p-2"
                         value={bulkAssignUserId}
