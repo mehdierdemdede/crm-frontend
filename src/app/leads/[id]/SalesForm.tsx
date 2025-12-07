@@ -117,10 +117,6 @@ export default function SalesForm({
         if (typeof hotel.starRating === "number" && !Number.isNaN(hotel.starRating)) {
             parts.push(`${hotel.starRating}★`);
         }
-        if (typeof hotel.nightlyRate === "number" && !Number.isNaN(hotel.nightlyRate)) {
-            const rate = formatCurrency(hotel.nightlyRate, hotel.currency);
-            if (rate) parts.push(rate);
-        }
         return parts.join(" • ") || hotel.id;
     };
 
@@ -489,19 +485,12 @@ export default function SalesForm({
                                 (() => {
                                     const selectedHotel = hotels.find((hotel) => hotel.id === form.hotel);
                                     if (!selectedHotel) return null;
-                                    const nightlyRate = formatCurrency(
-                                        selectedHotel.nightlyRate,
-                                        selectedHotel.currency,
-                                    );
                                     return (
                                         <div className="mt-3 rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-sm text-blue-800">
                                             <div className="font-medium">
                                                 {selectedHotel.name ?? selectedHotel.id}
                                             </div>
                                             <div>Yıldız: {getHotelStars(selectedHotel)}</div>
-                                            <div>
-                                                Gecelik Ücreti: {nightlyRate ?? "-"}
-                                            </div>
                                             <div className="text-blue-900/80">
                                                 {selectedHotel.address ?? "Adres bilgisi bulunmuyor."}
                                             </div>
