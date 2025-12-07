@@ -365,6 +365,8 @@ export default function SalesForm({
                                 type="date"
                                 id={fieldIds.operationDate}
                                 value={form.operationDate}
+                                onClick={(e) => e.currentTarget.showPicker?.()}
+                                onFocus={(e) => e.currentTarget.showPicker?.()}
                                 onChange={(e) =>
                                     setForm({ ...form, operationDate: e.target.value })
                                 }
