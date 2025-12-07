@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown, Send } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -156,6 +157,7 @@ const getEmailDisplay = (lead: LeadResponse): string => {
 };
 
 export default function LeadsPage() {
+    const router = useRouter();
     const [leads, setLeads] = useState<LeadResponse[]>([]);
     const [users, setUsers] = useState<SimpleUser[]>([]);
     const [loading, setLoading] = useState(true);
@@ -459,6 +461,10 @@ export default function LeadsPage() {
                 }" olarak işaretlendi.`,
                 variant: "success",
             });
+
+            if (newStatus === "SOLD") {
+                router.push(`/leads/${leadId}`);
+            }
         } else {
             showToast({
                 title: "İşlem başarısız",
@@ -1348,12 +1354,6 @@ export default function LeadsPage() {
                                                                             <Facebook className="h-4 w-4 text-indigo-600" />
                                                                         </Button>
                                                                     )}
-                                                                    <Link
-                                                                        href={`/leads/${lead.id}`}
-                                                                        className="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-md border border-blue-200 bg-white text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                                    >
-                                                                        Satışa Git
-                                                                    </Link>
                                                                     {canDeleteLead && (
                                                                         <Button
                                                                             size="sm"
@@ -1505,12 +1505,6 @@ export default function LeadsPage() {
                                                                 <Facebook className="h-4 w-4 text-indigo-600" />
                                                             </Button>
                                                         )}
-                                                        <Link
-                                                            href={`/leads/${lead.id}`}
-                                                            className="inline-flex items-center justify-center h-8 px-3 text-xs font-medium rounded-md border border-blue-200 bg-white text-blue-600 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        >
-                                                            Satışa Git
-                                                        </Link>
                                                         {canDeleteLead && (
                                                             <Button
                                                                 size="sm"
