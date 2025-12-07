@@ -3,19 +3,24 @@
 import { useParams, useRouter } from "next/navigation";
 
 import { ArrowLeft, Facebook, MessageCircle, Phone } from "lucide-react";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader } from "@/components/Card";
+import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import Layout from "@/components/Layout";
+import { useLanguages } from "@/contexts/LanguageContext";
 import {
     getLeadById,
     updateLeadStatus,
     getLeadActions,
     addLeadAction,
     getSaleById,
+    getUsers,
+    patchLeadAssign,
     type LeadResponse,
     type LeadStatus,
+    type SimpleUser,
     type SaleResponse,
 } from "@/lib/api";
 import {
@@ -23,6 +28,7 @@ import {
     inferDocumentFileName,
     downloadDocumentWithAuth,
 } from "@/lib/document";
+import { enhanceLanguageOption } from "@/lib/languages";
 
 import SalesForm from "./SalesForm";
 
@@ -79,20 +85,57 @@ interface LeadAction {
     createdAt: string;
 }
 
+const ACTION_BUTTON_TYPES = new Set<LeadAction["actionType"]>([
+    "PHONE",
+    "WHATSAPP",
+    "MESSENGER",
+]);
+
+const formatAdInfo = (lead: LeadResponse): string => {
+    const parts = [lead.campaign?.name, lead.adsetName, lead.adName]
+        .filter((part) => part && part.trim() !== "")
+        .map((part) => part!.trim());
+    return parts.join(" / ");
+};
+
+const formatUserName = (user?: SimpleUser | null): string => {
+    if (!user) return "Atanmadı";
+    const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+    if (fullName) return fullName;
+    return user.email || "Atanmadı";
+};
+
 export default function LeadDetailPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
+    const { getOptionByCode } = useLanguages();
 
     const [lead, setLead] = useState<LeadResponse | null>(null);
     const [actions, setActions] = useState<LeadAction[]>([]);
+    const [notes, setNotes] = useState<LeadAction[]>([]);
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState<LeadStatus>("UNCONTACTED");
     const [noteText, setNoteText] = useState("");
     const [showSalesForm, setShowSalesForm] = useState(false);
     const [sale, setSale] = useState<SaleResponse | null>(null);
     const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
+    const [users, setUsers] = useState<SimpleUser[]>([]);
+    const [assignLoading, setAssignLoading] = useState(false);
     const statusSelectId = useId();
     const noteTextareaId = useId();
+    const assignSelectId = useId();
+
+    const languageOption = useMemo(() => {
+        if (!lead?.language) return null;
+
+        return (
+            getOptionByCode(lead.language) ??
+            enhanceLanguageOption({
+                value: lead.language,
+                label: lead.language,
+            })
+        );
+    }, [getOptionByCode, lead?.language]);
 
     // 📦 verileri yükle
     useEffect(() => {
@@ -136,8 +179,14 @@ export default function LeadDetailPage() {
                 setSale(null);
                 setShowSalesForm(false);
             }
+            const actionItems = actionsData || [];
+            const noteItems = actionItems.filter((item) => item.actionType === "NOTE");
+            const buttonActions = actionItems.filter((item) =>
+                ACTION_BUTTON_TYPES.has(item.actionType)
+            );
 
-            setActions(actionsData || []);
+            setActions(buttonActions);
+            setNotes(noteItems);
             setLoading(false);
         };
 
@@ -147,6 +196,22 @@ export default function LeadDetailPage() {
             ignore = true;
         };
     }, [id]);
+
+    useEffect(() => {
+        let ignore = false;
+
+        const fetchUsers = async () => {
+            const userData = await getUsers();
+            if (ignore) return;
+            setUsers(userData);
+        };
+
+        void fetchUsers();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
 
     // 🔁 durum değiştir
     const handleStatusChange = async (newStatus: LeadStatus) => {
@@ -170,16 +235,29 @@ export default function LeadDetailPage() {
         if (!lead) return;
         const ok = await addLeadAction(lead.id, actionType, message);
         if (ok) {
-            setActions((prev) => [
-                {
-                    id: Math.random().toString(36),
-                    actionType,
-                    message,
-                    createdAt: new Date().toISOString(),
-                },
-                ...prev,
-            ]);
-            setNoteText("");
+            const newEntry: LeadAction = {
+                id: Math.random().toString(36),
+                actionType,
+                message,
+                createdAt: new Date().toISOString(),
+            };
+
+            if (actionType === "NOTE") {
+                setNotes((prev) => [newEntry, ...prev]);
+                setNoteText("");
+                return;
+            }
+
+            if (ACTION_BUTTON_TYPES.has(actionType)) {
+                setActions((prev) => [newEntry, ...prev]);
+            }
+        }
+    };
+
+    const handleAddNote = async () => {
+        const trimmed = noteText.trim();
+        if (trimmed) {
+            await handleAddAction("NOTE", trimmed);
         }
     };
 
@@ -201,6 +279,28 @@ export default function LeadDetailPage() {
         if (!pageId) return alert("Messenger bağlantısı bulunamadı.");
         window.open(`https://m.me/${pageId}`, "_blank");
         void handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi");
+    };
+
+    const handleAssign = async (userId: string | null) => {
+        if (!lead || assignLoading) return;
+        setAssignLoading(true);
+        const ok = await patchLeadAssign(lead.id, userId);
+        setAssignLoading(false);
+
+        if (ok) {
+            const assignedUser = userId
+                ? users.find((u) => u.id === userId) || null
+                : null;
+            setLead((prev) => (prev ? { ...prev, assignedToUser: assignedUser } : prev));
+
+            const message = assignedUser
+                ? `${formatUserName(assignedUser)} lead'e atandı.`
+                : "Lead ataması kaldırıldı.";
+
+            await handleAddAction("ASSIGN", `Atama güncellendi: ${message}`);
+        } else {
+            alert("Lead ataması tamamlanamadı. Lütfen tekrar deneyin.");
+        }
     };
 
     if (loading || !lead) {
@@ -227,8 +327,8 @@ export default function LeadDetailPage() {
                             <span
                                 className={`px-2 py-0.5 text-xs rounded-full ${STATUS_COLORS[status]}`}
                             >
-                {STATUS_LABELS[status]}
-              </span>
+                                {STATUS_LABELS[status]}
+                            </span>
                         </div>
 
                         <div className="flex gap-2">
@@ -239,11 +339,10 @@ export default function LeadDetailPage() {
                                 title="Telefon"
                                 onClick={() => handleCall(lead.phone)}
                             >
-
-                            <Phone className="h-4 w-4 text-blue-600" />
+                                <Phone className="h-4 w-4 text-blue-600" />
                             </Button>
                             <Button
-                                                                size="sm"
+                                size="sm"
                                 className="h-10 w-10 p-0"
                                 variant="outline"
                                 title="WhatsApp"
@@ -252,7 +351,7 @@ export default function LeadDetailPage() {
                                 <MessageCircle className="h-4 w-4 text-green-600" />
                             </Button>
                             <Button
-                                                                size="sm"
+                                size="sm"
                                 className="h-10 w-10 p-0"
                                 variant="outline"
                                 title="Messenger"
@@ -266,8 +365,40 @@ export default function LeadDetailPage() {
                     <CardContent className="space-y-3 text-sm">
                         <p><b>Email:</b> {lead.email ?? "-"}</p>
                         <p><b>Telefon:</b> {lead.phone ?? "-"}</p>
-                        <p><b>Kampanya:</b> {lead.campaign?.name ?? "-"}</p>
-                        <p><b>Dil:</b> {lead.language ?? "-"}</p>
+                        <p><b>Kampanya:</b> {formatAdInfo(lead) || "-"}</p>
+                        <p className="flex items-center gap-2">
+                            <b>Dil:</b>
+                            {languageOption ? (
+                                <span className="inline-flex items-center gap-2">
+                                    <LanguageFlagIcon option={languageOption} size={16} />
+                                    <span>{languageOption.label}</span>
+                                </span>
+                            ) : (
+                                <span>-</span>
+                            )}
+                        </p>
+                        <p>
+                            <b>Danışman:</b>{" "}
+                            <label className="sr-only" htmlFor={assignSelectId}>
+                                Danışman atama
+                            </label>
+                            <select
+                                id={assignSelectId}
+                                className="border rounded-md p-1 text-xs"
+                                value={lead.assignedToUser?.id || ""}
+                                onChange={(e) =>
+                                    handleAssign(e.target.value ? e.target.value : null)
+                                }
+                                disabled={assignLoading}
+                            >
+                                <option value="">Atanmadı</option>
+                                {users.map((user) => (
+                                    <option key={user.id} value={user.id}>
+                                        {formatUserName(user)}
+                                    </option>
+                                ))}
+                            </select>
+                        </p>
                         <p>
                             <b>Durum:</b>{" "}
                             <label className="sr-only" htmlFor={statusSelectId}>
@@ -425,6 +556,50 @@ export default function LeadDetailPage() {
                     </Card>
                 )}
 
+                <Card className="shadow-sm">
+                    <CardHeader>Notlar</CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                        {notes.length === 0 ? (
+                            <div className="text-gray-500 text-sm">Henüz not yok.</div>
+                        ) : (
+                            <ul className="space-y-2">
+                                {notes.map((note) => (
+                                    <li key={note.id} className="border-b pb-2">
+                                        <p>{note.message}</p>
+                                        <p className="text-xs text-gray-500">
+                                            {new Date(note.createdAt).toLocaleString()}
+                                        </p>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                void handleAddNote();
+                            }}
+                            className="space-y-2"
+                        >
+                            <div>
+                                <label className="sr-only" htmlFor={noteTextareaId}>
+                                    Not ekle
+                                </label>
+                                <textarea
+                                    id={noteTextareaId}
+                                    className="w-full border rounded-md p-2 text-sm"
+                                    placeholder="Not ekle..."
+                                    value={noteText}
+                                    onChange={(e) => setNoteText(e.target.value)}
+                                />
+                            </div>
+                            <Button type="submit" size="sm" variant="primary" className="w-full">
+                                Kaydet
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+
             </div>
 
             {/* 🗒️ Sağ taraf: Aksiyon geçmişi */}
@@ -448,33 +623,6 @@ export default function LeadDetailPage() {
                                 ))}
                             </ul>
                         )}
-
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                const trimmed = noteText.trim();
-                                if (trimmed) {
-                                    void handleAddAction("NOTE", trimmed);
-                                }
-                            }}
-                            className="mt-3 space-y-2"
-                        >
-                            <div>
-                                <label className="sr-only" htmlFor={noteTextareaId}>
-                                    Not ekle
-                                </label>
-                                <textarea
-                                    id={noteTextareaId}
-                                    className="w-full border rounded-md p-2 text-sm"
-                                    placeholder="Not ekle..."
-                                    value={noteText}
-                                    onChange={(e) => setNoteText(e.target.value)}
-                                />
-                            </div>
-                            <Button type="submit" size="sm" variant="primary" className="w-full">
-                                Kaydet
-                            </Button>
-                        </form>
                     </CardContent>
                 </Card>
             </div>
