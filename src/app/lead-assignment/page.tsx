@@ -7,6 +7,7 @@ import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader } from "@/components/Card";
 import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import Layout from "@/components/Layout";
+import { dispatchToast } from "@/components/toaster";
 import { useLanguages } from "@/contexts/LanguageContext";
 import {
     deleteFacebookLeadRule,
@@ -48,6 +49,20 @@ const sortRules = (items: FacebookLeadRule[]): FacebookLeadRule[] => {
 
 const formatLabel = (name?: string | null, id?: string) =>
     name && name.trim().length > 0 ? name : id ?? "-";
+
+const resolveFriendlyRuleError = (message: string): string => {
+    const normalized = message.toLowerCase();
+
+    if (
+        normalized.includes("lead_distribution_assignment_unique_idx") ||
+        normalized.includes("duplicate key value") ||
+        normalized.includes("unique constraint")
+    ) {
+        return "Bu reklam için zaten bir auto-assign kuralı tanımlı. Lütfen mevcut kuralı güncelleyin veya farklı bir kombinasyon seçin.";
+    }
+
+    return message;
+};
 
 export default function LeadAssignmentPage() {
     const [pages, setPages] = useState<FacebookLeadTreePage[]>([]);
@@ -464,7 +479,13 @@ export default function LeadAssignmentPage() {
                 error instanceof Error
                     ? error.message
                     : "Kural kaydedilirken bir hata oluştu.";
-            setFormError(message);
+            const friendlyMessage = resolveFriendlyRuleError(message);
+            setFormError(friendlyMessage);
+            dispatchToast({
+                title: "Kural kaydedilemedi",
+                description: friendlyMessage,
+                variant: "error",
+            });
         } finally {
             setIsSaving(false);
         }
