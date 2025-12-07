@@ -16,8 +16,11 @@ import {
     getLeadActions,
     addLeadAction,
     getSaleById,
+    getUsers,
+    patchLeadAssign,
     type LeadResponse,
     type LeadStatus,
+    type SimpleUser,
     type SaleResponse,
 } from "@/lib/api";
 import {
@@ -89,6 +92,13 @@ const formatAdInfo = (lead: LeadResponse): string => {
     return parts.join(" / ");
 };
 
+const formatUserName = (user?: SimpleUser | null): string => {
+    if (!user) return "Atanmadı";
+    const fullName = `${user.firstName ?? ""} ${user.lastName ?? ""}`.trim();
+    if (fullName) return fullName;
+    return user.email || "Atanmadı";
+};
+
 export default function LeadDetailPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
@@ -102,8 +112,11 @@ export default function LeadDetailPage() {
     const [showSalesForm, setShowSalesForm] = useState(false);
     const [sale, setSale] = useState<SaleResponse | null>(null);
     const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
+    const [users, setUsers] = useState<SimpleUser[]>([]);
+    const [assignLoading, setAssignLoading] = useState(false);
     const statusSelectId = useId();
     const noteTextareaId = useId();
+    const assignSelectId = useId();
 
     const languageOption = useMemo(() => {
         if (!lead?.language) return null;
@@ -171,6 +184,22 @@ export default function LeadDetailPage() {
         };
     }, [id]);
 
+    useEffect(() => {
+        let ignore = false;
+
+        const fetchUsers = async () => {
+            const userData = await getUsers();
+            if (ignore) return;
+            setUsers(userData);
+        };
+
+        void fetchUsers();
+
+        return () => {
+            ignore = true;
+        };
+    }, []);
+
     // 🔁 durum değiştir
     const handleStatusChange = async (newStatus: LeadStatus) => {
         if (!lead || status === newStatus) return;
@@ -226,6 +255,28 @@ export default function LeadDetailPage() {
         void handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi");
     };
 
+    const handleAssign = async (userId: string | null) => {
+        if (!lead || assignLoading) return;
+        setAssignLoading(true);
+        const ok = await patchLeadAssign(lead.id, userId);
+        setAssignLoading(false);
+
+        if (ok) {
+            const assignedUser = userId
+                ? users.find((u) => u.id === userId) || null
+                : null;
+            setLead((prev) => (prev ? { ...prev, assignedToUser: assignedUser } : prev));
+
+            const message = assignedUser
+                ? `${formatUserName(assignedUser)} lead'e atandı.`
+                : "Lead ataması kaldırıldı.";
+
+            await handleAddAction("ASSIGN", `Atama güncellendi: ${message}`);
+        } else {
+            alert("Lead ataması tamamlanamadı. Lütfen tekrar deneyin.");
+        }
+    };
+
     if (loading || !lead) {
         return (
             <Layout title="Lead Detayı">
@@ -250,8 +301,8 @@ export default function LeadDetailPage() {
                             <span
                                 className={`px-2 py-0.5 text-xs rounded-full ${STATUS_COLORS[status]}`}
                             >
-                {STATUS_LABELS[status]}
-              </span>
+                                {STATUS_LABELS[status]}
+                            </span>
                         </div>
 
                         <div className="flex gap-2">
@@ -262,11 +313,10 @@ export default function LeadDetailPage() {
                                 title="Telefon"
                                 onClick={() => handleCall(lead.phone)}
                             >
-
-                            <Phone className="h-4 w-4 text-blue-600" />
+                                <Phone className="h-4 w-4 text-blue-600" />
                             </Button>
                             <Button
-                                                                size="sm"
+                                size="sm"
                                 className="h-10 w-10 p-0"
                                 variant="outline"
                                 title="WhatsApp"
@@ -275,7 +325,7 @@ export default function LeadDetailPage() {
                                 <MessageCircle className="h-4 w-4 text-green-600" />
                             </Button>
                             <Button
-                                                                size="sm"
+                                size="sm"
                                 className="h-10 w-10 p-0"
                                 variant="outline"
                                 title="Messenger"
@@ -300,6 +350,28 @@ export default function LeadDetailPage() {
                             ) : (
                                 <span>-</span>
                             )}
+                        </p>
+                        <p>
+                            <b>Danışman:</b>{" "}
+                            <label className="sr-only" htmlFor={assignSelectId}>
+                                Danışman atama
+                            </label>
+                            <select
+                                id={assignSelectId}
+                                className="border rounded-md p-1 text-xs"
+                                value={lead.assignedToUser?.id || ""}
+                                onChange={(e) =>
+                                    handleAssign(e.target.value ? e.target.value : null)
+                                }
+                                disabled={assignLoading}
+                            >
+                                <option value="">Atanmadı</option>
+                                {users.map((user) => (
+                                    <option key={user.id} value={user.id}>
+                                        {formatUserName(user)}
+                                    </option>
+                                ))}
+                            </select>
                         </p>
                         <p>
                             <b>Durum:</b>{" "}
