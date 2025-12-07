@@ -197,10 +197,7 @@ export default function HotelsPage() {
         setError(null);
         setSuccess(null);
         try {
-            const deleted = await deleteHotel(hotel.id);
-            if (!deleted) {
-                throw new Error("Otel silinemedi.");
-            }
+            await deleteHotel(hotel.id);
             setHotels((prev) => prev.filter((item) => item.id !== hotel.id));
             setSuccess("Otel silindi.");
             if (editingId === hotel.id) {
@@ -378,14 +375,6 @@ export default function HotelsPage() {
                                         İptal Et
                                     </Button>
                                 )}
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    onClick={() => void fetchHotels()}
-                                    disabled={loading || saving}
-                                >
-                                    Yenile
-                                </Button>
                             </div>
                         </form>
                     </CardContent>
