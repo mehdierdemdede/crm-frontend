@@ -85,6 +85,12 @@ interface LeadAction {
     createdAt: string;
 }
 
+const ACTION_BUTTON_TYPES = new Set<LeadAction["actionType"]>([
+    "PHONE",
+    "WHATSAPP",
+    "MESSENGER",
+]);
+
 const formatAdInfo = (lead: LeadResponse): string => {
     const parts = [lead.campaign?.name, lead.adsetName, lead.adName]
         .filter((part) => part && part.trim() !== "")
@@ -106,6 +112,7 @@ export default function LeadDetailPage() {
 
     const [lead, setLead] = useState<LeadResponse | null>(null);
     const [actions, setActions] = useState<LeadAction[]>([]);
+    const [notes, setNotes] = useState<LeadAction[]>([]);
     const [loading, setLoading] = useState(true);
     const [status, setStatus] = useState<LeadStatus>("UNCONTACTED");
     const [noteText, setNoteText] = useState("");
@@ -172,8 +179,14 @@ export default function LeadDetailPage() {
                 setSale(null);
                 setShowSalesForm(false);
             }
+            const actionItems = actionsData || [];
+            const noteItems = actionItems.filter((item) => item.actionType === "NOTE");
+            const buttonActions = actionItems.filter((item) =>
+                ACTION_BUTTON_TYPES.has(item.actionType)
+            );
 
-            setActions(actionsData || []);
+            setActions(buttonActions);
+            setNotes(noteItems);
             setLoading(false);
         };
 
@@ -222,16 +235,29 @@ export default function LeadDetailPage() {
         if (!lead) return;
         const ok = await addLeadAction(lead.id, actionType, message);
         if (ok) {
-            setActions((prev) => [
-                {
-                    id: Math.random().toString(36),
-                    actionType,
-                    message,
-                    createdAt: new Date().toISOString(),
-                },
-                ...prev,
-            ]);
-            setNoteText("");
+            const newEntry: LeadAction = {
+                id: Math.random().toString(36),
+                actionType,
+                message,
+                createdAt: new Date().toISOString(),
+            };
+
+            if (actionType === "NOTE") {
+                setNotes((prev) => [newEntry, ...prev]);
+                setNoteText("");
+                return;
+            }
+
+            if (ACTION_BUTTON_TYPES.has(actionType)) {
+                setActions((prev) => [newEntry, ...prev]);
+            }
+        }
+    };
+
+    const handleAddNote = async () => {
+        const trimmed = noteText.trim();
+        if (trimmed) {
+            await handleAddAction("NOTE", trimmed);
         }
     };
 
@@ -530,6 +556,50 @@ export default function LeadDetailPage() {
                     </Card>
                 )}
 
+                <Card className="shadow-sm">
+                    <CardHeader>Notlar</CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                        {notes.length === 0 ? (
+                            <div className="text-gray-500 text-sm">Henüz not yok.</div>
+                        ) : (
+                            <ul className="space-y-2">
+                                {notes.map((note) => (
+                                    <li key={note.id} className="border-b pb-2">
+                                        <p>{note.message}</p>
+                                        <p className="text-xs text-gray-500">
+                                            {new Date(note.createdAt).toLocaleString()}
+                                        </p>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        <form
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                void handleAddNote();
+                            }}
+                            className="space-y-2"
+                        >
+                            <div>
+                                <label className="sr-only" htmlFor={noteTextareaId}>
+                                    Not ekle
+                                </label>
+                                <textarea
+                                    id={noteTextareaId}
+                                    className="w-full border rounded-md p-2 text-sm"
+                                    placeholder="Not ekle..."
+                                    value={noteText}
+                                    onChange={(e) => setNoteText(e.target.value)}
+                                />
+                            </div>
+                            <Button type="submit" size="sm" variant="primary" className="w-full">
+                                Kaydet
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+
             </div>
 
             {/* 🗒️ Sağ taraf: Aksiyon geçmişi */}
@@ -553,33 +623,6 @@ export default function LeadDetailPage() {
                                 ))}
                             </ul>
                         )}
-
-                        <form
-                            onSubmit={(e) => {
-                                e.preventDefault();
-                                const trimmed = noteText.trim();
-                                if (trimmed) {
-                                    void handleAddAction("NOTE", trimmed);
-                                }
-                            }}
-                            className="mt-3 space-y-2"
-                        >
-                            <div>
-                                <label className="sr-only" htmlFor={noteTextareaId}>
-                                    Not ekle
-                                </label>
-                                <textarea
-                                    id={noteTextareaId}
-                                    className="w-full border rounded-md p-2 text-sm"
-                                    placeholder="Not ekle..."
-                                    value={noteText}
-                                    onChange={(e) => setNoteText(e.target.value)}
-                                />
-                            </div>
-                            <Button type="submit" size="sm" variant="primary" className="w-full">
-                                Kaydet
-                            </Button>
-                        </form>
                     </CardContent>
                 </Card>
             </div>
