@@ -1345,7 +1345,7 @@ export default function LeadsPage() {
                                                                 )}
                                                             </td>
                                                             <td className="p-3">
-                                                                <div className="flex flex-wrap justify-end gap-2">
+                                                                <div className="flex flex-nowrap items-center justify-end gap-2">
                                                                     {lead.phone && (
                                                                         <Button
                                                                             size="sm"
@@ -1505,7 +1505,7 @@ export default function LeadsPage() {
                                                             firstResponseMinutes,
                                                         )}
                                                     </div>
-                                                    <div className="flex flex-wrap gap-2">
+                                                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-nowrap">
                                                         {lead.phone && (
                                                             <Button
                                                                 size="sm"
