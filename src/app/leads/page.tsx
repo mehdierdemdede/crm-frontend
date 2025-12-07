@@ -8,7 +8,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/Button";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import { Input } from "@/components/Input";
-import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
 import Layout from "@/components/Layout";
 import Modal from "@/components/Modal";
 import { Skeleton } from "@/components/Skeleton";
@@ -162,7 +161,6 @@ export default function LeadsPage() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState("");
     const [statusFilter, setStatusFilter] = useState<LeadStatus | "">("");
-    const [languageFilter, setLanguageFilter] = useState("");
     const [campaignFilter, setCampaignFilter] = useState("");
     const [assignedFilter, setAssignedFilter] = useState("");
     const [createdFrom, setCreatedFrom] = useState("");
@@ -204,7 +202,7 @@ export default function LeadsPage() {
     const perPage = 10;
 
     const { user } = useAuth();
-    const { languages, getOptionByCode } = useLanguages();
+    const { languages } = useLanguages();
 
     const responseMinMinutes = useMemo(
         () => parseDurationToMinutes(actionDurationMin, actionDurationUnit),
@@ -281,7 +279,6 @@ export default function LeadsPage() {
                     sort: `${sortBy},${sortOrder}`,
                     search: debouncedSearch.trim() || undefined,
                     statuses: statusFilter ? [statusFilter] : undefined,
-                    language: languageFilter || undefined,
                     assignedUserId,
                     unassigned: assignedFilter === "__unassigned__",
                     dateFrom: createdFrom || undefined,
@@ -308,7 +305,6 @@ export default function LeadsPage() {
         createdFrom,
         createdTo,
         debouncedSearch,
-        languageFilter,
         page,
         responseMaxMinutes,
         responseMinMinutes,
@@ -366,10 +362,6 @@ export default function LeadsPage() {
                 ? lead.status === statusFilter
                 : true;
 
-            const matchesLanguage = languageFilter
-                ? lead.language === languageFilter
-                : true;
-
             const matchesAssigned = (() => {
                 if (!assignedFilter) return true;
                 if (assignedFilter === "__me__")
@@ -401,7 +393,6 @@ export default function LeadsPage() {
                 matchesSearch &&
                 matchesAd &&
                 matchesStatus &&
-                matchesLanguage &&
                 matchesAssigned &&
                 matchesFrom &&
                 matchesTo &&
@@ -416,7 +407,6 @@ export default function LeadsPage() {
         createdTo,
         debouncedSearch,
         leads,
-        languageFilter,
         responseMaxMinutes,
         responseMinMinutes,
         statusFilter,
@@ -850,7 +840,6 @@ export default function LeadsPage() {
     const handleResetFilters = useCallback(() => {
         setSearch("");
         setCampaignFilter("");
-        setLanguageFilter("");
         setAssignedFilter("");
         setCreatedFrom("");
         setCreatedTo("");
@@ -864,7 +853,6 @@ export default function LeadsPage() {
     const hasActiveFilters =
         Boolean(debouncedSearch.trim()) ||
         Boolean(campaignFilter.trim()) ||
-        Boolean(languageFilter) ||
         Boolean(assignedFilter) ||
         Boolean(createdFrom) ||
         Boolean(createdTo) ||
@@ -965,30 +953,6 @@ export default function LeadsPage() {
                                                 setPage(0);
                                             }}
                                         />
-                                    </div>
-                                    <div className="space-y-2 md:col-span-1 xl:col-span-2">
-                                        <label
-                                            htmlFor="lead-language-filter"
-                                            className="block text-sm font-medium text-gray-800"
-                                        >
-                                            Dil
-                                        </label>
-                                        <select
-                                            id="lead-language-filter"
-                                            className={FILTER_SELECT_CLASSES}
-                                            value={languageFilter}
-                                            onChange={(e) => {
-                                                setLanguageFilter(e.target.value);
-                                                setPage(0);
-                                            }}
-                                        >
-                                            <option value="">Tüm Diller</option>
-                                            {languageOptions.map((lang) => (
-                                                <option key={lang.value} value={lang.value}>
-                                                    {lang.label}
-                                                </option>
-                                            ))}
-                                        </select>
                                     </div>
                                     <div className="space-y-2 md:col-span-1 xl:col-span-2">
                                         <label
@@ -1246,13 +1210,6 @@ export default function LeadsPage() {
                                                     </tr>
                                                 ) : (
                                                     displayedLeads.map((lead) => {
-                                                        const languageOption = lead.language
-                                                            ? getOptionByCode(lead.language) ??
-                                                              enhanceLanguageOption({
-                                                                  value: lead.language,
-                                                                  label: lead.language,
-                                                              })
-                                                            : undefined;
                                                         const isSelected = selectedLeadIds.has(lead.id);
                                                         const firstResponseMinutes = getFirstResponseMinutes(lead);
                                                         return (
@@ -1280,12 +1237,6 @@ export default function LeadsPage() {
                                                                     >
                                                                         {lead.name ?? "-"}
                                                                     </Link>
-                                                                    {lead.language && (
-                                                                        <LanguageFlagIcon
-                                                                            option={languageOption}
-                                                                            size={16}
-                                                                        />
-                                                                    )}
                                                                 </div>
                                                                 <div className="text-xs text-gray-500">
                                                                     {getEmailDisplay(lead)}
@@ -1431,13 +1382,6 @@ export default function LeadsPage() {
                                             </div>
                                         ) : (
                                             displayedLeads.map((lead) => {
-                                                const languageOption = lead.language
-                                                    ? getOptionByCode(lead.language) ??
-                                                      enhanceLanguageOption({
-                                                          value: lead.language,
-                                                          label: lead.language,
-                                                      })
-                                                    : undefined;
                                                 const isSelected = selectedLeadIds.has(lead.id);
                                                 const firstResponseMinutes =
                                                     getFirstResponseMinutes(lead);
@@ -1474,18 +1418,6 @@ export default function LeadsPage() {
                                                     <div className="text-xs text-gray-600">
                                                         Telefon: {lead.phone ?? "-"}
                                                     </div>
-                                                    {lead.language && (
-                                                        <div className="flex items-center gap-2 text-xs text-gray-600">
-                                                            <LanguageFlagIcon
-                                                                option={languageOption}
-                                                                size={14}
-                                                            />
-                                                            <span>
-                                                                {languageOption?.label ??
-                                                                    lead.language}
-                                                            </span>
-                                                        </div>
-                                                    )}
                                                     <div className="text-xs text-gray-600">
                                                         Reklam: {formatAdInfo(lead) || lead.campaign?.name || "-"}
                                                     </div>
