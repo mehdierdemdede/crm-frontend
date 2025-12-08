@@ -26,6 +26,7 @@ import {
     createLead,
     initiateLeadCall,
     sendLeadWhatsAppMessage,
+    type LeadListParams,
     type LeadResponse,
     type LeadStatus,
     type SimpleUser,
@@ -159,6 +160,8 @@ const getEmailDisplay = (lead: LeadResponse): string => {
     return "İletişim bilgisi yok";
 };
 
+const BULK_ASSIGN_FETCH_SIZE = 200;
+
 export default function LeadsPage() {
     const router = useRouter();
     const [leads, setLeads] = useState<LeadResponse[]>([]);
@@ -203,6 +206,7 @@ export default function LeadsPage() {
     const [whatsAppMessage, setWhatsAppMessage] = useState("");
     const [whatsAppResult, setWhatsAppResult] =
         useState<LeadWhatsAppMessageResponse | null>(null);
+    const [filteredBulkCount, setFilteredBulkCount] = useState<number | null>(null);
 
     const debouncedSearch = useDebounce(search, 400);
     const isSearching = search !== debouncedSearch;
@@ -251,6 +255,115 @@ export default function LeadsPage() {
         setLeadToDelete(null);
     }, [deleteLoading]);
 
+    const resolveAssignedUserId = useCallback(() => {
+        if (assignedFilter === "__me__") return user?.id ?? undefined;
+        if (assignedFilter && assignedFilter !== "__unassigned__")
+            return assignedFilter;
+        return undefined;
+    }, [assignedFilter, user?.id]);
+
+    const buildLeadListParams = useCallback(
+        (pageValue: number, sizeValue: number): LeadListParams => ({
+            page: pageValue,
+            size: sizeValue,
+            sort: `${sortBy},${sortOrder}`,
+            search: debouncedSearch.trim() || undefined,
+            statuses: statusFilter ? [statusFilter] : undefined,
+            assignedUserId: resolveAssignedUserId(),
+            unassigned: assignedFilter === "__unassigned__",
+            dateFrom: createdFrom || undefined,
+            dateTo: createdTo || undefined,
+            firstResponseMinMinutes: responseMinMinutes,
+            firstResponseMaxMinutes: responseMaxMinutes,
+        }),
+        [
+            assignedFilter,
+            createdFrom,
+            createdTo,
+            debouncedSearch,
+            resolveAssignedUserId,
+            responseMaxMinutes,
+            responseMinMinutes,
+            sortBy,
+            sortOrder,
+            statusFilter,
+        ],
+    );
+
+    const applyClientFilters = useCallback(
+        (source: LeadResponse[]): LeadResponse[] => {
+            const searchValue = debouncedSearch.trim().toLowerCase();
+            const campaignValue = campaignFilter.trim().toLowerCase();
+            const createdFromDate = createdFrom ? toStartOfDay(createdFrom) : null;
+            const createdToDate = createdTo ? toEndOfDay(createdTo) : null;
+
+            return source.filter((lead) => {
+                const matchesSearch = searchValue
+                    ? [lead.name, lead.email, lead.campaign?.name]
+                          .filter(Boolean)
+                          .some((field) =>
+                              String(field).toLowerCase().includes(searchValue),
+                          )
+                    : true;
+
+                const adInfo = formatAdInfo(lead).toLowerCase();
+                const matchesAd = campaignValue ? adInfo.includes(campaignValue) : true;
+
+                const matchesStatus = statusFilter
+                    ? lead.status === statusFilter
+                    : true;
+
+                const matchesAssigned = (() => {
+                    if (!assignedFilter) return true;
+                    if (assignedFilter === "__me__")
+                        return lead.assignedToUser?.id === user?.id;
+                    if (assignedFilter === "__unassigned__") return !lead.assignedToUser;
+                    return lead.assignedToUser?.id === assignedFilter;
+                })();
+
+                const createdDateValue = new Date(lead.createdAt);
+                const matchesFrom = createdFromDate
+                    ? createdDateValue >= createdFromDate
+                    : true;
+                const matchesTo = createdToDate
+                    ? createdDateValue <= createdToDate
+                    : true;
+
+                const responseMinutes = getFirstResponseMinutes(lead);
+                const matchesMin =
+                    responseMinMinutes !== undefined
+                        ? responseMinutes != null && responseMinutes >= responseMinMinutes
+                        : true;
+                const matchesMax =
+                    responseMaxMinutes !== undefined
+                        ? responseMinutes != null && responseMinutes <= responseMaxMinutes
+                        : true;
+
+                return (
+                    matchesSearch &&
+                    matchesAd &&
+                    matchesStatus &&
+                    matchesAssigned &&
+                    matchesFrom &&
+                    matchesTo &&
+                    matchesMin &&
+                    matchesMax
+                );
+            });
+        },
+        [
+            assignedFilter,
+            campaignFilter,
+            createdFrom,
+            createdTo,
+            debouncedSearch,
+            responseMaxMinutes,
+            responseMinMinutes,
+            statusFilter,
+            user?.id,
+        ],
+    );
+
     useEffect(() => {
         const fetchUsers = async () => {
             try {
@@ -271,30 +384,9 @@ export default function LeadsPage() {
         const fetchLeads = async () => {
             setLoading(true);
             try {
-                const assignedUserId = (() => {
-                    if (assignedFilter === "__me__") return user?.id ?? undefined;
-                    if (
-                        assignedFilter &&
-                        assignedFilter !== "__me__" &&
-                        assignedFilter !== "__unassigned__"
-                    )
-                        return assignedFilter;
-                    return undefined;
-                })();
-
-                const leadPage = await getLeads({
-                    page,
-                    size: pageSize,
-                    sort: `${sortBy},${sortOrder}`,
-                    search: debouncedSearch.trim() || undefined,
-                    statuses: statusFilter ? [statusFilter] : undefined,
-                    assignedUserId,
-                    unassigned: assignedFilter === "__unassigned__",
-                    dateFrom: createdFrom || undefined,
-                    dateTo: createdTo || undefined,
-                    firstResponseMinMinutes: responseMinMinutes,
-                    firstResponseMaxMinutes: responseMaxMinutes,
-                });
+                const leadPage = await getLeads(
+                    buildLeadListParams(page, pageSize),
+                );
 
                 setLeads(leadPage?.content ?? []);
                 setTotalPages(leadPage?.totalPages ?? 1);
@@ -310,17 +402,10 @@ export default function LeadsPage() {
 
         void fetchLeads();
     }, [
+        buildLeadListParams,
         assignedFilter,
-        createdFrom,
-        createdTo,
-        debouncedSearch,
         page,
         pageSize,
-        responseMaxMinutes,
-        responseMinMinutes,
-        sortBy,
-        sortOrder,
-        statusFilter,
         user?.id,
     ]);
 
@@ -350,78 +435,10 @@ export default function LeadsPage() {
         );
     }, [languages, leads]);
 
-    const displayedLeads = useMemo(() => {
-        const searchValue = debouncedSearch.trim().toLowerCase();
-        const campaignValue = campaignFilter.trim().toLowerCase();
-        const createdFromDate = createdFrom ? toStartOfDay(createdFrom) : null;
-        const createdToDate = createdTo ? toEndOfDay(createdTo) : null;
-
-        return leads.filter((lead) => {
-            const matchesSearch = searchValue
-                ? [lead.name, lead.email, lead.campaign?.name]
-                      .filter(Boolean)
-                      .some((field) =>
-                          String(field).toLowerCase().includes(searchValue),
-                      )
-                : true;
-
-            const adInfo = formatAdInfo(lead).toLowerCase();
-            const matchesAd = campaignValue ? adInfo.includes(campaignValue) : true;
-
-            const matchesStatus = statusFilter
-                ? lead.status === statusFilter
-                : true;
-
-            const matchesAssigned = (() => {
-                if (!assignedFilter) return true;
-                if (assignedFilter === "__me__")
-                    return lead.assignedToUser?.id === user?.id;
-                if (assignedFilter === "__unassigned__")
-                    return !lead.assignedToUser;
-                return lead.assignedToUser?.id === assignedFilter;
-            })();
-
-            const createdDateValue = new Date(lead.createdAt);
-            const matchesFrom = createdFromDate
-                ? createdDateValue >= createdFromDate
-                : true;
-            const matchesTo = createdToDate
-                ? createdDateValue <= createdToDate
-                : true;
-
-            const responseMinutes = getFirstResponseMinutes(lead);
-            const matchesMin =
-                responseMinMinutes !== undefined
-                    ? responseMinutes != null && responseMinutes >= responseMinMinutes
-                    : true;
-            const matchesMax =
-                responseMaxMinutes !== undefined
-                    ? responseMinutes != null && responseMinutes <= responseMaxMinutes
-                    : true;
-
-            return (
-                matchesSearch &&
-                matchesAd &&
-                matchesStatus &&
-                matchesAssigned &&
-                matchesFrom &&
-                matchesTo &&
-                matchesMin &&
-                matchesMax
-            );
-        });
-    }, [
-        assignedFilter,
-        campaignFilter,
-        createdFrom,
-        createdTo,
-        debouncedSearch,
-        leads,
-        responseMaxMinutes,
-        responseMinMinutes,
-        statusFilter,
-        user?.id,
-    ]);
+    const displayedLeads = useMemo(
+        () => applyClientFilters(leads),
+        [applyClientFilters, leads],
+    );
 
     const selectedCount = selectedLeadIds.size;
     const filteredCount = displayedLeads.length;
@@ -437,6 +454,38 @@ export default function LeadsPage() {
         selectAllRef.current.indeterminate =
             someDisplayedSelected && !allDisplayedSelected;
     }, [allDisplayedSelected, someDisplayedSelected, displayedLeads.length]);
+
+    useEffect(() => {
+        setFilteredBulkCount(null);
+    }, [
+        assignedFilter,
+        campaignFilter,
+        createdFrom,
+        createdTo,
+        debouncedSearch,
+        responseMaxMinutes,
+        responseMinMinutes,
+        sortBy,
+        sortOrder,
+        statusFilter,
+    ]);
+
+    const fetchAllFilteredLeads = useCallback(async () => {
+        const params = buildLeadListParams(0, BULK_ASSIGN_FETCH_SIZE);
+        const firstPage = await getLeads(params);
+        if (!firstPage) return [] as LeadResponse[];
+
+        const totalPages = firstPage.totalPages ?? 1;
+        const allLeads = applyClientFilters(firstPage.content ?? []);
+
+        for (let pageIndex = 1; pageIndex < totalPages; pageIndex += 1) {
+            const nextPage = await getLeads({ ...params, page: pageIndex });
+            if (!nextPage) break;
+            allLeads.push(...applyClientFilters(nextPage.content ?? []));
+        }
+
+        return allLeads;
+    }, [applyClientFilters, buildLeadListParams]);
 
     const handleSort = (field: SortableColumn) => {
         if (sortBy === field)
@@ -726,12 +775,6 @@ export default function LeadsPage() {
     };
 
     const handleBulkAssignConfirm = async () => {
-        const leadIds =
-            bulkAssignScope === "selected"
-                ? Array.from(selectedLeadIds)
-                : displayedLeads.map((lead) => lead.id);
-
-        if (leadIds.length === 0) return;
         if (!bulkAssignUserId) {
             showToast({
                 title: "Kullanıcı seçiniz",
@@ -742,52 +785,72 @@ export default function LeadsPage() {
         }
 
         setBulkAssignLoading(true);
-        const assignedUser = users.find((u) => u.id === bulkAssignUserId) || null;
-        const results: Array<{ leadId: string; ok: boolean }> = [];
+        try {
+            const leadIds =
+                bulkAssignScope === "selected"
+                    ? Array.from(selectedLeadIds)
+                    : (await fetchAllFilteredLeads()).map((lead) => lead.id);
 
-        for (const leadId of leadIds) {
-            const ok = await patchLeadAssign(leadId, bulkAssignUserId);
-            if (ok) {
-                setLeads((prev) =>
-                    prev.map((lead) =>
-                        lead.id === leadId
-                            ? { ...lead, assignedToUser: assignedUser }
-                            : lead,
-                    ),
-                );
-                await addLeadAction(
-                    leadId,
-                    "ASSIGN",
-                    `${formatUserName(assignedUser)} toplu aktarım ile atandı`,
-                );
+            if (leadIds.length === 0) {
+                showToast({
+                    title: "Lead bulunamadı",
+                    description: "Geçerli filtrelere uyan lead bulunamadı.",
+                    variant: "error",
+                });
+                return;
             }
-            results.push({ leadId, ok });
-        }
 
-        setBulkAssignLoading(false);
+            if (bulkAssignScope === "filtered") {
+                setFilteredBulkCount(leadIds.length);
+            }
 
-        const successCount = results.filter((r) => r.ok).length;
-        const failureCount = results.length - successCount;
+            const assignedUser = users.find((u) => u.id === bulkAssignUserId) || null;
+            const results: Array<{ leadId: string; ok: boolean }> = [];
 
-        if (successCount > 0) {
-            showToast({
-                title: "Lead'ler aktarıldı",
-                description: `${successCount} lead başarıyla aktarıldı.`,
-                variant: "success",
-            });
-        }
-        if (failureCount > 0) {
-            showToast({
-                title: "Aktarım hatası",
-                description: `${failureCount} lead aktarılırken hata oluştu.`,
-                variant: "error",
-            });
-        }
+            for (const leadId of leadIds) {
+                const ok = await patchLeadAssign(leadId, bulkAssignUserId);
+                if (ok) {
+                    setLeads((prev) =>
+                        prev.map((lead) =>
+                            lead.id === leadId
+                                ? { ...lead, assignedToUser: assignedUser }
+                                : lead,
+                        ),
+                    );
+                    await addLeadAction(
+                        leadId,
+                        "ASSIGN",
+                        `${formatUserName(assignedUser)} toplu aktarım ile atandı`,
+                    );
+                }
+                results.push({ leadId, ok });
+            }
 
-        if (successCount > 0) {
-            setSelectedLeadIds(new Set());
-            setBulkAssignUserId("");
-            setIsBulkAssignOpen(false);
+            const successCount = results.filter((r) => r.ok).length;
+            const failureCount = results.length - successCount;
+
+            if (successCount > 0) {
+                showToast({
+                    title: "Lead'ler aktarıldı",
+                    description: `${successCount} lead başarıyla aktarıldı.`,
+                    variant: "success",
+                });
+            }
+            if (failureCount > 0) {
+                showToast({
+                    title: "Aktarım hatası",
+                    description: `${failureCount} lead aktarılırken hata oluştu.`,
+                    variant: "error",
+                });
+            }
+
+            if (successCount > 0) {
+                setSelectedLeadIds(new Set());
+                setBulkAssignUserId("");
+                setIsBulkAssignOpen(false);
+            }
+        } finally {
+            setBulkAssignLoading(false);
         }
     };
 
@@ -880,7 +943,9 @@ export default function LeadsPage() {
         responseMaxMinutes !== undefined;
 
     const bulkAssignCount =
-        bulkAssignScope === "selected" ? selectedCount : filteredCount;
+        bulkAssignScope === "selected"
+            ? selectedCount
+            : filteredBulkCount ?? filteredCount;
 
     return (
         <>
