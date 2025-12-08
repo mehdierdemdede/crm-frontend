@@ -12,6 +12,7 @@ import {
     getTransferRoutes,
     type Hotel,
     type SaleResponse,
+    type SalesPayload,
     type TransferRoute,
 } from "@/lib/api";
 import {
@@ -23,18 +24,10 @@ import {
 import type { FormEvent } from "react";
 
 type Currency = "TRY" | "USD" | "EUR" | "GBP";
-
-export interface SalesPayload {
-    leadId: string; // ✅ UUID string (number değil)
-    operationDate: string;
-    operationType: string;
+type SalesFormState = Omit<SalesPayload, "price" | "nights"> & {
     price: number | "";
-    currency: "TRY" | "USD" | "EUR" | "GBP";
-    hotel: string;
     nights: number | "";
-    transfer: string[];
-    transferPreference: "YES" | "NO";
-}
+};
 
 const STEPS = ["Operasyon", "Fiyat", "Konaklama & Transfer", "Belgeler & Onay"];
 const FALLBACK_TRANSFER_OPTIONS: TransferRoute[] = [
@@ -65,7 +58,7 @@ export default function SalesForm({
     const [success, setSuccess] = useState(false);
     const [submitError, setSubmitError] = useState<string | null>(null);
     const [documentUrl, setDocumentUrl] = useState<string | null>(null);
-    const [form, setForm] = useState<SalesPayload>({
+    const [form, setForm] = useState<SalesFormState>({
         leadId,
         operationDate: "",
         operationType: "",
@@ -178,6 +171,7 @@ export default function SalesForm({
                 errs.push("Geçerli bir fiyat giriniz.");
         }
         if (step === 3) {
+            if (!form.transferPreference) errs.push("Transfer tercihi seçilmelidir.");
             if (!form.hotel) errs.push("Otel seçilmelidir.");
             if (form.nights === "" || Number(form.nights) <= 0)
                 errs.push("Gece sayısı 1 veya üzeri olmalıdır.");
@@ -209,7 +203,7 @@ export default function SalesForm({
             nights: Number(form.nights) || 0,
             transfer:
                 form.transferPreference === "YES" ? form.transfer : [],
-            transferPreference: form.transferPreference,
+            transferPreference: form.transferPreference || "NO",
         };
 
         const { success: saleCreated, sale, saleId } = await createSale(payload, {
