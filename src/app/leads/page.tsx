@@ -138,13 +138,26 @@ const formatFirstResponseDuration = (minutes: number | null | undefined): string
 };
 
 const formatAdInfo = (lead: LeadResponse): string => {
-    const parts = [lead.campaign?.name, lead.adsetName, lead.adName]
-        .map((part) => part?.trim())
-        .filter(Boolean);
+    const rawAdName = lead.adName ?? (lead as Record<string, unknown>).ad_name;
+    const adName = typeof rawAdName === "string" ? rawAdName.trim() : "";
+    if (adName) return adName;
+
+    const rawAdInfo = lead.adInfo ?? (lead as Record<string, unknown>).ad_info;
+    const adInfo = typeof rawAdInfo === "string" ? rawAdInfo.trim() : "";
+    if (adInfo) return adInfo;
+
+    const rawCampaignName =
+        lead.campaign?.name ?? lead.campaignName ?? (lead as Record<string, unknown>).campaign_name;
+    const campaignName = typeof rawCampaignName === "string" ? rawCampaignName.trim() : "";
+
+    const rawAdsetName = lead.adsetName ?? (lead as Record<string, unknown>).adset_name;
+    const adsetName = typeof rawAdsetName === "string" ? rawAdsetName.trim() : "";
+
+    const parts = [campaignName, adsetName].filter(Boolean);
 
     if (parts.length > 0) return parts.join(" / ");
 
-    return lead.adInfo?.trim() ?? "";
+    return "";
 };
 
 const formatUserName = (user?: SimpleUser | null): string => {

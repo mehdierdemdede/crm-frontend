@@ -96,6 +96,7 @@ export interface LeadResponse {
     language?: string;
     adInfo?: string | null;
     campaign?: { id: string; name: string } | null;
+    campaignName?: string | null;
     adsetId?: string | null;
     adsetName?: string | null;
     adId?: string | null;
