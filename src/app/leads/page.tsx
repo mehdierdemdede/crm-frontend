@@ -138,9 +138,12 @@ const formatFirstResponseDuration = (minutes: number | null | undefined): string
 
 const formatAdInfo = (lead: LeadResponse): string => {
     const parts = [lead.campaign?.name, lead.adsetName, lead.adName]
-        .filter((part) => part && part.trim() !== "")
-        .map((part) => part!.trim());
-    return parts.join(" / ");
+        .map((part) => part?.trim())
+        .filter(Boolean);
+
+    if (parts.length > 0) return parts.join(" / ");
+
+    return lead.adInfo?.trim() ?? "";
 };
 
 const formatUserName = (user?: SimpleUser | null): string => {
