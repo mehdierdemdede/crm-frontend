@@ -89,19 +89,25 @@ const ACTION_BUTTON_TYPES = new Set<LeadAction["actionType"]>([
 ]);
 
 const formatAdInfo = (lead: LeadResponse): string => {
-    const rawAdName = lead.adName ?? (lead as Record<string, unknown>).ad_name;
+    const legacyLead = lead as unknown as {
+        ad_name?: unknown;
+        ad_info?: unknown;
+        campaign_name?: unknown;
+        adset_name?: unknown;
+    };
+
+    const rawAdName = lead.adName ?? legacyLead.ad_name;
     const adName = typeof rawAdName === "string" ? rawAdName.trim() : "";
     if (adName) return adName;
 
-    const rawAdInfo = lead.adInfo ?? (lead as Record<string, unknown>).ad_info;
+    const rawAdInfo = lead.adInfo ?? legacyLead.ad_info;
     const adInfo = typeof rawAdInfo === "string" ? rawAdInfo.trim() : "";
     if (adInfo) return adInfo;
 
-    const rawCampaignName =
-        lead.campaign?.name ?? lead.campaignName ?? (lead as Record<string, unknown>).campaign_name;
+    const rawCampaignName = lead.campaign?.name ?? lead.campaignName ?? legacyLead.campaign_name;
     const campaignName = typeof rawCampaignName === "string" ? rawCampaignName.trim() : "";
 
-    const rawAdsetName = lead.adsetName ?? (lead as Record<string, unknown>).adset_name;
+    const rawAdsetName = lead.adsetName ?? legacyLead.adset_name;
     const adsetName = typeof rawAdsetName === "string" ? rawAdsetName.trim() : "";
 
     const parts = [campaignName, adsetName].filter(Boolean);
