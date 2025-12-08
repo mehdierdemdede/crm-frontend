@@ -94,6 +94,7 @@ export interface LeadResponse {
     phone?: string;
     pageId?: string | null;
     language?: string;
+    adInfo?: string | null;
     campaign?: { id: string; name: string } | null;
     adsetId?: string | null;
     adsetName?: string | null;
