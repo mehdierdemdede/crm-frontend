@@ -138,13 +138,19 @@ const formatFirstResponseDuration = (minutes: number | null | undefined): string
 };
 
 const formatAdInfo = (lead: LeadResponse): string => {
-    const parts = [lead.campaign?.name, lead.adsetName, lead.adName]
+    const adName = lead.adName?.trim();
+    if (adName) return adName;
+
+    const adInfo = lead.adInfo?.trim();
+    if (adInfo) return adInfo;
+
+    const parts = [lead.campaign?.name, lead.adsetName]
         .map((part) => part?.trim())
         .filter(Boolean);
 
     if (parts.length > 0) return parts.join(" / ");
 
-    return lead.adInfo?.trim() ?? "";
+    return "";
 };
 
 const formatUserName = (user?: SimpleUser | null): string => {
