@@ -15,6 +15,7 @@ import {
     getFacebookLeadRules,
     getFacebookLeadTree,
     saveFacebookLeadRule,
+    updateFacebookLeadRule,
     type AgentStatsResponse,
     type FacebookLeadRule,
     type FacebookLeadTreeAd,
@@ -459,7 +460,9 @@ export default function LeadAssignmentPage() {
 
         setIsSaving(true);
         try {
-            const savedRule = await saveFacebookLeadRule(payload);
+            const savedRule = updatingExisting
+                ? await updateFacebookLeadRule(currentRuleId, payload)
+                : await saveFacebookLeadRule(payload);
             if (!savedRule) {
                 throw new Error("Kural kaydedilemedi.");
             }
