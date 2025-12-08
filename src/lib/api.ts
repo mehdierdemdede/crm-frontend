@@ -1,8 +1,6 @@
 // src/lib/api.ts
 import { z, type ZodSchema, type ZodTypeDef } from "zod";
 
-import {SalesPayload} from "@/app/leads/[id]/SalesForm";
-
 import { resolveBackendApiBaseUrl } from "./backendConfig";
 import {
     ZCancelSub,
@@ -1465,7 +1463,7 @@ export const getAutoAssignStats = async (): Promise<AgentStatsResponse[]> => {
 
 
 // 📦 Satış oluşturma
-export interface CreateSaleRequest {
+export interface SalesPayload {
     leadId: string;
     operationDate: string;
     operationType: string;
@@ -1474,6 +1472,7 @@ export interface CreateSaleRequest {
     hotel: string;
     nights: number;
     transfer: string[];
+    transferPreference: "YES" | "NO";
 }
 
 export const createSale = async (
