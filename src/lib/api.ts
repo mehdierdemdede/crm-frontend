@@ -1398,6 +1398,35 @@ export const saveFacebookLeadRule = async (
     }
 };
 
+export const updateFacebookLeadRule = async (
+    ruleId: string,
+    payload: SaveFacebookLeadRuleRequest,
+): Promise<FacebookLeadRule> => {
+    const headers = getAuthHeaders();
+    try {
+        const response = await fetch(
+            `${BASE_URL}/lead-distribution/facebook/rules/${ruleId}`,
+            {
+                method: "PUT",
+                headers,
+                body: JSON.stringify(payload),
+            },
+        );
+        const body = await extractResponseBody(response);
+        if (!response.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Lead dağıtım kuralı güncellenirken bir hata oluştu."),
+            );
+        }
+        return (body ?? null) as FacebookLeadRule;
+    } catch (error) {
+        console.error("updateFacebookLeadRule error:", error);
+        throw error instanceof Error
+            ? error
+            : new Error("Lead dağıtım kuralı güncellenirken bir hata oluştu.");
+    }
+};
+
 export const deleteFacebookLeadRule = async (ruleId: string): Promise<void> => {
     const headers = getAuthHeaders();
     try {
