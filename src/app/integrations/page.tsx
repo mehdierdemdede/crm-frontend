@@ -474,13 +474,12 @@ export default function IntegrationsPage() {
 
                         {alert && (
                             <div
-                                className={`rounded-md border px-3 py-2 text-sm ${
-                                    alert.type === "success"
-                                        ? "border-green-200 bg-green-50 text-green-700"
-                                        : alert.type === "error"
-                                            ? "border-red-200 bg-red-50 text-red-700"
-                                            : "border-blue-200 bg-blue-50 text-blue-700"
-                                }`}
+                                className={`rounded-md border px-3 py-2 text-sm ${alert.type === "success"
+                                    ? "border-green-200 bg-green-50 text-green-700"
+                                    : alert.type === "error"
+                                        ? "border-red-200 bg-red-50 text-red-700"
+                                        : "border-blue-200 bg-blue-50 text-blue-700"
+                                    }`}
                             >
                                 {alert.message}
                             </div>
@@ -515,9 +514,8 @@ export default function IntegrationsPage() {
 
                                 {facebookStatusMessage && (
                                     <div
-                                        className={`rounded-md border px-3 py-2 text-xs ${
-                                            MESSAGE_TONE_CLASS[facebookStatusMessage.tone]
-                                        }`}
+                                        className={`rounded-md border px-3 py-2 text-xs ${MESSAGE_TONE_CLASS[facebookStatusMessage.tone]
+                                            }`}
                                     >
                                         {facebookStatusMessage.message}
                                     </div>
@@ -592,9 +590,8 @@ export default function IntegrationsPage() {
 
                                 {googleStatusMessage && (
                                     <div
-                                        className={`rounded-md border px-3 py-2 text-xs ${
-                                            MESSAGE_TONE_CLASS[googleStatusMessage.tone]
-                                        }`}
+                                        className={`rounded-md border px-3 py-2 text-xs ${MESSAGE_TONE_CLASS[googleStatusMessage.tone]
+                                            }`}
                                     >
                                         {googleStatusMessage.message}
                                     </div>
