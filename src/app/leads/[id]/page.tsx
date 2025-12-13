@@ -89,32 +89,44 @@ const ACTION_BUTTON_TYPES = new Set<LeadAction["actionType"]>([
 ]);
 
 const formatAdInfo = (lead: LeadResponse): string => {
+    // 1. Organik mi?
+    if (lead.organic) return "Organik";
+
+    // 2. Facebook/Google Ad verileri
+    const parts: string[] = [];
+
+    // Kampanya Adı (Kullanıcının isteği üzerine öncelik)
+    const campaignName = lead.fbCampaignName || lead.campaignName;
+    if (campaignName && typeof campaignName === "string" && campaignName.trim()) {
+        parts.push(campaignName.trim());
+    }
+
+    // Reklam Adı (Özellikle istendi)
+    const adName = lead.adName;
+    if (adName && typeof adName === "string" && adName.trim()) {
+        parts.push(adName.trim());
+    }
+
+    // Eğer yukarıdakiler yoksa eski mantıklar
+    if (parts.length > 0) {
+        return parts.join(" / ");
+    }
+
+    // 3. İlişkili CRM Kampanyası
+    if (lead.campaign?.name) {
+        return lead.campaign.name;
+    }
+
+    // 4. Legacy fallback
     const legacyLead = lead as unknown as {
         ad_name?: unknown;
         ad_info?: unknown;
         campaign_name?: unknown;
-        adset_name?: unknown;
     };
-
     const rawAdInfo = lead.adInfo ?? legacyLead.ad_info;
-    const adInfo = typeof rawAdInfo === "string" ? rawAdInfo.trim() : "";
-    if (adInfo) return adInfo;
+    if (typeof rawAdInfo === "string" && rawAdInfo.trim()) return rawAdInfo.trim();
 
-    const rawAdName = lead.adName ?? legacyLead.ad_name;
-    const adName = typeof rawAdName === "string" ? rawAdName.trim() : "";
-    if (adName) return adName;
-
-    const rawCampaignName = lead.campaign?.name ?? lead.campaignName ?? legacyLead.campaign_name;
-    const campaignName = typeof rawCampaignName === "string" ? rawCampaignName.trim() : "";
-
-    const rawAdsetName = lead.adsetName ?? legacyLead.adset_name;
-    const adsetName = typeof rawAdsetName === "string" ? rawAdsetName.trim() : "";
-
-    const parts = [campaignName, adsetName].filter(Boolean);
-
-    if (parts.length > 0) return parts.join(" / ");
-
-    return "";
+    return "-";
 };
 
 const formatUserName = (user?: SimpleUser | null): string => {
@@ -436,11 +448,11 @@ export default function LeadDetailPage() {
                                     setLead((prev) =>
                                         prev
                                             ? {
-                                                  ...prev,
-                                                  status: "SOLD",
-                                                  lastSaleId: resolvedSaleId ?? undefined,
-                                                  lastSale: fetchedSale,
-                                              }
+                                                ...prev,
+                                                status: "SOLD",
+                                                lastSaleId: resolvedSaleId ?? undefined,
+                                                lastSale: fetchedSale,
+                                            }
                                             : prev
                                     );
                                 } else {
@@ -448,9 +460,9 @@ export default function LeadDetailPage() {
                                     setLead((prev) =>
                                         prev
                                             ? {
-                                                  ...prev,
-                                                  status: "SOLD",
-                                              }
+                                                ...prev,
+                                                status: "SOLD",
+                                            }
                                             : prev
                                     );
                                 }

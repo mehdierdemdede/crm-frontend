@@ -106,6 +106,8 @@ export interface LeadResponse {
     firstActionDelayMinutes?: number | null;
     lastSaleId?: string | null; // ✅ eklendi
     lastSale?: SaleResponse | null;
+    fbCampaignName?: string | null;
+    organic?: boolean | null;
 }
 
 
@@ -350,8 +352,8 @@ const ensureLanguageResponse = (language: unknown): LanguageResponse => {
         typeof rawActive === "boolean"
             ? rawActive
             : rawActive == null
-              ? true
-              : Boolean(rawActive);
+                ? true
+                : Boolean(rawActive);
 
     return {
         id: String(id),
@@ -380,8 +382,8 @@ const ensureLanguageCatalogEntry = (entry: unknown): LanguageCatalogEntry => {
         typeof record.code === "string"
             ? record.code
             : typeof record.languageCode === "string"
-              ? record.languageCode
-              : null;
+                ? record.languageCode
+                : null;
 
     if (!rawCode || rawCode.trim().length === 0) {
         throw new Error("Dil kataloğu kaydında code alanı eksik.");
@@ -391,8 +393,8 @@ const ensureLanguageCatalogEntry = (entry: unknown): LanguageCatalogEntry => {
         typeof record.name === "string"
             ? record.name
             : typeof record.languageName === "string"
-              ? record.languageName
-              : null;
+                ? record.languageName
+                : null;
 
     if (!rawName || rawName.trim().length === 0) {
         throw new Error("Dil kataloğu kaydında name alanı eksik.");
@@ -402,8 +404,8 @@ const ensureLanguageCatalogEntry = (entry: unknown): LanguageCatalogEntry => {
         typeof record.flagEmoji === "string"
             ? record.flagEmoji
             : typeof record.flag === "string"
-              ? record.flag
-              : null;
+                ? record.flag
+                : null;
 
     return {
         code: rawCode.trim(),
@@ -1103,14 +1105,14 @@ export const initiateLeadCall = async (
                 typeof data.expiresAt === "string"
                     ? data.expiresAt
                     : typeof data.expireAt === "string"
-                    ? data.expireAt
-                    : null,
+                        ? data.expireAt
+                        : null,
             dialUrl:
                 typeof data.dialUrl === "string"
                     ? data.dialUrl
                     : typeof data.proxyUrl === "string"
-                    ? data.proxyUrl
-                    : null,
+                        ? data.proxyUrl
+                        : null,
         };
     } catch (err) {
         console.error("initiateLeadCall error:", err);
@@ -1159,8 +1161,8 @@ export const sendLeadWhatsAppMessage = async (
                 typeof data.deliveredAt === "string"
                     ? data.deliveredAt
                     : typeof data.sentAt === "string"
-                    ? data.sentAt
-                    : null,
+                        ? data.sentAt
+                        : null,
         };
     } catch (err) {
         console.error("sendLeadWhatsAppMessage error:", err);
