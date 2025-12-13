@@ -24,14 +24,7 @@ export default function SignupPage() {
                     </p>
                 </div>
 
-                <div className="pt-4 border-t border-gray-100">
-                    <Link href="/login" className="w-full block">
-                        <Button variant="outline" className="w-full h-11 text-base font-medium group">
-                            <ArrowLeft className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1" />
-                            Giriş Ekranına Dön
-                        </Button>
-                    </Link>
-                </div>
+
 
                 <div className="text-center">
                     <p className="text-xs text-gray-400">

@@ -109,7 +109,7 @@ const formatAdInfo = (lead: LeadResponse): string => {
     const adName = typeof rawAdName === "string" ? rawAdName.trim() : "";
     if (adName) return adName;
 
-    const rawCampaignName = lead.campaign?.name ?? lead.campaignName ?? legacyLead.campaign_name;
+    const rawCampaignName = lead.campaign?.name ?? lead.campaignName ?? lead.fbCampaignName ?? legacyLead.campaign_name;
     const campaignName = typeof rawCampaignName === "string" ? rawCampaignName.trim() : "";
 
     const rawAdsetName = lead.adsetName ?? legacyLead.adset_name;

@@ -100,7 +100,7 @@ export default function MemberForm({
                     <input
                         type="text"
                         id={firstNameId}
-                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm !text-gray-900 !bg-white focus:border-blue-500 focus:outline-none"
                         value={form.firstName}
                         onChange={(e) => setForm({ ...form, firstName: e.target.value })}
                         required
@@ -113,7 +113,7 @@ export default function MemberForm({
                     <input
                         type="text"
                         id={lastNameId}
-                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm !text-gray-900 !bg-white focus:border-blue-500 focus:outline-none"
                         value={form.lastName}
                         onChange={(e) => setForm({ ...form, lastName: e.target.value })}
                         required
@@ -129,7 +129,7 @@ export default function MemberForm({
                     <input
                         type="email"
                         id={emailId}
-                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm !text-gray-900 !bg-white focus:border-blue-500 focus:outline-none"
                         value={form.email}
                         onChange={(e) => setForm({ ...form, email: e.target.value })}
                         required
@@ -141,7 +141,7 @@ export default function MemberForm({
                     </label>
                     <select
                         id={roleId}
-                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm !text-gray-900 !bg-white focus:border-blue-500 focus:outline-none"
                         value={form.role}
                         onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
                     >
@@ -159,7 +159,7 @@ export default function MemberForm({
                     </label>
                     <select
                         id="organization-select"
-                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm !text-gray-900 !bg-white focus:border-blue-500 focus:outline-none"
                         value={form.organizationId || ""}
                         onChange={(e) => setForm({ ...form, organizationId: e.target.value })}
                     >
@@ -217,7 +217,7 @@ export default function MemberForm({
                         type="number"
                         min={0}
                         id={dailyCapacityId}
-                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm text-gray-900 bg-white focus:border-blue-500 focus:outline-none"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm !text-gray-900 !bg-white focus:border-blue-500 focus:outline-none"
                         value={form.dailyCapacity}
                         onChange={(e) =>
                             setForm({ ...form, dailyCapacity: Number(e.target.value) })

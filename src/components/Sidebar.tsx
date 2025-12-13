@@ -103,7 +103,7 @@ export default function Sidebar() {
                         {NavItem("/catalog/hotels", "Oteller", Building2)}
                         {NavItem("/reports", "Reports", BarChart2)}
                         {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
-                        {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
+
                     </ul>
                 </div>
                 <div className="pt-4 border-t">{LogoutBtn}</div>
