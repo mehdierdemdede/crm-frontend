@@ -18,7 +18,7 @@ import {
 } from "lucide-react";
 import React, { useState } from "react";
 
-import {useAuth} from "@/hooks/useAuth";
+import { useAuth } from "@/hooks/useAuth";
 
 import { Button } from "./Button";
 
@@ -39,10 +39,9 @@ export default function Sidebar() {
             <li key={href}>
                 <Link
                     href={href}
-                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition ${
-                        active ? "bg-blue-100 font-semibold text-blue-800"
-                            : "text-gray-700 hover:bg-gray-100"
-                    }`}
+                    className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition ${active ? "bg-blue-100 font-semibold text-blue-800"
+                        : "text-gray-700 hover:bg-gray-100"
+                        }`}
                     onClick={() => setOpen(false)}
                 >
                     <Icon className="h-4 w-4" />
@@ -106,7 +105,7 @@ export default function Sidebar() {
                         {NavItem("/catalog/hotels", "Oteller", Building2)}
                         {NavItem("/reports", "Reports", BarChart2)}
                         {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
-                        {isSuperAdmin ? NavItem("/settings/plan-management", "Plan Yönetimi", BadgeDollarSign) : null}
+                        {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
                     </ul>
                 </div>
                 <div className="pt-4 border-t">{LogoutBtn}</div>
@@ -142,7 +141,7 @@ export default function Sidebar() {
                                 {NavItem("/catalog/hotels", "Oteller", Building2)}
                                 {NavItem("/reports", "Reports", BarChart2)}
                                 {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
-                                {isSuperAdmin ? NavItem("/settings/plan-management", "Plan Yönetimi", BadgeDollarSign) : null}
+
                             </ul>
                         </div>
                         <div className="pt-4 border-t">{LogoutBtn}</div>
