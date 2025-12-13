@@ -92,39 +92,40 @@ const formatAdInfo = (lead: LeadResponse): string => {
     // 1. Organik mi?
     if (lead.organic) return "Organik";
 
-    // 2. Facebook/Google Ad verileri
-    const parts: string[] = [];
-
-    // Kampanya Adı (Kullanıcının isteği üzerine öncelik)
-    const campaignName = lead.fbCampaignName || lead.campaignName;
-    if (campaignName && typeof campaignName === "string" && campaignName.trim()) {
-        parts.push(campaignName.trim());
-    }
-
-    // Reklam Adı (Özellikle istendi)
-    const adName = lead.adName;
-    if (adName && typeof adName === "string" && adName.trim()) {
-        parts.push(adName.trim());
-    }
-
-    // Eğer yukarıdakiler yoksa eski mantıklar
-    if (parts.length > 0) {
-        return parts.join(" / ");
-    }
-
-    // 3. İlişkili CRM Kampanyası
-    if (lead.campaign?.name) {
-        return lead.campaign.name;
-    }
-
-    // 4. Legacy fallback
+    // 2. Raw Ad Info (Listede "Reklam" sütununda gösterilen değer - öncelikli)
     const legacyLead = lead as unknown as {
         ad_name?: unknown;
         ad_info?: unknown;
         campaign_name?: unknown;
     };
     const rawAdInfo = lead.adInfo ?? legacyLead.ad_info;
-    if (typeof rawAdInfo === "string" && rawAdInfo.trim()) return rawAdInfo.trim();
+    if (typeof rawAdInfo === "string" && rawAdInfo.trim()) {
+        return rawAdInfo.trim();
+    }
+
+    // 3. Facebook/Google Ad verileri (Parçalı)
+    const parts: string[] = [];
+
+    // Kampanya Adı
+    const campaignName = lead.fbCampaignName || lead.campaignName;
+    if (campaignName && typeof campaignName === "string" && campaignName.trim()) {
+        parts.push(campaignName.trim());
+    }
+
+    // Reklam Adı
+    const adName = lead.adName;
+    if (adName && typeof adName === "string" && adName.trim()) {
+        parts.push(adName.trim());
+    }
+
+    if (parts.length > 0) {
+        return parts.join(" / ");
+    }
+
+    // 4. İlişkili CRM Kampanyası
+    if (lead.campaign?.name) {
+        return lead.campaign.name;
+    }
 
     return "-";
 };
