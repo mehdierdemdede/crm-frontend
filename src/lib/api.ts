@@ -1,5 +1,4 @@
 // src/lib/api.ts
-import { z, type ZodSchema, type ZodTypeDef } from "zod";
 
 import { resolveBackendApiBaseUrl } from "./backendConfig";
 
@@ -90,7 +89,6 @@ export interface SimpleUser {
     lastName?: string | null;
     email: string;
     active: boolean;
-    [key: string]: unknown;
 }
 
 export interface LeadAction {
@@ -994,7 +992,7 @@ export const patchLeadAssign = async (leadId: string, userId: string | null): Pr
 };
 
 
-export const getUsers = async (): Promise<SimpleUser[]> => {
+export const getUsers = async (): Promise<UserResponse[]> => {
     const headers = getAuthHeaders();
     try {
         const res = await fetch(`${BASE_URL}/users`, { headers });
@@ -1164,6 +1162,25 @@ export const getLeadReports = async (
     }
 };
 
+// ──────────────────────────────── ORGANIZATION API ────────────────────────────────
+
+export interface Organization {
+    id: string;
+    name: string;
+}
+
+export const getOrganizations = async (): Promise<Organization[]> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/organizations`, { headers });
+        if (!res.ok) throw new Error("Organizasyon listesi alınamadı");
+        return await res.json();
+    } catch (err) {
+        console.error("getOrganizations error:", err);
+        return [];
+    }
+}
+
 // 📩 Kullanıcı Davet Servisleri
 export interface InviteUserRequest {
     firstName: string;
@@ -1174,7 +1191,7 @@ export interface InviteUserRequest {
     dailyCapacity: number;
     active: boolean;
     autoAssignEnabled: boolean;
-    organizationId?: string;
+    organizationId?: string; // Sadece SUPER_ADMIN için
 }
 
 export interface AcceptInviteRequest {

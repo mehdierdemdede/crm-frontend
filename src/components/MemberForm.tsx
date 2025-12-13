@@ -3,6 +3,7 @@
 import { useEffect, useId, useState } from "react";
 
 import { useLanguages } from "@/contexts/LanguageContext";
+import { Organization } from "@/lib/api";
 import { DEFAULT_LANGUAGE_OPTIONS } from "@/lib/languages";
 
 import { Button } from "./Button";
@@ -20,6 +21,7 @@ export interface MemberFormData {
     dailyCapacity: number;
     active: boolean;
     autoAssignEnabled: boolean;
+    organizationId?: string;
 }
 
 const defaultFormValues: MemberFormData = {
@@ -40,15 +42,17 @@ const withDefaults = (data?: MemberFormData): MemberFormData => ({
 });
 
 export default function MemberForm({
-                                       initialData,
-                                       onSubmit,
-                                       onCancel,
-                                       loading,
-                                   }: {
+    initialData,
+    onSubmit,
+    onCancel,
+    loading,
+    organizations,
+}: {
     initialData?: MemberFormData;
     onSubmit: (data: MemberFormData) => void;
     onCancel: () => void;
     loading?: boolean;
+    organizations?: Organization[];
 }) {
     const [form, setForm] = useState<MemberFormData>(withDefaults(initialData));
     const { languages, loading: languagesLoading } = useLanguages();
@@ -148,6 +152,26 @@ export default function MemberForm({
                 </div>
             </div>
 
+            {organizations && organizations.length > 0 && (
+                <div>
+                    <label className="block text-sm font-medium text-gray-700" htmlFor="organization-select">
+                        Organizasyon
+                    </label>
+                    <select
+                        id="organization-select"
+                        className="mt-1 w-full rounded border border-gray-300 p-2 text-sm focus:border-blue-500 focus:outline-none"
+                        value={form.organizationId || ""}
+                        onChange={(e) => setForm({ ...form, organizationId: e.target.value })}
+                    >
+                        <option value="">Seçiniz ({organizations.length} Organizasyon)</option>
+                        {organizations.map(org => (
+                            <option key={org.id} value={org.id}>{org.name}</option>
+                        ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">Super Admin olarak kullanıcıyı belirli bir organizasyona atayabilirsiniz.</p>
+                </div>
+            )}
+
             <div>
                 <span className="block text-sm font-medium text-gray-700">Diller</span>
                 <p id={languagesHintId} className="mt-1 text-xs text-gray-500">
@@ -170,11 +194,10 @@ export default function MemberForm({
                                     key={option.value}
                                     type="button"
                                     onClick={() => toggleLang(option.value)}
-                                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition ${
-                                        isSelected
-                                            ? "border-blue-500 bg-blue-50 text-blue-700"
-                                            : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
-                                    }`}
+                                    className={`flex items-center gap-2 rounded-full border px-3 py-1 text-sm transition ${isSelected
+                                        ? "border-blue-500 bg-blue-50 text-blue-700"
+                                        : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                                        }`}
                                 >
                                     <LanguageFlagIcon option={option} size={18} />
                                     <span>{option.label}</span>

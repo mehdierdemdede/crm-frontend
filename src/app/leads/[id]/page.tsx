@@ -18,6 +18,7 @@ import {
     patchLeadAssign,
     type LeadResponse,
     type LeadStatus,
+    type UserResponse,
     type SimpleUser,
     type SaleResponse,
 } from "@/lib/api";
@@ -150,7 +151,7 @@ export default function LeadDetailPage() {
     const [showSalesForm, setShowSalesForm] = useState(false);
     const [sale, setSale] = useState<SaleResponse | null>(null);
     const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
-    const [users, setUsers] = useState<SimpleUser[]>([]);
+    const [users, setUsers] = useState<UserResponse[]>([]);
     const [assignLoading, setAssignLoading] = useState(false);
     const statusSelectId = useId();
     const noteTextareaId = useId();

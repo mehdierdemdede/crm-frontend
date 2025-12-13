@@ -14,7 +14,6 @@ import {
     Menu,
     X,
     LogOut,
-    BadgeDollarSign,
 } from "lucide-react";
 import React, { useState } from "react";
 
@@ -27,7 +26,6 @@ export default function Sidebar() {
     const pathname = usePathname() || "/dashboard";
     const [open, setOpen] = useState(false);
     const { user, isLoading, logout } = useAuth();
-    const isSuperAdmin = user?.role === "SUPER_ADMIN";
 
     const NavItem = (
         href: string,

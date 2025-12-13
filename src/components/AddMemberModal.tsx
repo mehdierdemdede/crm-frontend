@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import {
     inviteUser,
@@ -18,6 +18,23 @@ interface AddMemberModalProps {
 
 export default function AddMemberModal({ isOpen, onClose, onSave }: AddMemberModalProps) {
     const [loading, setLoading] = useState(false);
+    const [organizations, setOrganizations] = useState<import("@/lib/api").Organization[]>([]); // Use imported type or ensure import
+
+    useEffect(() => {
+        if (isOpen) {
+            void fetchOrgsIfSuperAdmin();
+        }
+    }, [isOpen]);
+
+    const fetchOrgsIfSuperAdmin = async () => {
+        const { getCurrentUser, getOrganizations } = await import("@/lib/api");
+        const user = await getCurrentUser();
+        if (user?.role === "SUPER_ADMIN") {
+            const orgs = await getOrganizations();
+            setOrganizations(orgs);
+        }
+    };
+
     if (!isOpen) return null;
 
     const handleSubmit = async (data: MemberFormData) => {
@@ -34,6 +51,7 @@ export default function AddMemberModal({ isOpen, onClose, onSave }: AddMemberMod
                 dailyCapacity: data.dailyCapacity,
                 active: data.active,
                 autoAssignEnabled: data.autoAssignEnabled,
+                organizationId: data.organizationId,
             });
 
             if (response.status >= 200 && response.status < 300 && response.data) {
@@ -67,7 +85,7 @@ export default function AddMemberModal({ isOpen, onClose, onSave }: AddMemberMod
         <div className="fixed inset-0 flex items-center justify-center bg-black/50 z-50">
             <div className="bg-white rounded-lg shadow-lg w-full max-w-lg p-6">
                 <h2 className="text-lg font-semibold mb-4">Yeni Üye Ekle</h2>
-                <MemberForm onSubmit={handleSubmit} onCancel={onClose} loading={loading} />
+                <MemberForm onSubmit={handleSubmit} onCancel={onClose} loading={loading} organizations={organizations} />
             </div>
         </div>
     );
