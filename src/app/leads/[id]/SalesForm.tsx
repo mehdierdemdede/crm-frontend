@@ -51,8 +51,7 @@ export default function SalesForm({
         payload: SalesPayload,
         result: { sale?: SaleResponse | null; saleId?: string | null }
     ) => void;
-})
- {
+}) {
     const [step, setStep] = useState(1);
     const [errors, setErrors] = useState<string[]>([]);
     const [success, setSuccess] = useState(false);
@@ -182,12 +181,35 @@ export default function SalesForm({
         return errs.length === 0;
     };
 
+    const validateAll = () => {
+        const errs: string[] = [];
+        // Step 1 Check
+        if (!form.operationDate) errs.push("Operasyon tarihi seçilmelidir.");
+        if (!form.operationType) errs.push("Operasyon türü seçilmelidir.");
+
+        // Step 2 Check
+        if (form.price === "" || Number(form.price) <= 0)
+            errs.push("Geçerli bir fiyat giriniz.");
+
+        // Step 3 Check
+        if (!form.transferPreference) errs.push("Transfer tercihi seçilmelidir.");
+        if (!form.hotel) errs.push("Otel seçilmelidir.");
+        if (form.nights === "" || Number(form.nights) <= 0)
+            errs.push("Gece sayısı 1 veya üzeri olmalıdır.");
+        if (form.transferPreference === "YES" && form.transfer.length === 0)
+            errs.push("Transfer seçeneklerinden en az birini işaretleyiniz.");
+
+        setErrors(errs);
+        return errs.length === 0;
+    };
+
     const next = () => validateStep() && setStep((s) => s + 1);
     const prev = () => setStep((s) => s - 1);
 
     const submit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
-        if (!validateStep()) return;
+        // SUBMIT anında tüm formu doğrula
+        if (!validateAll()) return;
 
         setSubmitError(null);
         setSuccess(false);
@@ -206,7 +228,7 @@ export default function SalesForm({
             transferPreference: form.transferPreference || "NO",
         };
 
-        const { success: saleCreated, sale, saleId } = await createSale(payload, {
+        const { success: saleCreated, sale, saleId, message } = await createSale(payload, {
             passport: passportFile,
             flightTicket: flightTicketFile,
         });
@@ -222,7 +244,7 @@ export default function SalesForm({
             setDocumentUrl(url);
             setDocumentFileName(inferDocumentFileName(sale?.documentPath));
         } else {
-            setSubmitError("❌ Satış kaydedilemedi.");
+            setSubmitError(message || "❌ Satış kaydedilemedi.");
         }
     };
 
@@ -260,21 +282,19 @@ export default function SalesForm({
                         return (
                             <li
                                 key={label}
-                                className={`flex items-center gap-2 rounded-md border px-2 py-1 ${
-                                    active ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
-                                } transition-colors`}
+                                className={`flex items-center gap-2 rounded-md border px-2 py-1 ${active ? "border-blue-500 bg-blue-50" : "border-gray-200 bg-white"
+                                    } transition-colors`}
                             >
-                <span
-                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${
-                        done
-                            ? "bg-green-500 text-white"
-                            : active
-                                ? "bg-blue-600 text-white"
-                                : "bg-gray-200 text-gray-700"
-                    }`}
-                >
-                  {num}
-                </span>
+                                <span
+                                    className={`inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${done
+                                        ? "bg-green-500 text-white"
+                                        : active
+                                            ? "bg-blue-600 text-white"
+                                            : "bg-gray-200 text-gray-700"
+                                        }`}
+                                >
+                                    {num}
+                                </span>
                                 <span className="truncate">{label}</span>
                             </li>
                         );

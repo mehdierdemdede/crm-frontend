@@ -1480,7 +1480,7 @@ export interface SalesPayload {
 export const createSale = async (
     payload: SalesPayload,
     documents?: SaleDocumentsUpload,
-): Promise<{ success: boolean; sale?: SaleResponse | null; saleId?: string | null }> => {
+): Promise<{ success: boolean; sale?: SaleResponse | null; saleId?: string | null; message?: string }> => {
     const headers = getAuthHeaders();
     delete headers["Content-Type"]; // FormData kendi Content-Type'ını belirler
 
@@ -1498,12 +1498,27 @@ export const createSale = async (
             body: formData,
         });
 
-        if (!res.ok) throw new Error(await res.text());
+        if (!res.ok) {
+            const text = await res.text();
+            let errorMessage = text;
+            try {
+                const json = JSON.parse(text);
+                if (json.message) errorMessage = json.message;
+            } catch {
+                // Ignore JSON parse error, use text as is
+            }
+            throw new Error(errorMessage || "Lead için satış zaten mevcut veya bir hata oluştu.");
+        }
         const data = (await res.json()) as SaleResponse | null;
         return { success: true, sale: data, saleId: data?.id ?? null };
     } catch (err) {
         console.error("createSale error:", err);
-        return { success: false, sale: null, saleId: null };
+        return {
+            success: false,
+            sale: null,
+            saleId: null,
+            message: err instanceof Error ? err.message : "Satış oluşturulurken bir hata oluştu."
+        };
     }
 };
 
