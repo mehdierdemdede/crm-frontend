@@ -1,6 +1,4 @@
-import Link from "next/link";
-
-import { Users, RefreshCw, BarChart2, Shield, Lock, ArrowUpRight } from "lucide-react";
+import { Users, RefreshCw, BarChart2, Shield, Lock } from "lucide-react";
 
 import LoginForm from "./LoginForm";
 

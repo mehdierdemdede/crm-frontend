@@ -1,10 +1,6 @@
 "use client";
 
-import Link from "next/link";
-
-import { ArrowLeft, ShieldAlert } from "lucide-react";
-
-import { Button } from "@/components/Button";
+import { ShieldAlert } from "lucide-react";
 
 export default function SignupPage() {
     return (
