@@ -92,7 +92,7 @@ export default function Sidebar() {
             {/* DESKTOP SIDEBAR (fixed) */}
             <aside className="hidden md:flex flex-col justify-between h-screen w-64 p-4 border-r bg-white fixed left-0 top-0 z-20">
                 <div className="overflow-y-auto">
-                    <div className="mb-4 text-xl font-bold">CRM Pro</div>
+                    <div className="mb-4 text-xl font-bold">Patient Trace</div>
                     {UserBlock}
                     <ul className="space-y-1">
                         {NavItem("/dashboard", "Dashboard", Home)}
@@ -111,7 +111,7 @@ export default function Sidebar() {
 
             {/* MOBILE TOP BAR */}
             <div className="md:hidden flex items-center justify-between bg-white border-b px-4 py-3 sticky top-0 z-30 shadow-sm">
-                <div className="font-bold text-lg">CRM Pro</div>
+                <div className="font-bold text-lg">Patient Trace</div>
                 <button aria-label="Open menu" onClick={() => setOpen(true)}>
                     <Menu className="h-6 w-6" />
                 </button>

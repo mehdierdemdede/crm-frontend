@@ -469,7 +469,7 @@ export default function IntegrationsPage() {
                     </CardHeader>
                     <CardContent className="flex flex-col gap-4">
                         <p>
-                            Facebook Ads üzerinden gelen lead’leri CRM’e otomatik olarak aktarın.
+                            Facebook Ads üzerinden gelen lead’leri Patient Trace'e otomatik olarak aktarın.
                         </p>
 
                         {alert && (
@@ -567,7 +567,7 @@ export default function IntegrationsPage() {
                     </CardHeader>
                     <CardContent className="flex flex-col gap-4">
                         <p>
-                            Google Ads üzerinden gelen lead’leri CRM’e otomatik olarak aktarın.
+                            Google Ads üzerinden gelen lead’leri Patient Trace'e otomatik olarak aktarın.
                         </p>
                         {statusLoading ? (
                             <p className="text-sm text-gray-500">

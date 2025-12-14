@@ -65,7 +65,7 @@ export default function DashboardPage() {
     }
 
     return (
-        <Layout title="CRM Dashboard" subtitle="Performans ve Durum Özeti">
+        <Layout title="Patient Trace Dashboard" subtitle="Performans ve Durum Özeti">
             {/* 🔹 Özet Kartlar */}
             <div className="col-span-12 grid md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <SummaryCard
@@ -152,7 +152,7 @@ export default function DashboardPage() {
                     <CardHeader>En İyi Performans Gösteren Kullanıcılar</CardHeader>
                     <CardContent className="h-72">
                         {Array.isArray(stats.userPerformance) &&
-                        stats.userPerformance.length > 0 ? (
+                            stats.userPerformance.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <BarChart data={stats.userPerformance}>
                                     <CartesianGrid strokeDasharray="3 3" />
@@ -176,7 +176,7 @@ export default function DashboardPage() {
                     <CardHeader>Lead Statü Dağılımı</CardHeader>
                     <CardContent className="h-72">
                         {Array.isArray(stats.statusBreakdown) &&
-                        stats.statusBreakdown.length > 0 ? (
+                            stats.statusBreakdown.length > 0 ? (
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
@@ -210,11 +210,11 @@ export default function DashboardPage() {
 
 // 🔹 Basit özet kart bileşeni
 function SummaryCard({
-                         icon,
-                         label,
-                         value,
-                         color,
-                     }: {
+    icon,
+    label,
+    value,
+    color,
+}: {
     icon: React.ReactNode;
     label: string;
     value: number;

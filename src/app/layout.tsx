@@ -7,8 +7,8 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "CRM Platformu",
-  description: "Müşteri ilişkilerini tek noktadan yönetin",
+  title: "Patient Trace",
+  description: "Hasta ilişkilerini tek noktadan yönetin",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

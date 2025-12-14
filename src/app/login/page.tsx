@@ -13,10 +13,10 @@ export default function LoginPage() {
                     <div>
                         <div className="logo flex items-center gap-2 text-lg font-bold">
                             <Users className="h-6 w-6" />
-                            CRM Pro
+                            Patient Trace
                         </div>
 
-                        <h2>Google & Facebook Entegrasyonlu CRM Çözümü</h2>
+                        <h2>Google & Facebook Entegrasyonlu Hasta Takip Çözümü</h2>
                     </div>
 
                     <div>

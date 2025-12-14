@@ -19,7 +19,7 @@ export default function PublicHeader() {
         <header className="border-b border-border bg-white/80 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-white/60 dark:bg-slate-950/80">
             <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
                 <Link href="/" className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    CRM Platformu
+                    Patient Trace
                 </Link>
                 <nav className="flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-200">
                     <Link href="/planlar" className="transition hover:text-primary">
