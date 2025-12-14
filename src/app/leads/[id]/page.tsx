@@ -105,11 +105,13 @@ const formatAdInfo = (lead: LeadResponse): string => {
     const adInfo = typeof rawAdInfo === "string" ? rawAdInfo.trim() : "";
     if (adInfo) return adInfo;
 
-    const rawAdName = lead.adName ?? legacyLead.ad_name;
-    const adName = typeof rawAdName === "string" ? rawAdName.trim() : "";
-    if (adName) return adName;
 
-    const rawCampaignName = lead.campaign?.name ?? lead.campaignName ?? lead.fbCampaignName ?? legacyLead.campaign_name;
+
+    const rawCampaignName =
+        (typeof lead.campaign === 'object' && lead.campaign !== null ? lead.campaign.name : undefined) ??
+        lead.campaignName ??
+        lead.fbCampaignName ??
+        legacyLead.campaign_name;
     const campaignName = typeof rawCampaignName === "string" ? rawCampaignName.trim() : "";
 
     const rawAdsetName = lead.adsetName ?? legacyLead.adset_name;
@@ -377,7 +379,7 @@ export default function LeadDetailPage() {
                         <p><b>Email:</b> {lead.email ?? "-"}</p>
                         <p><b>Telefon:</b> {lead.phone ?? "-"}</p>
                         <p>
-                            <b>Kampanya:</b> {formatAdInfo(lead)}
+                            <b>Reklam:</b> {formatAdInfo(lead)}
                         </p>
                         <p>
                             <b>Danışman:</b>{" "}
