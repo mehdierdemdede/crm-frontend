@@ -476,6 +476,12 @@ export interface FacebookLeadFetchSummary {
     updated: number;
 }
 
+export interface GoogleLeadFetchSummary {
+    fetched: number;
+    created: number;
+    updated: number;
+}
+
 export const getIntegrationStatuses = async (): Promise<
     ApiResponse<IntegrationStatus[]>
 > => {
@@ -573,6 +579,81 @@ export const triggerFacebookLeadFetch = async (): Promise<
             return {
                 status: response.status,
                 data: body as FacebookLeadFetchSummary,
+            };
+        }
+
+        return {
+            status: response.status,
+            message: resolveErrorMessage(body),
+        };
+    } catch (error) {
+        return {
+            status: 0,
+            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
+        };
+    }
+};
+
+export const getGoogleOAuthUrl = async (): Promise<ApiResponse<{ url: string }>> => {
+    const headers = getAuthHeaders();
+
+    try {
+        const response = await fetch(`${BASE_URL}/integrations/oauth2/authorize/google`, {
+            headers,
+        });
+
+        const body = await extractResponseBody(response);
+
+        if (response.ok) {
+            const rawUrl =
+                typeof body === "string"
+                    ? body
+                    : body && typeof body === "object" && "url" in body
+                        ? (body as { url?: string }).url
+                        : null;
+
+            if (rawUrl && typeof rawUrl === "string") {
+                return { status: response.status, data: { url: rawUrl } };
+            }
+
+            return {
+                status: response.status,
+                message: "Beklenmedik OAuth yanıtı alındı.",
+            };
+        }
+
+        return {
+            status: response.status,
+            message: resolveErrorMessage(body),
+        };
+    } catch (error) {
+        return {
+            status: 0,
+            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
+        };
+    }
+};
+
+export const triggerGoogleLeadFetch = async (): Promise<
+    ApiResponse<GoogleLeadFetchSummary>
+> => {
+    const headers = getAuthHeaders();
+
+    try {
+        const response = await fetch(
+            `${BASE_URL}/integrations/fetch-leads/google`,
+            {
+                method: "POST",
+                headers,
+            }
+        );
+
+        const body = await extractResponseBody(response);
+
+        if (response.ok) {
+            return {
+                status: response.status,
+                data: body as GoogleLeadFetchSummary,
             };
         }
 
