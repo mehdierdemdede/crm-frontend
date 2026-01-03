@@ -41,15 +41,21 @@ export interface UserResponse {
 export interface SaleResponse {
     id: string;
     leadId: string;
-    operationDate?: string;
-    operationType?: string;
+    organizationId: string;
+    userId: string;
     price?: number;
-    currency?: "TRY" | "USD" | "EUR" | "GBP" | string;
+    saleAmount?: number; // Backend compatibility
+    currency: "TRY" | "USD" | "EUR" | "GBP";
+    commission: number;
+    status: "PENDING" | "COMPLETED" | "CANCELLED";
+    notes?: string;
+    operationType?: string;
+    operationDate?: string;
     hotel?: string;
     nights?: number;
     transfer?: string[];
-    documentPath?: string | null;
-    createdAt?: string;
+    createdAt: string;
+    updatedAt: string;
 }
 
 export interface SaleDocumentsUpload {

@@ -54,7 +54,7 @@ export default function EditMemberModal({
     useEffect(() => {
         if (isOpen && member.userId) {
             setLoading(true);
-            getUser(member.userId).then((user) => {
+            void getUser(member.userId).then((user) => {
                 if (user) setUserDetails(user);
                 setLoading(false);
             });

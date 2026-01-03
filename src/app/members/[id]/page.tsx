@@ -18,7 +18,7 @@ import { Button } from "@/components/Button";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import EditMemberModal from "@/components/EditMemberModal";
 import Layout from "@/components/Layout";
-import { getAutoAssignStats, updateUser, type AgentStatsResponse } from "@/lib/api";
+import { getAutoAssignStats, updateUser, type AgentStatsResponse, type Role } from "@/lib/api";
 
 
 export default function MemberDetailPage() {
@@ -123,7 +123,7 @@ export default function MemberDetailPage() {
                     isOpen={openEdit}
                     member={member}
                     onClose={() => setOpenEdit(false)}
-                    onUpdate={async (updated) => {
+                    onUpdate={async (updated: AgentStatsResponse & { role?: Role }) => {
                         const nameParts = updated.fullName.trim().split(/\s+/);
                         const firstName = nameParts[0] || "";
                         const lastName = nameParts.slice(1).join(" ") || "";
@@ -144,7 +144,7 @@ export default function MemberDetailPage() {
                             active: updated.active,
                             autoAssignEnabled: updated.autoAssignEnabled,
                             dailyCapacity: updated.dailyCapacity,
-                            role: (updated as any).role // Type assertion needed or update AgentStatsResponse type? Ideally type assertion as quick fix since we passed it from modal
+                            role: updated.role,
                         });
 
                         setMember(updated);
