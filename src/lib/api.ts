@@ -811,6 +811,18 @@ export const getUsers = async (): Promise<UserResponse[]> => {
     }
 };
 
+export const getUser = async (userId: string): Promise<UserResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/users/${userId}`, { headers });
+        if (!res.ok) throw new Error("Kullanıcı bilgisi alınamadı");
+        return await res.json();
+    } catch (err) {
+        console.error("getUser error:", err);
+        return null;
+    }
+};
+
 
 
 // ──────────────────────────────── LEAD ACTIONS (user actions) ────────────────────────────────

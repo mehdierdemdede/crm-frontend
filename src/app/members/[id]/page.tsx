@@ -144,6 +144,7 @@ export default function MemberDetailPage() {
                             active: updated.active,
                             autoAssignEnabled: updated.autoAssignEnabled,
                             dailyCapacity: updated.dailyCapacity,
+                            role: (updated as any).role // Type assertion needed or update AgentStatsResponse type? Ideally type assertion as quick fix since we passed it from modal
                         });
 
                         setMember(updated);
