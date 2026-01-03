@@ -396,17 +396,35 @@ export default function SalesForm({
                                 }
                             >
                                 <option value="">Seçiniz</option>
-                                <optgroup label="Saç Ekim">
-                                    <option value="Saç - FUE">Saç - FUE</option>
-                                    <option value="Saç - DHI">Saç - DHI</option>
-                                    <option value="Saç - Kök Hücre">Saç - Kök Hücre</option>
+                                <optgroup label="Saç Ekim (Hair)">
+                                    <option value="FUE Saç Ekimi">FUE Saç Ekimi</option>
+                                    <option value="DHI Saç Ekimi">DHI Saç Ekimi</option>
+                                    <option value="Safir FUE">Safir FUE</option>
+                                    <option value="Tıraşsız Saç Ekimi">Tıraşsız Saç Ekimi</option>
+                                    <option value="Sakal & Bıyık Ekimi">Sakal & Bıyık Ekimi</option>
+                                    <option value="Kaş Ekimi">Kaş Ekimi</option>
                                 </optgroup>
-                                <optgroup label="Estetik">
-                                    <option value="Burun Estetiği">Burun Estetiği</option>
-                                    <option value="Liposuction">Liposuction</option>
+                                <optgroup label="Diş Tedavisi (Dental)">
+                                    <option value="Hollywood Smile">Hollywood Smile</option>
+                                    <option value="Dental İmplant">Dental İmplant</option>
+                                    <option value="Zirkonyum Kaplama">Zirkonyum Kaplama</option>
+                                    <option value="All-on-4 / All-on-6">All-on-4 / All-on-6</option>
+                                    <option value="Diş Beyazlatma">Diş Beyazlatma</option>
+                                    <option value="Laminate Veneer">Laminate Veneer</option>
+                                </optgroup>
+                                <optgroup label="Estetik Cerrahi (Plastic Surgery)">
+                                    <option value="Burun Estetiği (Rhinoplasty)">Burun Estetiği (Rhinoplasty)</option>
+                                    <option value="Meme Büyütme / Küçültme">Meme Büyütme / Küçültme</option>
+                                    <option value="Liposuction (Yağ Aldırma)">Liposuction (Yağ Aldırma)</option>
+                                    <option value="Karın Germe (Abdominoplasty)">Karın Germe (Abdominoplasty)</option>
                                     <option value="BBL (Brezilya Popo)">BBL (Brezilya Popo)</option>
-                                    <option value="Meme Büyütme">Meme Büyütme</option>
-                                    <option value="Mide Ameliyatları">Mide Ameliyatları</option>
+                                    <option value="Yüz Germe (Face Lift)">Yüz Germe (Face Lift)</option>
+                                    <option value="Göz Kapağı Estetiği">Göz Kapağı Estetiği</option>
+                                </optgroup>
+                                <optgroup label="Obezite Cerrahisi (Bariatric)">
+                                    <option value="Tüp Mide (Gastric Sleeve)">Tüp Mide (Gastric Sleeve)</option>
+                                    <option value="Gastrik Bypass">Gastrik Bypass</option>
+                                    <option value="Mide Balonu">Mide Balonu</option>
                                 </optgroup>
                             </select>
                         </div>

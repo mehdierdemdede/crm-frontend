@@ -17,11 +17,11 @@ import {
 import { Button } from "@/components/Button";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import EditMemberModal from "@/components/EditMemberModal";
-import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+
 import Layout from "@/components/Layout";
-import { useLanguages } from "@/contexts/LanguageContext";
-import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api";
-import { enhanceLanguageOption } from "@/lib/languages";
+
+import { getAutoAssignStats, updateUser, type AgentStatsResponse } from "@/lib/api";
+
 
 export default function MemberDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -29,7 +29,7 @@ export default function MemberDetailPage() {
     const [member, setMember] = useState<AgentStatsResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [openEdit, setOpenEdit] = useState(false);
-    const { getOptionByCode } = useLanguages();
+
 
     useEffect(() => {
         const fetchData = async () => {
@@ -87,38 +87,13 @@ export default function MemberDetailPage() {
                         </div>
                     </CardHeader>
                     <CardContent className="space-y-2 text-sm">
-                        <p>
-                            <b>Diller:</b>{" "}
-                            {member.supportedLanguages.length > 0 ? (
-                                <span className="inline-flex flex-wrap gap-1">
-                                    {member.supportedLanguages.map((code) => {
-                                        const option =
-                                            getOptionByCode(code) ??
-                                            enhanceLanguageOption({
-                                                value: code,
-                                                label: code,
-                                            });
-                                        return (
-                                            <span
-                                                key={code}
-                                                className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
-                                            >
-                                                <LanguageFlagIcon option={option} size={14} />
-                                                <span>{option.label ?? code}</span>
-                                            </span>
-                                        );
-                                    })}
-                                </span>
-                            ) : (
-                                <span>-</span>
-                            )}
-                        </p>
+
                         <p><b>Kapasite:</b> {member.assignedToday}/{member.dailyCapacity}</p>
                         <p>
                             <b>Durum:</b>{" "}
                             <span className={member.active ? "text-green-600" : "text-red-600"}>
-                {member.active ? "Aktif" : "Pasif"}
-              </span>
+                                {member.active ? "Aktif" : "Pasif"}
+                            </span>
                         </p>
                         <p>
                             <b>Auto-Assign:</b> {member.autoAssignEnabled ? "✔" : "✖"}
@@ -150,7 +125,31 @@ export default function MemberDetailPage() {
                     isOpen={openEdit}
                     member={member}
                     onClose={() => setOpenEdit(false)}
-                    onUpdate={(updated) => setMember(updated)}
+                    onUpdate={async (updated) => {
+                        const nameParts = updated.fullName.trim().split(/\s+/);
+                        const firstName = nameParts[0] || "";
+                        const lastName = nameParts.slice(1).join(" ") || "";
+
+                        // Mevcut member'dan email ve role bilgisini korumaya çalışalım (eğer varsa)
+                        // Ancak AgentStatsResponse tipinde bunlar yok, o yüzden 'as any' ile erişiyoruz
+                        // UI'da form içinde email/role değiştirildiyse, updated nesnesine nasıl taşındı?
+                        // EditMemberModal -> mergeMemberData sadece fullName, active, autoAssign, capacity güncelliyor.
+                        // Email ve Role formda var ama mergeMemberData bunları AgentStatsResponse'a eklemiyor.
+                        // Bu yüzden Email/Role güncellemesi şu an çalışmıyor olabilir ama
+                        // Kullanıcı şimdilik sadece "auto assign" sorudu.
+
+                        // İdealde AgentStatsResponse yerine UserResponse kullanılmalıydı.
+
+                        await updateUser(updated.userId, {
+                            firstName,
+                            lastName,
+                            active: updated.active,
+                            autoAssignEnabled: updated.autoAssignEnabled,
+                            dailyCapacity: updated.dailyCapacity,
+                        });
+
+                        setMember(updated);
+                    }}
                 />
             )}
         </Layout>

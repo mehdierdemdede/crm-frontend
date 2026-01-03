@@ -9,7 +9,7 @@ import {
     FileText,
     Plug,
     Activity,
-    Globe,
+
     Building2,
     Menu,
     X,
@@ -99,7 +99,7 @@ export default function Sidebar() {
                         {NavItem("/leads", "Leads", FileText)}
                         {NavItem("/members", "Members", Users)}
                         {NavItem("/integrations", "Integrations", Plug)}
-                        {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
+
                         {NavItem("/catalog/hotels", "Oteller", Building2)}
                         {NavItem("/reports", "Reports", BarChart2)}
                         {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}
@@ -135,7 +135,7 @@ export default function Sidebar() {
                                 {NavItem("/leads", "Leads", FileText)}
                                 {NavItem("/members", "Members", Users)}
                                 {NavItem("/integrations", "Integrations", Plug)}
-                                {NavItem("/settings/languages", "Dil Yönetimi", Globe)}
+
                                 {NavItem("/catalog/hotels", "Oteller", Building2)}
                                 {NavItem("/reports", "Reports", BarChart2)}
                                 {NavItem("/lead-assignment", "Lead Auto Assign", Activity)}

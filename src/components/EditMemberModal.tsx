@@ -22,7 +22,6 @@ const toFormData = (member: AgentStatsResponse): MemberFormData => {
         lastName,
         email: (member as unknown as { email?: string })?.email || "",
         role: ((member as unknown as { role?: MemberFormData["role"] })?.role) || "USER",
-        supportedLanguages: member.supportedLanguages || [],
         dailyCapacity: member.dailyCapacity || 0,
         active: member.active,
         autoAssignEnabled: member.autoAssignEnabled,
@@ -37,17 +36,16 @@ const mergeMemberData = (
     fullName: `${form.firstName} ${form.lastName}`.trim(),
     active: form.active,
     autoAssignEnabled: form.autoAssignEnabled,
-    supportedLanguages: form.supportedLanguages,
     dailyCapacity: form.dailyCapacity,
     remainingCapacity: Math.max(form.dailyCapacity - original.assignedToday, 0),
 });
 
 export default function EditMemberModal({
-                                            isOpen,
-                                            member,
-                                            onClose,
-                                            onUpdate,
-                                        }: EditMemberModalProps) {
+    isOpen,
+    member,
+    onClose,
+    onUpdate,
+}: EditMemberModalProps) {
     if (!isOpen) return null;
 
     return (

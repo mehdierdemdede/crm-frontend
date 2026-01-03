@@ -5,10 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader } from "@/components/Card";
-import { LanguageFlagIcon } from "@/components/LanguageFlagIcon";
+
 import Layout from "@/components/Layout";
 import { dispatchToast } from "@/components/toaster";
-import { useLanguages } from "@/contexts/LanguageContext";
+
 import {
     deleteFacebookLeadRule,
     getAutoAssignStats,
@@ -24,7 +24,7 @@ import {
     type FacebookLeadTreePage,
     type SaveFacebookLeadRuleRequest,
 } from "@/lib/api";
-import { enhanceLanguageOption } from "@/lib/languages";
+
 
 interface UserSelectionState {
     selected: boolean;
@@ -85,7 +85,7 @@ export default function LeadAssignmentPage() {
 
     const [formError, setFormError] = useState<string | null>(null);
     const [formSuccess, setFormSuccess] = useState<string | null>(null);
-    const { getOptionByCode } = useLanguages();
+
 
     const refreshTree = useCallback(async () => {
         try {
@@ -309,12 +309,12 @@ export default function LeadAssignmentPage() {
             next[userId] = currentlySelected
                 ? { ...existing, selected: false }
                 : {
-                      selected: true,
-                      frequency:
-                          typeof existing.frequency === "number" && existing.frequency >= 1
-                              ? existing.frequency
-                              : 1,
-                  };
+                    selected: true,
+                    frequency:
+                        typeof existing.frequency === "number" && existing.frequency >= 1
+                            ? existing.frequency
+                            : 1,
+                };
             return next;
         });
 
@@ -660,7 +660,7 @@ export default function LeadAssignmentPage() {
                                     <thead>
                                         <tr className="bg-gray-100 text-left text-xs uppercase tracking-wide text-gray-600">
                                             <th className="px-2 py-2">İsim</th>
-                                            <th className="px-2 py-2">Diller</th>
+
                                             <th className="px-2 py-2">Frekans</th>
                                             <th className="px-2 py-2">Sıra</th>
                                             <th className="px-2 py-2 text-center">Kurala Dahil</th>
@@ -676,8 +676,8 @@ export default function LeadAssignmentPage() {
                                             const checkboxTitle = !agent.active
                                                 ? "Kullanıcı pasif olduğu için otomatik atamaya dahil edilemez."
                                                 : !agent.autoAssignEnabled
-                                                ? "Auto-assign özelliği kapalı."
-                                                : undefined;
+                                                    ? "Auto-assign özelliği kapalı."
+                                                    : undefined;
 
                                             return (
                                                 <tr key={agent.userId} className="border-t align-top">
@@ -687,20 +687,18 @@ export default function LeadAssignmentPage() {
                                                         </div>
                                                         <div className="mt-1 flex flex-wrap gap-1 text-xs">
                                                             <span
-                                                                className={`rounded-full px-2 py-0.5 ${
-                                                                    agent.active
+                                                                className={`rounded-full px-2 py-0.5 ${agent.active
                                                                         ? "bg-green-100 text-green-700"
                                                                         : "bg-red-100 text-red-700"
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {agent.active ? "Aktif" : "Pasif"}
                                                             </span>
                                                             <span
-                                                                className={`rounded-full px-2 py-0.5 ${
-                                                                    agent.autoAssignEnabled
+                                                                className={`rounded-full px-2 py-0.5 ${agent.autoAssignEnabled
                                                                         ? "bg-blue-100 text-blue-700"
                                                                         : "bg-gray-200 text-gray-600"
-                                                                }`}
+                                                                    }`}
                                                             >
                                                                 {agent.autoAssignEnabled
                                                                     ? "Auto-Assign Açık"
@@ -708,30 +706,7 @@ export default function LeadAssignmentPage() {
                                                             </span>
                                                         </div>
                                                     </td>
-                                                    <td className="px-2 py-2 text-gray-600">
-                                                        <div className="flex flex-wrap gap-1">
-                                                            {agent.supportedLanguages.map((code) => {
-                                                                const option =
-                                                                    getOptionByCode(code) ??
-                                                                    enhanceLanguageOption({
-                                                                        value: code,
-                                                                        label: code,
-                                                                    });
-                                                                return (
-                                                                    <span
-                                                                        key={`${agent.userId}-${code}`}
-                                                                        className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
-                                                                    >
-                                                                        <LanguageFlagIcon
-                                                                            option={option}
-                                                                            size={14}
-                                                                        />
-                                                                        <span>{option.label ?? code}</span>
-                                                                    </span>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                    </td>
+
                                                     <td className="px-2 py-2">
                                                         <input
                                                             type="number"
@@ -852,9 +827,8 @@ export default function LeadAssignmentPage() {
                                             return (
                                                 <tr
                                                     key={rule.id}
-                                                    className={`border-t align-top ${
-                                                        isActiveRule ? "bg-blue-50" : ""
-                                                    }`}
+                                                    className={`border-t align-top ${isActiveRule ? "bg-blue-50" : ""
+                                                        }`}
                                                 >
                                                     <td className="px-3 py-2 font-medium text-gray-800">
                                                         <div>{formatLabel(rule.pageName, rule.pageId)}</div>

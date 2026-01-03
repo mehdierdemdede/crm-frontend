@@ -13,7 +13,7 @@ import Layout from "@/components/Layout";
 import Modal from "@/components/Modal";
 import { Skeleton } from "@/components/Skeleton";
 import { ToastContainer, type ToastMessage } from "@/components/Toast";
-import { useLanguages } from "@/contexts/LanguageContext";
+
 import { useAuth } from "@/hooks/useAuth";
 import useDebounce from "@/hooks/useDebounce";
 import {
@@ -33,7 +33,7 @@ import {
     type LeadCallResult,
     type LeadWhatsAppMessageResponse,
 } from "@/lib/api";
-import { enhanceLanguageOption, type LanguageOption } from "@/lib/languages";
+
 
 
 type SortableColumn = "name" | "assignedToUser" | "createdAt";
@@ -85,7 +85,7 @@ const INITIAL_CREATE_FORM = {
     name: "",
     email: "",
     phone: "",
-    language: "",
+
 };
 
 const parseDurationToMinutes = (value: string, unit: DurationUnit): number | undefined => {
@@ -234,7 +234,7 @@ export default function LeadsPage() {
     const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(20);
 
     const { user } = useAuth();
-    const { languages } = useLanguages();
+
 
     const responseMinMinutes = useMemo(
         () => parseDurationToMinutes(actionDurationMin, actionDurationUnit),
@@ -319,10 +319,10 @@ export default function LeadsPage() {
             return source.filter((lead) => {
                 const matchesSearch = searchValue
                     ? [lead.name, lead.email, lead.campaign?.name]
-                          .filter(Boolean)
-                          .some((field) =>
-                              String(field).toLowerCase().includes(searchValue),
-                          )
+                        .filter(Boolean)
+                        .some((field) =>
+                            String(field).toLowerCase().includes(searchValue),
+                        )
                     : true;
 
                 const adInfo = formatAdInfo(lead).toLowerCase();
@@ -428,31 +428,7 @@ export default function LeadsPage() {
         user?.id,
     ]);
 
-    const languageOptions = useMemo(() => {
-        const map = new Map<string, LanguageOption>();
 
-        languages
-            .filter((lang) => lang.active ?? true)
-            .forEach((lang) => {
-                map.set(lang.value, enhanceLanguageOption(lang));
-            });
-
-        leads.forEach((lead) => {
-            if (lead.language && !map.has(lead.language)) {
-                map.set(
-                    lead.language,
-                    enhanceLanguageOption({
-                        value: lead.language,
-                        label: lead.language,
-                    }),
-                );
-            }
-        });
-
-        return Array.from(map.values()).sort((a, b) =>
-            a.label.localeCompare(b.label, "tr"),
-        );
-    }, [languages, leads]);
 
     const displayedLeads = useMemo(
         () => applyClientFilters(leads),
@@ -533,9 +509,8 @@ export default function LeadsPage() {
             );
             showToast({
                 title: "Durum güncellendi",
-                description: `${targetLead.name ?? "Lead"} durumu "${
-                    STATUS_LABELS[newStatus] ?? newStatus
-                }" olarak işaretlendi.`,
+                description: `${targetLead.name ?? "Lead"} durumu "${STATUS_LABELS[newStatus] ?? newStatus
+                    }" olarak işaretlendi.`,
                 variant: "success",
             });
 
@@ -561,9 +536,9 @@ export default function LeadsPage() {
                 prev.map((l) =>
                     l.id === leadId
                         ? {
-                              ...l,
-                              assignedToUser: assignedUser,
-                          }
+                            ...l,
+                            assignedToUser: assignedUser,
+                        }
                         : l,
                 ),
             );
@@ -888,7 +863,7 @@ export default function LeadsPage() {
                 name: trimmedName,
                 email: createLeadForm.email.trim() || undefined,
                 phone: createLeadForm.phone.trim() || undefined,
-                language: createLeadForm.language || undefined,
+
             };
 
             const newLead = await createLead(payload);
@@ -1252,7 +1227,7 @@ export default function LeadsPage() {
                                                         </td>
                                                     </tr>
                                                 ))}
-                                        </tbody>
+                                            </tbody>
                                         </table>
                                     </div>
 
@@ -1336,156 +1311,154 @@ export default function LeadsPage() {
                                                         return (
                                                             <tr
                                                                 key={lead.id}
-                                                                className={`border-t transition-colors ${
-                                                                    isSelected
-                                                                        ? "bg-blue-50"
+                                                                className={`border-t transition-colors ${isSelected
+                                                                    ? "bg-blue-50"
                                                                     : "hover:bg-blue-50 even:bg-gray-50"
-                                                            }`}
-                                                        >
-                                                            <td className="p-3">
-                                                                <input
-                                                                    type="checkbox"
-                                                                    className="h-4 w-4 rounded border-gray-300"
-                                                                    checked={isSelected}
-                                                                    onChange={() => toggleLeadSelection(lead.id)}
-                                                                />
-                                                            </td>
-                                                            <td className="p-3">
-                                                                <div className="flex items-center gap-2">
-                                                                    <Link
-                                                                        href={`/leads/${lead.id}`}
-                                                                        className="text-blue-600 hover:underline"
-                                                                    >
-                                                                        {lead.name ?? "-"}
-                                                                    </Link>
-                                                                </div>
-                                                                <div className="text-xs text-gray-500">
-                                                                    {getEmailDisplay(lead)}
-                                                                </div>
-                                                            </td>
-                                                            <td className="p-3 text-gray-700">
-                                                                <span className="block whitespace-nowrap">
-                                                                    {lead.phone ?? "-"}
-                                                                </span>
-                                                            </td>
-                                                            <td className="p-3 text-gray-700">
-                                                                {formatAdInfo(lead) || lead.campaign?.name || "-"}
-                                                            </td>
-                                                            <td className="p-3">
-                                                                <select
-                                                                    className={`border rounded-lg p-1.5 text-xs font-medium ${
-                                                                        STATUS_COLORS[
+                                                                    }`}
+                                                            >
+                                                                <td className="p-3">
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        className="h-4 w-4 rounded border-gray-300"
+                                                                        checked={isSelected}
+                                                                        onChange={() => toggleLeadSelection(lead.id)}
+                                                                    />
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <Link
+                                                                            href={`/leads/${lead.id}`}
+                                                                            className="text-blue-600 hover:underline"
+                                                                        >
+                                                                            {lead.name ?? "-"}
+                                                                        </Link>
+                                                                    </div>
+                                                                    <div className="text-xs text-gray-500">
+                                                                        {getEmailDisplay(lead)}
+                                                                    </div>
+                                                                </td>
+                                                                <td className="p-3 text-gray-700">
+                                                                    <span className="block whitespace-nowrap">
+                                                                        {lead.phone ?? "-"}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="p-3 text-gray-700">
+                                                                    {formatAdInfo(lead) || lead.campaign?.name || "-"}
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <select
+                                                                        className={`border rounded-lg p-1.5 text-xs font-medium ${STATUS_COLORS[
                                                                             lead.status as LeadStatus
                                                                         ]
-                                                                    } focus:ring-2 focus:ring-blue-200`}
-                                                                    value={lead.status}
-                                                                    onChange={(e) =>
-                                                                        handleStatusChange(
-                                                                            lead.id,
-                                                                            e.target
-                                                                                .value as LeadStatus,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    {Object.entries(STATUS_LABELS).map(
-                                                                        ([val, label]) => (
+                                                                            } focus:ring-2 focus:ring-blue-200`}
+                                                                        value={lead.status}
+                                                                        onChange={(e) =>
+                                                                            handleStatusChange(
+                                                                                lead.id,
+                                                                                e.target
+                                                                                    .value as LeadStatus,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        {Object.entries(STATUS_LABELS).map(
+                                                                            ([val, label]) => (
+                                                                                <option
+                                                                                    key={val}
+                                                                                    value={val}
+                                                                                >
+                                                                                    {label}
+                                                                                </option>
+                                                                            ),
+                                                                        )}
+                                                                    </select>
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <select
+                                                                        className="border rounded-lg bg-white shadow-sm text-xs p-1.5"
+                                                                        value={lead.assignedToUser?.id || ""}
+                                                                        onChange={(e) =>
+                                                                            handleAssign(
+                                                                                lead.id,
+                                                                                e.target.value
+                                                                                    ? e.target.value
+                                                                                    : null,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <option value="">Atanmadı</option>
+                                                                        {users.map((u) => (
                                                                             <option
-                                                                                key={val}
-                                                                                value={val}
+                                                                                key={u.id}
+                                                                                value={u.id}
                                                                             >
-                                                                                {label}
+                                                                                {u.firstName} {u.lastName}
                                                                             </option>
-                                                                        ),
+                                                                        ))}
+                                                                    </select>
+                                                                </td>
+                                                                <td className="p-3 text-gray-700">
+                                                                    {new Date(lead.createdAt).toLocaleString()}
+                                                                </td>
+                                                                <td className="p-3 text-gray-700">
+                                                                    {formatFirstResponseDuration(
+                                                                        firstResponseMinutes,
                                                                     )}
-                                                                </select>
-                                                            </td>
-                                                            <td className="p-3">
-                                                                <select
-                                                                    className="border rounded-lg bg-white shadow-sm text-xs p-1.5"
-                                                                    value={lead.assignedToUser?.id || ""}
-                                                                    onChange={(e) =>
-                                                                        handleAssign(
-                                                                            lead.id,
-                                                                            e.target.value
-                                                                                ? e.target.value
-                                                                                : null,
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <option value="">Atanmadı</option>
-                                                                    {users.map((u) => (
-                                                                        <option
-                                                                            key={u.id}
-                                                                            value={u.id}
-                                                                        >
-                                                                            {u.firstName} {u.lastName}
-                                                                        </option>
-                                                                    ))}
-                                                                </select>
-                                                            </td>
-                                                            <td className="p-3 text-gray-700">
-                                                                {new Date(lead.createdAt).toLocaleString()}
-                                                            </td>
-                                                            <td className="p-3 text-gray-700">
-                                                                {formatFirstResponseDuration(
-                                                                    firstResponseMinutes,
-                                                                )}
-                                                            </td>
-                                                            <td className="p-3">
-                                                                <div className="flex flex-nowrap items-center justify-end gap-2">
-                                                                    {lead.phone && (
-                                                                        <Button
-                                                                            size="sm"
-                                                                            variant="outline"
-                                                                            onClick={() =>
-                                                                                handleCall(lead)
-                                                                            }
-                                                                            title="Telefon ile arama yap"
-                                                                        >
-                                                                            <Phone className="h-4 w-4 text-blue-600" />
-                                                                        </Button>
-                                                                    )}
-                                                                    {lead.phone && (
-                                                                        <Button
-                                                                            size="sm"
-                                                                            variant="outline"
-                                                                            onClick={() =>
-                                                                                handleWhatsApp(lead)
-                                                                            }
-                                                                            title="WhatsApp ile mesaj gönder"
-                                                                        >
-                                                                            <MessageCircle className="h-4 w-4 text-green-600" />
-                                                                        </Button>
-                                                                    )}
-                                                                    {(lead.pageId || lead.email) && (
-                                                                        <Button
-                                                                            size="sm"
-                                                                            variant="outline"
-                                                                            onClick={() =>
-                                                                                handleMessenger(lead)
-                                                                            }
-                                                                            title="Messenger üzerinden mesaj gönder"
-                                                                        >
-                                                                            <Facebook className="h-4 w-4 text-indigo-600" />
-                                                                        </Button>
-                                                                    )}
-                                                                    {canDeleteLead && (
-                                                                        <Button
-                                                                            size="sm"
-                                                                            variant="outline"
-                                                                            className="text-red-600 hover:bg-red-50"
-                                                                            onClick={() =>
-                                                                                handleDeleteRequest(lead)
-                                                                            }
-                                                                        >
-                                                                            <Trash2 className="h-4 w-4" />
-                                                                        </Button>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    );
-                                                }))}
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <div className="flex flex-nowrap items-center justify-end gap-2">
+                                                                        {lead.phone && (
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                onClick={() =>
+                                                                                    handleCall(lead)
+                                                                                }
+                                                                                title="Telefon ile arama yap"
+                                                                            >
+                                                                                <Phone className="h-4 w-4 text-blue-600" />
+                                                                            </Button>
+                                                                        )}
+                                                                        {lead.phone && (
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                onClick={() =>
+                                                                                    handleWhatsApp(lead)
+                                                                                }
+                                                                                title="WhatsApp ile mesaj gönder"
+                                                                            >
+                                                                                <MessageCircle className="h-4 w-4 text-green-600" />
+                                                                            </Button>
+                                                                        )}
+                                                                        {(lead.pageId || lead.email) && (
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                onClick={() =>
+                                                                                    handleMessenger(lead)
+                                                                                }
+                                                                                title="Messenger üzerinden mesaj gönder"
+                                                                            >
+                                                                                <Facebook className="h-4 w-4 text-indigo-600" />
+                                                                            </Button>
+                                                                        )}
+                                                                        {canDeleteLead && (
+                                                                            <Button
+                                                                                size="sm"
+                                                                                variant="outline"
+                                                                                className="text-red-600 hover:bg-red-50"
+                                                                                onClick={() =>
+                                                                                    handleDeleteRequest(lead)
+                                                                                }
+                                                                            >
+                                                                                <Trash2 className="h-4 w-4" />
+                                                                            </Button>
+                                                                        )}
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }))}
                                             </tbody>
                                         </table>
                                     </div>
@@ -1503,135 +1476,133 @@ export default function LeadsPage() {
                                                 return (
                                                     <div
                                                         key={lead.id}
-                                                        className={`border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-3 ${
-                                                            isSelected ? "border-blue-400" : ""
-                                                        }`}
+                                                        className={`border rounded-lg bg-white shadow-sm p-3 flex flex-col gap-3 ${isSelected ? "border-blue-400" : ""
+                                                            }`}
                                                     >
                                                         <div className="flex items-center justify-between gap-3">
                                                             <label className="inline-flex items-center gap-2 text-sm font-semibold text-blue-600">
-                                                            <input
-                                                                type="checkbox"
-                                                                className="h-4 w-4 rounded border-gray-300"
-                                                                checked={isSelected}
-                                                                onChange={() =>
-                                                                    toggleLeadSelection(
-                                                                        lead.id,
-                                                                    )
-                                                                }
-                                                            />
-                                                            <Link href={`/leads/${lead.id}`}>
-                                                                {lead.name ?? "-"}
-                                                            </Link>
-                                                        </label>
-                                                        <span className="text-xs text-gray-500">
-                                                            {new Date(lead.createdAt).toLocaleDateString()}
-                                                        </span>
-                                                    </div>
-                                                    <div className="text-xs text-gray-500">
-                                                        {getEmailDisplay(lead)}
-                                                    </div>
-                                                    <div className="text-xs text-gray-600">
-                                                        Telefon: {lead.phone ?? "-"}
-                                                    </div>
-                                                    <div className="text-xs text-gray-600">
-                                                        Reklam: {formatAdInfo(lead) || lead.campaign?.name || "-"}
-                                                    </div>
-                                                    <div className="flex flex-col gap-2">
-                                                        <select
-                                                            className={`border rounded-lg p-1.5 text-xs font-medium ${
-                                                                STATUS_COLORS[
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="h-4 w-4 rounded border-gray-300"
+                                                                    checked={isSelected}
+                                                                    onChange={() =>
+                                                                        toggleLeadSelection(
+                                                                            lead.id,
+                                                                        )
+                                                                    }
+                                                                />
+                                                                <Link href={`/leads/${lead.id}`}>
+                                                                    {lead.name ?? "-"}
+                                                                </Link>
+                                                            </label>
+                                                            <span className="text-xs text-gray-500">
+                                                                {new Date(lead.createdAt).toLocaleDateString()}
+                                                            </span>
+                                                        </div>
+                                                        <div className="text-xs text-gray-500">
+                                                            {getEmailDisplay(lead)}
+                                                        </div>
+                                                        <div className="text-xs text-gray-600">
+                                                            Telefon: {lead.phone ?? "-"}
+                                                        </div>
+                                                        <div className="text-xs text-gray-600">
+                                                            Reklam: {formatAdInfo(lead) || lead.campaign?.name || "-"}
+                                                        </div>
+                                                        <div className="flex flex-col gap-2">
+                                                            <select
+                                                                className={`border rounded-lg p-1.5 text-xs font-medium ${STATUS_COLORS[
                                                                     lead.status as LeadStatus
                                                                 ]
-                                                            } focus:ring-2 focus:ring-blue-200`}
-                                                            value={lead.status}
-                                                            onChange={(e) =>
-                                                                handleStatusChange(
-                                                                    lead.id,
-                                                                    e.target
-                                                                        .value as LeadStatus,
-                                                                )
-                                                            }
-                                                        >
-                                                            {Object.entries(STATUS_LABELS).map(
-                                                                ([val, label]) => (
+                                                                    } focus:ring-2 focus:ring-blue-200`}
+                                                                value={lead.status}
+                                                                onChange={(e) =>
+                                                                    handleStatusChange(
+                                                                        lead.id,
+                                                                        e.target
+                                                                            .value as LeadStatus,
+                                                                    )
+                                                                }
+                                                            >
+                                                                {Object.entries(STATUS_LABELS).map(
+                                                                    ([val, label]) => (
+                                                                        <option
+                                                                            key={val}
+                                                                            value={val}
+                                                                        >
+                                                                            {label}
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                            <select
+                                                                className="border rounded-lg bg-white shadow-sm text-xs p-1.5"
+                                                                value={lead.assignedToUser?.id || ""}
+                                                                onChange={(e) =>
+                                                                    handleAssign(
+                                                                        lead.id,
+                                                                        e.target.value
+                                                                            ? e.target.value
+                                                                            : null,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <option value="">Atanmadı</option>
+                                                                {users.map((u) => (
                                                                     <option
-                                                                        key={val}
-                                                                        value={val}
+                                                                        key={u.id}
+                                                                        value={u.id}
                                                                     >
-                                                                        {label}
+                                                                        {u.firstName} {u.lastName}
                                                                     </option>
-                                                                ),
+                                                                ))}
+                                                            </select>
+                                                        </div>
+                                                        <div className="text-xs text-gray-600">
+                                                            Aksiyon Süresi: {" "}
+                                                            {formatFirstResponseDuration(
+                                                                firstResponseMinutes,
                                                             )}
-                                                        </select>
-                                                        <select
-                                                            className="border rounded-lg bg-white shadow-sm text-xs p-1.5"
-                                                            value={lead.assignedToUser?.id || ""}
-                                                            onChange={(e) =>
-                                                                handleAssign(
-                                                                    lead.id,
-                                                                    e.target.value
-                                                                        ? e.target.value
-                                                                        : null,
-                                                                )
-                                                            }
-                                                        >
-                                                            <option value="">Atanmadı</option>
-                                                            {users.map((u) => (
-                                                                <option
-                                                                    key={u.id}
-                                                                    value={u.id}
+                                                        </div>
+                                                        <div className="flex flex-col gap-2 sm:flex-row sm:flex-nowrap">
+                                                            {lead.phone && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleCall(lead)}
                                                                 >
-                                                                    {u.firstName} {u.lastName}
-                                                                </option>
-                                                            ))}
-                                                        </select>
+                                                                    <Phone className="h-4 w-4 text-blue-600" />
+                                                                </Button>
+                                                            )}
+                                                            {lead.phone && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleWhatsApp(lead)}
+                                                                >
+                                                                    <MessageCircle className="h-4 w-4 text-green-600" />
+                                                                </Button>
+                                                            )}
+                                                            {(lead.pageId || lead.email) && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleMessenger(lead)}
+                                                                >
+                                                                    <Facebook className="h-4 w-4 text-indigo-600" />
+                                                                </Button>
+                                                            )}
+                                                            {canDeleteLead && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    onClick={() => handleDeleteRequest(lead)}
+                                                                    className="text-red-600 hover:bg-red-50"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                    <div className="text-xs text-gray-600">
-                                                        Aksiyon Süresi: {" "}
-                                                        {formatFirstResponseDuration(
-                                                            firstResponseMinutes,
-                                                        )}
-                                                    </div>
-                                                    <div className="flex flex-col gap-2 sm:flex-row sm:flex-nowrap">
-                                                        {lead.phone && (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={() => handleCall(lead)}
-                                                            >
-                                                                <Phone className="h-4 w-4 text-blue-600" />
-                                                            </Button>
-                                                        )}
-                                                        {lead.phone && (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={() => handleWhatsApp(lead)}
-                                                            >
-                                                                <MessageCircle className="h-4 w-4 text-green-600" />
-                                                            </Button>
-                                                        )}
-                                                        {(lead.pageId || lead.email) && (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={() => handleMessenger(lead)}
-                                                            >
-                                                                <Facebook className="h-4 w-4 text-indigo-600" />
-                                                            </Button>
-                                                        )}
-                                                        {canDeleteLead && (
-                                                            <Button
-                                                                size="sm"
-                                                                variant="outline"
-                                                                onClick={() => handleDeleteRequest(lead)}
-                                                                className="text-red-600 hover:bg-red-50"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        )}
-                                                    </div>
-                                                </div>
                                                 );
                                             })
                                         )}
@@ -1708,32 +1679,32 @@ export default function LeadsPage() {
                 actions={
                     activeCommunication
                         ? [
-                              {
-                                  label: "Kapat",
-                                  variant: "ghost",
-                                  onClick: closeCommunication,
-                                  disabled: communicationLoading,
-                              },
-                              activeCommunication.channel === "PHONE"
-                                  ? {
-                                        label: callSession ? "Aramayı Yenile" : "Aramayı Başlat",
-                                        onClick: () => {
-                                            void handleInitiateSecureCall();
-                                        },
-                                        isLoading: communicationLoading,
-                                        disabled: communicationLoading,
-                                    }
-                                  : {
-                                        label: "Mesaj Gönder",
-                                        onClick: () => {
-                                            void handleSendSecureWhatsApp();
-                                        },
-                                        isLoading: communicationLoading,
-                                        disabled:
-                                            communicationLoading ||
-                                            !whatsAppMessage.trim().length,
+                            {
+                                label: "Kapat",
+                                variant: "ghost",
+                                onClick: closeCommunication,
+                                disabled: communicationLoading,
+                            },
+                            activeCommunication.channel === "PHONE"
+                                ? {
+                                    label: callSession ? "Aramayı Yenile" : "Aramayı Başlat",
+                                    onClick: () => {
+                                        void handleInitiateSecureCall();
                                     },
-                          ]
+                                    isLoading: communicationLoading,
+                                    disabled: communicationLoading,
+                                }
+                                : {
+                                    label: "Mesaj Gönder",
+                                    onClick: () => {
+                                        void handleSendSecureWhatsApp();
+                                    },
+                                    isLoading: communicationLoading,
+                                    disabled:
+                                        communicationLoading ||
+                                        !whatsAppMessage.trim().length,
+                                },
+                        ]
                         : []
                 }
             >
@@ -2015,28 +1986,7 @@ export default function LeadsPage() {
                             />
                         </div>
                     </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                            Dil
-                        </label>
-                        <select
-                            className="w-full border rounded-md p-2"
-                            value={createLeadForm.language}
-                            onChange={(e) =>
-                                setCreateLeadForm((prev) => ({
-                                    ...prev,
-                                    language: e.target.value,
-                                }))
-                            }
-                        >
-                            <option value="">Seçiniz</option>
-                            {languageOptions.map((lang) => (
-                                <option key={lang.value} value={lang.value}>
-                                    {lang.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+
                     {createLeadError && (
                         <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-600">
                             {createLeadError}

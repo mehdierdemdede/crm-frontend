@@ -47,7 +47,7 @@ export default function AddMemberModal({ isOpen, onClose, onSave }: AddMemberMod
                 lastName: data.lastName,
                 email: data.email,
                 role: data.role,
-                supportedLanguages: data.supportedLanguages,
+
                 dailyCapacity: data.dailyCapacity,
                 active: data.active,
                 autoAssignEnabled: data.autoAssignEnabled,
@@ -61,7 +61,7 @@ export default function AddMemberModal({ isOpen, onClose, onSave }: AddMemberMod
                     fullName: `${invitedUser.firstName} ${invitedUser.lastName}`.trim(),
                     active: invitedUser.active,
                     autoAssignEnabled: invitedUser.autoAssignEnabled,
-                    supportedLanguages: invitedUser.supportedLanguages,
+
                     dailyCapacity: invitedUser.dailyCapacity,
                     assignedToday: 0,
                     remainingCapacity: invitedUser.dailyCapacity,

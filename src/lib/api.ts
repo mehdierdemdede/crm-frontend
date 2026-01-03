@@ -32,7 +32,7 @@ export interface UserResponse {
     lastName: string;
     email: string;
     role: Role;
-    supportedLanguages: string[];
+
     dailyCapacity: number;
     active: boolean;
     autoAssignEnabled: boolean;
@@ -63,7 +63,7 @@ export interface LeadResponse {
     email?: string;
     phone?: string;
     pageId?: string | null;
-    language?: string;
+
     adInfo?: string | null;
     campaign?: { id: string; name: string } | null;
     campaignName?: string | null;
@@ -121,7 +121,7 @@ export interface LeadCreateRequest {
     name: string;
     email?: string | null;
     phone?: string | null;
-    language?: string | null;
+
     campaignId?: string | null;
     assignedUserId?: string | null;
     [key: string]: unknown;
@@ -142,35 +142,14 @@ export interface AgentStatsResponse {
     fullName: string;
     active: boolean;
     autoAssignEnabled: boolean;
-    supportedLanguages: string[];
+
     dailyCapacity: number;
     assignedToday: number;
     remainingCapacity: number;
     lastAssignedAt: string | null;
 }
 
-export interface LanguageResponse {
-    id: string;
-    code: string;
-    name: string;
-    flagEmoji: string | null;
-    active: boolean;
-    createdAt?: string;
-    updatedAt?: string;
-}
 
-export interface UpsertLanguageRequest {
-    code: string;
-    name: string;
-    flagEmoji: string | null;
-    active: boolean;
-}
-
-export interface LanguageCatalogEntry {
-    code: string;
-    name: string;
-    flagEmoji: string | null;
-}
 
 export interface Hotel {
     id: string;
@@ -289,104 +268,7 @@ const unwrapApiData = <T>(body: unknown): T => {
     return body as T;
 };
 
-const ensureLanguageResponse = (language: unknown): LanguageResponse => {
-    if (!language || typeof language !== "object") {
-        throw new Error("Dil yanıtı beklenmeyen bir formatta alındı.");
-    }
 
-    const record = language as Record<string, unknown>;
-    const { id, code, name } = record;
-
-    if (id === null || id === undefined) {
-        throw new Error("Dil yanıtında id alanı eksik.");
-    }
-
-    if (typeof code !== "string" || code.trim().length === 0) {
-        throw new Error("Dil yanıtında code alanı eksik.");
-    }
-
-    if (typeof name !== "string" || name.trim().length === 0) {
-        throw new Error("Dil yanıtında name alanı eksik.");
-    }
-
-    const rawFlag = record.flagEmoji;
-    if (
-        rawFlag !== null &&
-        rawFlag !== undefined &&
-        typeof rawFlag !== "string"
-    ) {
-        throw new Error("Dil yanıtında flagEmoji alanı beklenmeyen bir formatta.");
-    }
-
-    const rawActive = record.active;
-    const active =
-        typeof rawActive === "boolean"
-            ? rawActive
-            : rawActive == null
-                ? true
-                : Boolean(rawActive);
-
-    return {
-        id: String(id),
-        code: code.trim(),
-        name: name.trim(),
-        flagEmoji:
-            rawFlag === null || rawFlag === undefined || rawFlag === ""
-                ? null
-                : rawFlag,
-        active,
-        createdAt:
-            typeof record.createdAt === "string" ? record.createdAt : undefined,
-        updatedAt:
-            typeof record.updatedAt === "string" ? record.updatedAt : undefined,
-    };
-};
-
-const ensureLanguageCatalogEntry = (entry: unknown): LanguageCatalogEntry => {
-    if (!entry || typeof entry !== "object") {
-        throw new Error("Dil kataloğu yanıtı beklenmeyen bir formatta alındı.");
-    }
-
-    const record = entry as Record<string, unknown>;
-
-    const rawCode =
-        typeof record.code === "string"
-            ? record.code
-            : typeof record.languageCode === "string"
-                ? record.languageCode
-                : null;
-
-    if (!rawCode || rawCode.trim().length === 0) {
-        throw new Error("Dil kataloğu kaydında code alanı eksik.");
-    }
-
-    const rawName =
-        typeof record.name === "string"
-            ? record.name
-            : typeof record.languageName === "string"
-                ? record.languageName
-                : null;
-
-    if (!rawName || rawName.trim().length === 0) {
-        throw new Error("Dil kataloğu kaydında name alanı eksik.");
-    }
-
-    const rawFlag =
-        typeof record.flagEmoji === "string"
-            ? record.flagEmoji
-            : typeof record.flag === "string"
-                ? record.flag
-                : null;
-
-    return {
-        code: rawCode.trim(),
-        name: rawName.trim(),
-        flagEmoji:
-            rawFlag === null || rawFlag === undefined || rawFlag === ""
-                ? null
-                : rawFlag,
-    };
-};
 
 // Ortak POST metodu (login, invite, vs için)
 export const api = {
@@ -703,163 +585,7 @@ export const getIntegration = async (
     }
 };
 
-// ──────────────────────────────── LANGUAGES API ────────────────────────────────
 
-export const getLanguages = async (): Promise<LanguageResponse[]> => {
-    const headers = getAuthHeaders();
-    try {
-        const response = await fetch(`${BASE_URL}/languages`, { headers });
-        const body = await extractResponseBody(response);
-
-        if (!response.ok) {
-            throw new Error(
-                resolveErrorMessage(body, "Diller alınırken bir hata oluştu."),
-            );
-        }
-
-        const payload = unwrapApiData<unknown>(body);
-
-        if (!Array.isArray(payload)) {
-            throw new Error("Dil listesi beklenen formatta değil.");
-        }
-
-        return payload.map(ensureLanguageResponse);
-    } catch (err) {
-        console.error("getLanguages error:", err);
-        throw err instanceof Error
-            ? err
-            : new Error("Diller alınırken bir hata oluştu.");
-    }
-};
-
-export const searchLanguageCatalog = async (
-    query: string,
-    signal?: AbortSignal
-): Promise<LanguageCatalogEntry[]> => {
-    const trimmed = query.trim();
-    if (!trimmed) {
-        return [];
-    }
-
-    const headers = getAuthHeaders();
-
-    try {
-        const params = new URLSearchParams({ query: trimmed });
-        const response = await fetch(
-            `${BASE_URL}/languages/catalog?${params.toString()}`,
-            {
-                headers,
-                signal,
-            }
-        );
-
-        const body = await extractResponseBody(response);
-
-        if (!response.ok) {
-            throw new Error(
-                resolveErrorMessage(
-                    body,
-                    "Dil kataloğu aranırken bir hata oluştu.",
-                ),
-            );
-        }
-
-        const payload = unwrapApiData<unknown>(body);
-
-        if (!Array.isArray(payload)) {
-            throw new Error("Dil kataloğu beklenen formatta değil.");
-        }
-
-        return payload.map(ensureLanguageCatalogEntry);
-    } catch (error) {
-        if (error instanceof DOMException && error.name === "AbortError") {
-            throw error;
-        }
-        console.error("searchLanguageCatalog error:", error);
-        throw error instanceof Error
-            ? error
-            : new Error("Dil kataloğu aranırken bir hata oluştu.");
-    }
-};
-
-export const createLanguage = async (
-    payload: UpsertLanguageRequest
-): Promise<LanguageResponse> => {
-    const headers = getAuthHeaders();
-    try {
-        const response = await fetch(`${BASE_URL}/languages`, {
-            method: "POST",
-            headers,
-            body: JSON.stringify(payload),
-        });
-
-        const body = await extractResponseBody(response);
-        if (!response.ok) {
-            throw new Error(
-                resolveErrorMessage(body, "Dil oluşturulurken bir hata oluştu."),
-            );
-        }
-
-        const responsePayload = unwrapApiData<unknown>(body);
-        return ensureLanguageResponse(responsePayload);
-    } catch (error) {
-        console.error("createLanguage error:", error);
-        throw error instanceof Error
-            ? error
-            : new Error("Dil oluşturulurken bir hata oluştu.");
-    }
-};
-
-export const updateLanguage = async (
-    languageId: string,
-    payload: UpsertLanguageRequest
-): Promise<LanguageResponse> => {
-    const headers = getAuthHeaders();
-    try {
-        const response = await fetch(`${BASE_URL}/languages/${languageId}`, {
-            method: "PUT",
-            headers,
-            body: JSON.stringify(payload),
-        });
-
-        const body = await extractResponseBody(response);
-        if (!response.ok) {
-            throw new Error(
-                resolveErrorMessage(body, "Dil güncellenirken bir hata oluştu."),
-            );
-        }
-
-        const responsePayload = unwrapApiData<unknown>(body);
-        return ensureLanguageResponse(responsePayload);
-    } catch (error) {
-        console.error("updateLanguage error:", error);
-        throw error instanceof Error
-            ? error
-            : new Error("Dil güncellenirken bir hata oluştu.");
-    }
-};
-
-export const deleteLanguage = async (languageId: string): Promise<void> => {
-    const headers = getAuthHeaders();
-    try {
-        const response = await fetch(`${BASE_URL}/languages/${languageId}`, {
-            method: "DELETE",
-            headers,
-        });
-
-        const body = await extractResponseBody(response);
-        if (!response.ok) {
-            throw new Error(
-                resolveErrorMessage(body, "Dil silinirken bir hata oluştu."),
-            );
-        }
-    } catch (error) {
-        console.error("deleteLanguage error:", error);
-        throw error instanceof Error
-            ? error
-            : new Error("Dil silinirken bir hata oluştu.");
-    }
-};
 
 
 // ──────────────────────────────── LEADS API ────────────────────────────────
@@ -878,7 +604,7 @@ export interface LeadListParams {
     sort?: string;
     search?: string;
     statuses?: string[];
-    language?: string;
+
     campaignId?: string;
     assignedUserId?: string;
     unassigned?: boolean;
@@ -894,7 +620,7 @@ export const getLeads = async ({
     sort = "createdAt,desc",
     search,
     statuses,
-    language,
+
     campaignId,
     assignedUserId,
     unassigned,
@@ -917,7 +643,7 @@ export const getLeads = async ({
                 if (status) params.append("status", status);
             });
         }
-        if (language) params.append("language", language);
+
         if (campaignId) params.append("campaignId", campaignId);
         if (assignedUserId) params.append("assignedUserId", assignedUserId);
         if (unassigned) params.append("unassigned", "true");
@@ -1268,7 +994,7 @@ export interface InviteUserRequest {
     lastName: string;
     email: string;
     role: Role;
-    supportedLanguages: string[];
+
     dailyCapacity: number;
     active: boolean;
     autoAssignEnabled: boolean;
@@ -1326,6 +1052,32 @@ export const inviteUser = async (
             message: err instanceof Error ? err.message : "Ağ hatası oluştu.",
             status: 0,
         };
+    }
+};
+
+export const updateUser = async (
+    userId: string,
+    data: Partial<UserResponse>
+): Promise<UserResponse | null> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(`${BASE_URL}/users/${userId}`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(data),
+        });
+
+        const body = await extractResponseBody(res);
+        if (!res.ok) {
+            throw new Error(
+                resolveErrorMessage(body, "Kullanıcı güncellenemedi."),
+            );
+        }
+
+        return unwrapApiData<UserResponse>(body);
+    } catch (error) {
+        console.error("updateUser error:", error);
+        return null;
     }
 };
 
