@@ -15,12 +15,14 @@ import {
     addLeadAction,
     getSaleById,
     getUsers,
+    getHotels,
     patchLeadAssign,
     type LeadResponse,
     type LeadStatus,
     type UserResponse,
     type SimpleUser,
     type SaleResponse,
+    type Hotel,
 } from "@/lib/api";
 import {
     resolveDocumentUrl,
@@ -105,8 +107,6 @@ const formatAdInfo = (lead: LeadResponse): string => {
     const adInfo = typeof rawAdInfo === "string" ? rawAdInfo.trim() : "";
     if (adInfo) return adInfo;
 
-
-
     const rawAdName = lead.adName ?? legacyLead.ad_name;
     const adName = typeof rawAdName === "string" ? rawAdName.trim() : "";
     if (adName) return adName;
@@ -134,6 +134,12 @@ const formatUserName = (user?: SimpleUser | null): string => {
     return user.email || "Atanmadı";
 };
 
+const formatHotelName = (hotelId: string | null | undefined, hotels: Hotel[]): string => {
+    if (!hotelId) return "-";
+    const found = hotels.find(h => h.id === hotelId);
+    return found ? (found.name || hotelId) : hotelId;
+};
+
 export default function LeadDetailPage() {
     const { id } = useParams<{ id: string }>();
     const router = useRouter();
@@ -148,6 +154,7 @@ export default function LeadDetailPage() {
     const [sale, setSale] = useState<SaleResponse | null>(null);
     const [isDownloadingDocument, setIsDownloadingDocument] = useState(false);
     const [users, setUsers] = useState<UserResponse[]>([]);
+    const [hotels, setHotels] = useState<Hotel[]>([]);
     const [assignLoading, setAssignLoading] = useState(false);
     const statusSelectId = useId();
     const noteTextareaId = useId();
@@ -216,13 +223,19 @@ export default function LeadDetailPage() {
     useEffect(() => {
         let ignore = false;
 
-        const fetchUsers = async () => {
-            const userData = await getUsers();
+        const loadData = async () => {
+            const [userData, hotelData] = await Promise.all([
+                getUsers(),
+                getHotels(),
+            ]);
+
             if (ignore) return;
-            setUsers(userData);
+
+            setUsers(userData ?? []);
+            setHotels(hotelData ?? []);
         };
 
-        void fetchUsers();
+        void loadData();
 
         return () => {
             ignore = true;
@@ -465,8 +478,6 @@ export default function LeadDetailPage() {
                                 }
                             }}
                         />
-
-
                     </div>
                 )}
 
@@ -491,7 +502,7 @@ export default function LeadDetailPage() {
                                     : "-"}
                             </p>
                             <p>
-                                <b>Otel:</b> {sale.hotel ?? "-"}
+                                <b>Otel:</b> {formatHotelName(sale.hotel, hotels)}
                             </p>
                             <p>
                                 <b>Gece Sayısı:</b> {sale.nights ?? "-"}

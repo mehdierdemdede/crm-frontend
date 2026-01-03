@@ -7,9 +7,7 @@ import { useState, useEffect } from "react";
 import AddMemberModal from "@/components/AddMemberModal";
 import { Button } from "@/components/Button";
 import { Card, CardHeader, CardContent } from "@/components/Card";
-
 import Layout from "@/components/Layout";
-
 import { getAutoAssignStats, type AgentStatsResponse } from "@/lib/api"; // ✅ yeni servis
 
 
@@ -87,8 +85,8 @@ export default function MembersPage() {
                                                 <div className="w-40 bg-gray-200 rounded-full h-3 mb-1">
                                                     <div
                                                         className={`h-3 rounded-full ${m.assignedToday >= m.dailyCapacity
-                                                                ? "bg-red-500"
-                                                                : "bg-green-500"
+                                                            ? "bg-red-500"
+                                                            : "bg-green-500"
                                                             }`}
                                                         style={{
                                                             width: `${Math.min(
@@ -105,8 +103,8 @@ export default function MembersPage() {
                                             <td className="p-2">
                                                 <span
                                                     className={`px-2 py-0.5 text-xs rounded ${m.active
-                                                            ? "bg-green-100 text-green-700"
-                                                            : "bg-red-100 text-red-700"
+                                                        ? "bg-green-100 text-green-700"
+                                                        : "bg-red-100 text-red-700"
                                                         }`}
                                                 >
                                                     {m.active ? "Aktif" : "Pasif"}
@@ -115,8 +113,8 @@ export default function MembersPage() {
                                             <td className="p-2">
                                                 <span
                                                     className={`px-2 py-0.5 text-xs rounded ${m.autoAssignEnabled
-                                                            ? "bg-blue-100 text-blue-700"
-                                                            : "bg-gray-200 text-gray-600"
+                                                        ? "bg-blue-100 text-blue-700"
+                                                        : "bg-gray-200 text-gray-600"
                                                         }`}
                                                 >
                                                     {m.autoAssignEnabled ? "✔ Evet" : "✖ Hayır"}

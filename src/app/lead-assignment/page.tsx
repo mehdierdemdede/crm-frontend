@@ -5,10 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader } from "@/components/Card";
-
 import Layout from "@/components/Layout";
 import { dispatchToast } from "@/components/toaster";
-
 import {
     deleteFacebookLeadRule,
     getAutoAssignStats,
@@ -688,16 +686,16 @@ export default function LeadAssignmentPage() {
                                                         <div className="mt-1 flex flex-wrap gap-1 text-xs">
                                                             <span
                                                                 className={`rounded-full px-2 py-0.5 ${agent.active
-                                                                        ? "bg-green-100 text-green-700"
-                                                                        : "bg-red-100 text-red-700"
+                                                                    ? "bg-green-100 text-green-700"
+                                                                    : "bg-red-100 text-red-700"
                                                                     }`}
                                                             >
                                                                 {agent.active ? "Aktif" : "Pasif"}
                                                             </span>
                                                             <span
                                                                 className={`rounded-full px-2 py-0.5 ${agent.autoAssignEnabled
-                                                                        ? "bg-blue-100 text-blue-700"
-                                                                        : "bg-gray-200 text-gray-600"
+                                                                    ? "bg-blue-100 text-blue-700"
+                                                                    : "bg-gray-200 text-gray-600"
                                                                     }`}
                                                             >
                                                                 {agent.autoAssignEnabled
