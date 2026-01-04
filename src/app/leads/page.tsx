@@ -625,16 +625,7 @@ export default function LeadsPage() {
         });
     };
 
-    const openCommunication = (lead: LeadResponse, channel: "PHONE" | "WHATSAPP") => {
-        setActiveCommunication({ lead, channel });
-        setCommunicationError(null);
-        setCommunicationSuccess(null);
-        setCallSession(null);
-        setWhatsAppResult(null);
-        if (channel === "WHATSAPP") {
-            setWhatsAppMessage("");
-        }
-    };
+
 
     const closeCommunication = () => {
         if (communicationLoading) return;
@@ -687,7 +678,7 @@ export default function LeadsPage() {
                 description: "Arama sonucu lead tarihçesine eklendi.",
                 variant: "success",
             });
-        } catch (error) {
+        } catch {
             showToast({
                 title: "Hata",
                 description: "Arama kaydedilemedi.",
@@ -700,7 +691,7 @@ export default function LeadsPage() {
 
     const handleCopyPhone = () => {
         if (callLead?.phone) {
-            navigator.clipboard.writeText(callLead.phone);
+            void navigator.clipboard.writeText(callLead.phone);
             showToast({ title: "Kopyalandı", description: "Telefon numarası panoya kopyalandı", variant: "success" });
         }
     };
