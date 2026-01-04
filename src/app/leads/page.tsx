@@ -2086,7 +2086,7 @@ export default function LeadsPage() {
                                     <button
                                         key={opt.val}
                                         type="button"
-                                        onClick={() => setCallResult(opt.val as any)}
+                                        onClick={() => setCallResult(opt.val as "CONNECTED" | "BUSY" | "WRONG_NUMBER" | "NO_ANSWER")}
                                         className={`
                                             p-2 rounded-md text-sm border text-left transition
                                             ${callResult === opt.val
