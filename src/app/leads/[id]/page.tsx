@@ -2,12 +2,13 @@
 
 import { useParams, useRouter } from "next/navigation";
 
-import { ArrowLeft, Facebook, MessageCircle, Phone } from "lucide-react";
+import { ArrowLeft, Facebook, MessageCircle, Phone, Copy } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/Button";
 import { Card, CardContent, CardHeader } from "@/components/Card";
 import Layout from "@/components/Layout";
+import Modal from "@/components/Modal";
 import {
     getLeadById,
     updateLeadStatus,
@@ -156,6 +157,13 @@ export default function LeadDetailPage() {
     const [users, setUsers] = useState<UserResponse[]>([]);
     const [hotels, setHotels] = useState<Hotel[]>([]);
     const [assignLoading, setAssignLoading] = useState(false);
+
+    // Call Modal State
+    const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+    const [callResult, setCallResult] = useState<"CONNECTED" | "BUSY" | "WRONG_NUMBER" | "NO_ANSWER">("CONNECTED");
+    const [callNote, setCallNote] = useState("");
+    const [callLoading, setCallLoading] = useState(false);
+
     const statusSelectId = useId();
     const noteTextareaId = useId();
     const assignSelectId = useId();
@@ -291,23 +299,63 @@ export default function LeadDetailPage() {
     };
 
     // ☎️ iletişim butonları
-    const handleCall = (phone?: string) => {
-        if (!phone) return alert("Telefon numarası bulunamadı.");
-        window.open(`tel:${phone}`, "_self");
-        void handleAddAction("PHONE", "Telefon araması başlatıldı");
+    // ☎️ iletişim butonları
+    const handleCall = () => {
+        if (!lead?.phone) return alert("Telefon numarası bulunamadı.");
+        setIsCallModalOpen(true);
+    };
+
+    const handleLogCall = async () => {
+        if (!lead) return;
+        setCallLoading(true);
+
+        const resultLabels: Record<string, string> = {
+            CONNECTED: "Ulaşıldı",
+            BUSY: "Meşgul",
+            WRONG_NUMBER: "Yanlış Numara",
+            NO_ANSWER: "Cevap Vermedi",
+        };
+
+        const resultText = resultLabels[callResult] ?? callResult;
+        let message = `Telefon araması: ${resultText}`;
+        if (callNote.trim()) {
+            message += ` - Not: ${callNote.trim()}`;
+        }
+
+        try {
+            await handleAddAction("PHONE", message);
+            setIsCallModalOpen(false);
+            setCallNote("");
+            setCallResult("CONNECTED");
+        } finally {
+            setCallLoading(false);
+        }
+    };
+
+    const handleCopyPhone = () => {
+        if (lead?.phone) {
+            navigator.clipboard.writeText(lead.phone);
+            alert("Telefon numarası kopyalandı!");
+        }
     };
 
     const handleWhatsApp = (phone?: string) => {
         if (!phone) return alert("Telefon numarası bulunamadı.");
         const formatted = phone.replace(/\D/g, "");
-        window.open(`https://wa.me/${formatted}`, "_blank");
+        // Web WhatsApp
+        window.open(`https://web.whatsapp.com/send?phone=${formatted}`, "_blank");
         void handleAddAction("WHATSAPP", "WhatsApp mesajı gönderildi");
     };
 
     const handleMessenger = (pageId?: string | null) => {
-        if (!pageId) return alert("Messenger bağlantısı bulunamadı.");
-        window.open(`https://m.me/${pageId}`, "_blank");
-        void handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi");
+        if (pageId) {
+            window.open(`https://m.me/${pageId}`, "_blank");
+            void handleAddAction("MESSENGER", "Messenger üzerinden mesaj gönderildi");
+        } else {
+            // Facebook search fallback
+            window.open(`https://www.facebook.com/search/top?q=${encodeURIComponent(lead?.name || "")}`, "_blank");
+            void handleAddAction("MESSENGER", "Facebook'ta arama yapıldı");
+        }
     };
 
     const handleAssign = async (userId: string | null) => {
@@ -344,6 +392,7 @@ export default function LeadDetailPage() {
 
     return (
         <Layout title={`Lead Detayı - ${lead.name}`}>
+            <CallModal />
             {/* 🧱 Sol taraf */}
             <div className="col-span-12 lg:col-span-8 space-y-6">
                 <Card className="shadow-sm">
@@ -366,7 +415,7 @@ export default function LeadDetailPage() {
                                 className="h-10 w-10 p-0"
                                 variant="outline"
                                 title="Telefon"
-                                onClick={() => handleCall(lead.phone)}
+                                onClick={() => handleCall()}
                             >
                                 <Phone className="h-4 w-4 text-blue-600" />
                             </Button>
@@ -645,4 +694,77 @@ export default function LeadDetailPage() {
             </div>
         </Layout>
     );
+
+    function CallModal() {
+        if (!isCallModalOpen || !lead) return null;
+
+        return (
+            <Modal
+                isOpen={isCallModalOpen}
+                onClose={() => setIsCallModalOpen(false)}
+                title="Arama Sonucu Kaydet"
+                description={(
+                    <div className="flex items-center gap-2 mt-2 bg-gray-50 p-3 rounded-lg border">
+                        <Phone className="h-5 w-5 text-gray-500" />
+                        <span className="text-lg font-mono font-semibold text-gray-800">{lead.phone}</span>
+                        <Button size="sm" variant="ghost" onClick={handleCopyPhone} title="Kopyala">
+                            <Copy className="h-4 w-4" />
+                        </Button>
+                    </div>
+                )}
+                actions={[
+                    {
+                        label: "İptal",
+                        onClick: () => setIsCallModalOpen(false),
+                        variant: "ghost",
+                    },
+                    {
+                        label: "Kaydet",
+                        onClick: () => void handleLogCall(),
+                        variant: "primary",
+                        isLoading: callLoading,
+                    },
+                ]}
+            >
+                <div className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Arama Sonucu</label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {[
+                                { val: "CONNECTED", label: "✅ Ulaşıldı" },
+                                { val: "BUSY", label: "⛔ Meşgul" },
+                                { val: "WRONG_NUMBER", label: "❌ Yanlış No" },
+                                { val: "NO_ANSWER", label: "🔕 Cevap Yok" },
+                            ].map((opt) => (
+                                <button
+                                    key={opt.val}
+                                    type="button"
+                                    onClick={() => setCallResult(opt.val as any)}
+                                    className={`
+                                        p-2 rounded-md text-sm border text-left transition
+                                        ${callResult === opt.val
+                                            ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500 text-blue-700"
+                                            : "hover:bg-gray-50 border-gray-200 text-gray-700"}
+                                    `}
+                                >
+                                    {opt.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Not (Opsiyonel)</label>
+                        <textarea
+                            className="w-full border rounded-md p-2 text-sm h-24"
+                            placeholder="Görüşme notlarınızı buraya ekleyin..."
+                            value={callNote}
+                            onChange={(e) => setCallNote(e.target.value)}
+                        />
+                    </div>
+                </div>
+            </Modal>
+        );
+    }
 }
+

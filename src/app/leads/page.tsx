@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown, Send } from "lucide-react";
+import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown, Send, Copy } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
@@ -225,6 +225,13 @@ export default function LeadsPage() {
     const [whatsAppResult, setWhatsAppResult] =
         useState<LeadWhatsAppMessageResponse | null>(null);
     const [filteredBulkCount, setFilteredBulkCount] = useState<number | null>(null);
+
+    // Call Modal State
+    const [isCallModalOpen, setIsCallModalOpen] = useState(false);
+    const [callLead, setCallLead] = useState<LeadResponse | null>(null);
+    const [callResult, setCallResult] = useState<"CONNECTED" | "BUSY" | "WRONG_NUMBER" | "NO_ANSWER">("CONNECTED");
+    const [callNote, setCallNote] = useState("");
+    const [callLoading, setCallLoading] = useState(false);
 
     const debouncedSearch = useDebounce(search, 400);
     const isSearching = search !== debouncedSearch;
@@ -648,7 +655,54 @@ export default function LeadsPage() {
             });
             return;
         }
-        openCommunication(lead, "PHONE");
+        setCallLead(lead);
+        setIsCallModalOpen(true);
+    };
+
+    const handleLogCall = async () => {
+        if (!callLead) return;
+        setCallLoading(true);
+
+        const resultLabels: Record<string, string> = {
+            CONNECTED: "Ulaşıldı",
+            BUSY: "Meşgul",
+            WRONG_NUMBER: "Yanlış Numara",
+            NO_ANSWER: "Cevap Vermedi",
+        };
+
+        const resultText = resultLabels[callResult] ?? callResult;
+        let message = `Telefon araması: ${resultText}`;
+        if (callNote.trim()) {
+            message += ` - Not: ${callNote.trim()}`;
+        }
+
+        try {
+            await addLeadAction(callLead.id, "PHONE", message);
+            setIsCallModalOpen(false);
+            setCallNote("");
+            setCallResult("CONNECTED");
+            setCallLead(null);
+            showToast({
+                title: "Arama Kaydedildi",
+                description: "Arama sonucu lead tarihçesine eklendi.",
+                variant: "success",
+            });
+        } catch (error) {
+            showToast({
+                title: "Hata",
+                description: "Arama kaydedilemedi.",
+                variant: "error",
+            });
+        } finally {
+            setCallLoading(false);
+        }
+    };
+
+    const handleCopyPhone = () => {
+        if (callLead?.phone) {
+            navigator.clipboard.writeText(callLead.phone);
+            showToast({ title: "Kopyalandı", description: "Telefon numarası panoya kopyalandı", variant: "success" });
+        }
     };
 
     const handleWhatsApp = (lead: LeadResponse) => {
@@ -660,7 +714,13 @@ export default function LeadsPage() {
             });
             return;
         }
-        openCommunication(lead, "WHATSAPP");
+        const formatted = lead.phone.replace(/\D/g, "");
+        window.open(`https://web.whatsapp.com/send?phone=${formatted}`, "_blank");
+        void addLeadAction(
+            lead.id,
+            "WHATSAPP",
+            `WhatsApp Web üzerinden mesaj başlatıldı.`,
+        );
     };
 
     const handleInitiateSecureCall = async () => {
@@ -742,21 +802,18 @@ export default function LeadsPage() {
     };
 
     const handleMessenger = async (lead: LeadResponse) => {
-        const messengerTarget = lead.pageId || lead.email;
-        if (!messengerTarget) {
-            showToast({
-                title: "Bağlantı bulunamadı",
-                description: "Messenger bağlantısı bulunamadı.",
-                variant: "error",
-            });
-            return;
+        const messengerTarget = lead.pageId;
+        if (messengerTarget) {
+            window.open(`https://m.me/${messengerTarget}`, "_blank");
+            void addLeadAction(
+                lead.id,
+                "MESSENGER",
+                "Messenger üzerinden mesaj gönderildi",
+            );
+        } else {
+            window.open(`https://www.facebook.com/search/top?q=${encodeURIComponent(lead.name || "")}`, "_blank");
+            void addLeadAction(lead.id, "MESSENGER", "Facebook'ta arama yapıldı");
         }
-        window.open(`https://m.me/${messengerTarget}`, "_blank");
-        void addLeadAction(
-            lead.id,
-            "MESSENGER",
-            "Messenger üzerinden mesaj gönderildi",
-        );
     };
 
     const handleStatusFilterChange = (
@@ -1996,6 +2053,74 @@ export default function LeadsPage() {
                     </p>
                 </div>
             </Modal>
+
+            {isCallModalOpen && callLead && (
+                <Modal
+                    isOpen={isCallModalOpen}
+                    onClose={() => setIsCallModalOpen(false)}
+                    title="Arama Sonucu Kaydet"
+                    description={(
+                        <div className="flex items-center gap-2 mt-2 bg-gray-50 p-3 rounded-lg border">
+                            <Phone className="h-5 w-5 text-gray-500" />
+                            <span className="text-lg font-mono font-semibold text-gray-800">{callLead.phone}</span>
+                            <Button size="sm" variant="ghost" onClick={handleCopyPhone} title="Kopyala">
+                                <Copy className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    )}
+                    actions={[
+                        {
+                            label: "İptal",
+                            onClick: () => setIsCallModalOpen(false),
+                            variant: "ghost",
+                        },
+                        {
+                            label: "Kaydet",
+                            onClick: () => void handleLogCall(),
+                            variant: "primary",
+                            isLoading: callLoading,
+                        },
+                    ]}
+                >
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Arama Sonucu</label>
+                            <div className="grid grid-cols-2 gap-2">
+                                {[
+                                    { val: "CONNECTED", label: "✅ Ulaşıldı" },
+                                    { val: "BUSY", label: "⛔ Meşgul" },
+                                    { val: "WRONG_NUMBER", label: "❌ Yanlış No" },
+                                    { val: "NO_ANSWER", label: "🔕 Cevap Yok" },
+                                ].map((opt) => (
+                                    <button
+                                        key={opt.val}
+                                        type="button"
+                                        onClick={() => setCallResult(opt.val as any)}
+                                        className={`
+                                            p-2 rounded-md text-sm border text-left transition
+                                            ${callResult === opt.val
+                                                ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500 text-blue-700"
+                                                : "hover:bg-gray-50 border-gray-200 text-gray-700"}
+                                        `}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Not (Opsiyonel)</label>
+                            <textarea
+                                className="w-full border rounded-md p-2 text-sm h-24"
+                                placeholder="Görüşme notlarınızı buraya ekleyin..."
+                                value={callNote}
+                                onChange={(e) => setCallNote(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                </Modal>
+            )}
         </>
     );
 }
