@@ -1,8 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-
-import { ArrowLeft, Facebook, MessageCircle, Phone, Copy } from "lucide-react";
+import { ArrowLeft, Facebook, MessageCircle, Phone, Copy, Pencil, Check, X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
 import { Button } from "@/components/Button";
@@ -12,6 +11,7 @@ import Modal from "@/components/Modal";
 import {
     getLeadById,
     updateLeadStatus,
+    updateLead,
     getLeadActions,
     addLeadAction,
     getSaleById,
@@ -157,6 +157,11 @@ export default function LeadDetailPage() {
     const [users, setUsers] = useState<UserResponse[]>([]);
     const [hotels, setHotels] = useState<Hotel[]>([]);
     const [assignLoading, setAssignLoading] = useState(false);
+
+    // 🔹 Ad Name Editing State
+    const [isEditingAd, setIsEditingAd] = useState(false);
+    const [adNameValue, setAdNameValue] = useState("");
+    const [adEditLoading, setAdEditLoading] = useState(false);
 
     // Call Modal State
     const [isCallModalOpen, setIsCallModalOpen] = useState(false);
@@ -443,9 +448,65 @@ export default function LeadDetailPage() {
                     <CardContent className="space-y-3 text-sm">
                         <p><b>Email:</b> {lead.email ?? "-"}</p>
                         <p><b>Telefon:</b> {lead.phone ?? "-"}</p>
-                        <p>
-                            <b>Reklam:</b> {formatAdInfo(lead)}
-                        </p>
+                        <div className="flex items-center gap-2 h-7">
+                            <b className="shrink-0">Reklam:</b>
+                            {isEditingAd ? (
+                                <div className="flex items-center gap-1 flex-1 max-w-xs">
+                                    <input
+                                        type="text"
+                                        className="w-full border rounded px-1 py-0.5 text-xs"
+                                        value={adNameValue}
+                                        onChange={(e) => setAdNameValue(e.target.value)}
+                                        autoFocus
+                                    />
+                                    <button
+                                        disabled={adEditLoading}
+                                        onClick={async () => {
+                                            if (!lead) return;
+                                            setAdEditLoading(true);
+                                            try {
+                                                const updated = await updateLead(lead.id, { adName: adNameValue });
+                                                if (updated) {
+                                                    setLead(updated);
+                                                    setIsEditingAd(false);
+                                                    await handleAddAction("NOTE", `Reklam ismi değiştirildi: ${adNameValue}`);
+                                                } else {
+                                                    alert("Güncellenemedi!");
+                                                }
+                                            } catch (e) {
+                                                console.error(e);
+                                                alert("Hata oluştu");
+                                            } finally {
+                                                setAdEditLoading(false);
+                                            }
+                                        }}
+                                        className="p-1 bg-green-100 text-green-700 rounded hover:bg-green-200"
+                                    >
+                                        <Check className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                        onClick={() => setIsEditingAd(false)}
+                                        className="p-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                                    >
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-2 group">
+                                    <span>{formatAdInfo(lead)}</span>
+                                    <button
+                                        onClick={() => {
+                                            setAdNameValue(formatAdInfo(lead));
+                                            setIsEditingAd(true);
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-blue-600"
+                                        title="Reklam ismini düzenle"
+                                    >
+                                        <Pencil className="w-3 h-3" />
+                                    </button>
+                                </div>
+                            )}
+                        </div>
                         <p>
                             <b>Danışman:</b>{" "}
                             <label className="sr-only" htmlFor={assignSelectId}>

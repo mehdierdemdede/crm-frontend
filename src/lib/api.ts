@@ -132,6 +132,7 @@ export interface LeadCreateRequest {
 
 export type LeadUpdateRequest = Partial<LeadCreateRequest> & {
     status?: LeadStatus;
+    adName?: string; // 🔹 Editable ad name
 };
 
 export interface LeadReportResponse {
