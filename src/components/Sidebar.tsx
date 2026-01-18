@@ -11,6 +11,7 @@ import {
     Activity,
 
     Building2,
+    Calendar,
     Menu,
     X,
     LogOut,
@@ -97,6 +98,7 @@ export default function Sidebar() {
                     <ul className="space-y-1">
                         {NavItem("/dashboard", "Dashboard", Home)}
                         {NavItem("/leads", "Leads", FileText)}
+                        {NavItem("/calendar", "Takvim", Calendar)}
                         {NavItem("/members", "Members", Users)}
                         {NavItem("/integrations", "Integrations", Plug)}
 
@@ -124,7 +126,7 @@ export default function Sidebar() {
                     <div className="absolute left-0 top-0 bottom-0 w-64 bg-white shadow-xl p-4 flex flex-col justify-between">
                         <div className="overflow-y-auto">
                             <div className="flex items-center justify-between mb-4">
-                                <span className="text-xl font-bold">CRM Pro</span>
+                                <span className="text-xl font-bold">Patient Trace</span>
                                 <button aria-label="Close menu" onClick={() => setOpen(false)}>
                                     <X className="h-6 w-6" />
                                 </button>
@@ -133,6 +135,7 @@ export default function Sidebar() {
                             <ul className="space-y-1">
                                 {NavItem("/dashboard", "Dashboard", Home)}
                                 {NavItem("/leads", "Leads", FileText)}
+                                {NavItem("/calendar", "Takvim", Calendar)}
                                 {NavItem("/members", "Members", Users)}
                                 {NavItem("/integrations", "Integrations", Plug)}
 

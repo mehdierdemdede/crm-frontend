@@ -706,6 +706,19 @@ export const getSaleById = async (saleId: string): Promise<SaleResponse | null> 
     }
 };
 
+export const getSalesByDateRange = async (startDate: string, endDate: string): Promise<SaleResponse[]> => {
+    const headers = getAuthHeaders();
+    try {
+        const query = new URLSearchParams({ startDate, endDate }).toString();
+        const res = await fetch(`${BASE_URL}/sales?${query}`, { headers });
+        if (!res.ok) throw new Error("Satış listesi alınamadı");
+        return await res.json();
+    } catch (err) {
+        console.error("getSalesByDateRange error:", err);
+        return [];
+    }
+};
+
 export const updateLeadStatus = async (leadId: string, status: string): Promise<boolean> => {
     const headers = getAuthHeaders();
     try {
