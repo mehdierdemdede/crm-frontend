@@ -144,13 +144,14 @@ const formatAdInfo = (lead: LeadResponse): string => {
         adset_name?: unknown;
     };
 
-    const rawAdInfo = lead.adInfo ?? legacyLead.ad_info;
-    const adInfo = typeof rawAdInfo === "string" ? rawAdInfo.trim() : "";
-    if (adInfo) return adInfo;
-
+    // 🔹 Prioritize `adName` (Editable) over `adInfo`
     const rawAdName = lead.adName ?? legacyLead.ad_name;
     const adName = typeof rawAdName === "string" ? rawAdName.trim() : "";
     if (adName) return adName;
+
+    const rawAdInfo = lead.adInfo ?? legacyLead.ad_info;
+    const adInfo = typeof rawAdInfo === "string" ? rawAdInfo.trim() : "";
+    if (adInfo) return adInfo;
 
     const rawCampaignName = lead.campaign?.name ?? lead.campaignName ?? legacyLead.campaign_name;
     const campaignName = typeof rawCampaignName === "string" ? rawCampaignName.trim() : "";
