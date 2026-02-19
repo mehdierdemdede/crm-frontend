@@ -82,7 +82,7 @@ export function CalendarView({ events, currentDate, onDateChange, onEventClick, 
 
             {/* Calendar Grid */}
             <div className="flex-1 grid grid-cols-7 auto-rows-fr bg-gray-100 dark:bg-gray-700 gap-[1px]">
-                {calendarDays.map((day, dayIdx) => {
+                {calendarDays.map((day) => {
                     const isCurrentMonth = isSameMonth(day, monthStart);
                     const dayEvents = events.filter((e) => isSameDay(e.date, day));
                     const isTodayDate = isToday(day);
@@ -126,7 +126,7 @@ export function CalendarView({ events, currentDate, onDateChange, onEventClick, 
                                             key={event.id}
                                             onClick={(e) => {
                                                 e.stopPropagation();
-                                                onEventClick && onEventClick(event);
+                                                if (onEventClick) onEventClick(event);
                                             }}
                                             className={`px-2 py-1.5 text-xs rounded-r-md cursor-pointer font-medium shadow-sm transition-all hover:translate-x-0.5
                                                 ${colorClass}

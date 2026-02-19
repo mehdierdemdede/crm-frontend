@@ -401,6 +401,7 @@ export interface IntegrationConfig {
     platform: IntegrationPlatform;
     connectionStatus: IntegrationConnectionStatus;
     syncFrequency?: SyncFrequency;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     [key: string]: any;
 }
 
@@ -608,6 +609,7 @@ export const importLeadsFromExcel = async (
     mapping: Record<string, string>
 ): Promise<ApiResponse<LeadSyncResult>> => {
     const headers = getAuthHeaders();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     delete (headers as any)["Content-Type"]; // Let browser set boundary for multipart
 
     try {

@@ -1,6 +1,9 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+
+import { format, subDays, parseISO, isSameDay, eachDayOfInterval } from "date-fns";
+import { tr } from "date-fns/locale";
 import { ArrowLeft } from "lucide-react";
 import { useEffect, useState, useMemo } from "react";
 import {
@@ -13,8 +16,6 @@ import {
     Tooltip,
     Legend
 } from "recharts";
-import { startOfDay, subDays, format, parseISO, isSameDay, eachDayOfInterval } from "date-fns";
-import { tr } from "date-fns/locale";
 
 import { Button } from "@/components/Button";
 import { Card, CardHeader, CardContent } from "@/components/Card";
@@ -96,7 +97,7 @@ export default function MemberDetailPage() {
     const totalLeads = leads.length;
     const totalSales = sales.length;
     const conversionRate = totalLeads > 0 ? ((totalSales / totalLeads) * 100).toFixed(1) : "0";
-    const totalRevenue = sales.reduce((sum, s) => sum + (s.price || 0), 0); // Simple sum, ignoring currency mix for now
+
 
     // Chart Data Preparation
     const chartData = useMemo(() => {
