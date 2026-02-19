@@ -12,9 +12,10 @@ interface HeaderProps {
     className?: string;
     title?: string;
     subtitle?: string;
+    actions?: React.ReactNode;
 }
 
-export default function Header({ className, title, subtitle }: HeaderProps) {
+export default function Header({ className, title, subtitle, actions }: HeaderProps) {
     const { user, logout } = useAuth();
     const pathname = usePathname();
 
@@ -76,6 +77,7 @@ export default function Header({ className, title, subtitle }: HeaderProps) {
                         ) : null}
 
                         <div className="flex items-center gap-3 text-sm font-medium">
+                            {actions}
                             {actionButtons}
                         </div>
                     </div>

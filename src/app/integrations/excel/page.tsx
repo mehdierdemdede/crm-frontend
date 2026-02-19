@@ -1,5 +1,9 @@
-import { useState } from "react";
+"use client";
+
 import { useRouter } from "next/navigation";
+
+import { useState } from "react";
+
 import { Button } from "@/components/Button";
 import { Card, CardHeader, CardContent } from "@/components/Card";
 import Layout from "@/components/Layout";
@@ -20,6 +24,7 @@ export default function ExcelImportPage() {
     const [file, setFile] = useState<File | null>(null);
     const [excelCols, setExcelCols] = useState<string[]>([]);
     const [mapping, setMapping] = useState<{ [key: string]: string }>({});
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [previewData, setPreviewData] = useState<any[]>([]);
     const [uploading, setUploading] = useState(false);
     const [result, setResult] = useState<LeadSyncResult | null>(null);
@@ -88,7 +93,7 @@ export default function ExcelImportPage() {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const text = e.target?.result as string;
-                const firstLine = text.split("\n")[0];
+                const firstLine = text.split("\n")[0] || "";
                 const headers = firstLine.split(",").map(h => h.trim().replace(/"/g, ""));
                 setExcelCols(headers);
                 setStep(2);
@@ -100,6 +105,7 @@ export default function ExcelImportPage() {
                     return headers.reduce((obj, header, i) => {
                         obj[header] = values[i];
                         return obj;
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     }, {} as any);
                 });
                 setPreviewData(preview);
@@ -133,7 +139,7 @@ export default function ExcelImportPage() {
             } else {
                 setError(res.message || "Import başarısız.");
             }
-        } catch (err) {
+        } catch {
             setError("Bir hata oluştu.");
         } finally {
             setUploading(false);

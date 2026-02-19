@@ -690,7 +690,7 @@ export default function IntegrationsPage() {
 
     useEffect(() => {
         if (activeTab === "history") {
-            fetchLogs();
+            void fetchLogs();
         }
     }, [activeTab, fetchLogs]);
 

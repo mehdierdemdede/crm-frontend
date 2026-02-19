@@ -227,7 +227,8 @@ export default function DashboardPage() {
                                         innerRadius={60}
                                         outerRadius={80}
                                         paddingAngle={2}
-                                        label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                                        label={({ percent }: any) => `${(percent * 100).toFixed(0)}%`}
                                     >
                                         {pieData.map((_, i) => (
                                             <Cell key={`cell-${i}`} fill={COLORS[i % COLORS.length]} />

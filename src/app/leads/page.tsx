@@ -398,6 +398,7 @@ export default function LeadsPage() {
             responseMaxMinutes,
             responseMinMinutes,
             statusFilter,
+            sourceFilter,
             user?.id,
         ],
     );
@@ -1157,7 +1158,7 @@ export default function LeadsPage() {
                                             className={FILTER_SELECT_CLASSES}
                                             value={sourceFilter}
                                             onChange={(e) => {
-                                                setSourceFilter(e.target.value as any);
+                                                setSourceFilter(e.target.value as "ALL" | "ORGANIC" | "PAID");
                                                 setPage(0);
                                             }}
                                         >
