@@ -55,7 +55,7 @@ export default function CalendarPage() {
     const events = sales.map((sale) => ({
         id: sale.id,
         date: parseISO(sale.operationDate as string), // Ensure operationDate is ISO string
-        title: `${sale.operationType || 'Operasyon'} - ${sale.price} ${sale.currency}`,
+        title: `${sale.leadName || 'Operasyon'} - ${sale.operationType || ''} (${sale.price} ${sale.currency})`,
         color: sale.currency === 'EUR' ? 'blue' : sale.currency === 'GBP' ? 'purple' : 'green',
         data: sale,
     }));

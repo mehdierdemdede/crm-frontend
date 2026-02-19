@@ -41,6 +41,7 @@ export interface UserResponse {
 export interface SaleResponse {
     id: string;
     leadId: string;
+    leadName?: string;
     organizationId?: string;
     userId?: string;
     price?: number;
@@ -139,6 +140,10 @@ export interface LeadReportResponse {
     timeline: { date: string; leads: number }[];
     statusBreakdown: { status: string; count: number }[];
     userPerformance: { userName: string; sales: number; total: number }[];
+    totalLeads: number;
+    totalSales: number;
+    totalRevenue: Record<string, number>;
+    conversionRate: number;
 }
 
 export interface AgentStatsResponse {
@@ -351,9 +356,52 @@ export interface IntegrationStatus {
     lastErrorAt?: string | null;
     lastErrorMessage?: string | null;
     requiresAction?: boolean;
-    // Legacy fields kept for backward compatibility with older backend payloads
     pageId?: string | null;
     pageName?: string | null;
+    syncFrequency?: SyncFrequency;
+}
+
+export type SyncFrequency = "MANUAL" | "HOURLY" | "DAILY" | "WEEKLY";
+
+export const updateSyncFrequency = async (
+    platform: IntegrationPlatform,
+    frequency: SyncFrequency
+): Promise<ApiResponse<IntegrationConfig>> => {
+    const headers = getAuthHeaders();
+    try {
+        const res = await fetch(
+            `${BASE_URL}/integrations/${platform}/sync-frequency?frequency=${frequency}`,
+            {
+                method: "PUT",
+                headers,
+            }
+        );
+        const body = await extractResponseBody(res);
+        if (res.ok) {
+            return {
+                status: res.status,
+                data: body as IntegrationConfig,
+            };
+        }
+        return {
+            status: res.status,
+            message: resolveErrorMessage(body),
+        };
+    } catch (error) {
+        return {
+            status: 0,
+            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
+        };
+    }
+};
+
+export interface IntegrationConfig {
+    id: string;
+    organizationId: string;
+    platform: IntegrationPlatform;
+    connectionStatus: IntegrationConnectionStatus;
+    syncFrequency?: SyncFrequency;
+    [key: string]: any;
 }
 
 export interface FacebookLeadFetchSummary {
@@ -555,6 +603,92 @@ export const triggerGoogleLeadFetch = async (): Promise<
     }
 };
 
+export const importLeadsFromExcel = async (
+    file: File,
+    mapping: Record<string, string>
+): Promise<ApiResponse<LeadSyncResult>> => {
+    const headers = getAuthHeaders();
+    delete (headers as any)["Content-Type"]; // Let browser set boundary for multipart
+
+    try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("mapping", JSON.stringify(mapping));
+
+        const res = await fetch(`${BASE_URL}/integrations/excel/import`, {
+            method: "POST",
+            headers, // Do not set Content-Type
+            body: formData,
+        });
+
+        const body = await extractResponseBody(res);
+        if (res.ok) {
+            return {
+                status: res.status,
+                data: body as LeadSyncResult,
+            };
+        }
+        return {
+            status: res.status,
+            message: resolveErrorMessage(body),
+        };
+    } catch (error) {
+        return {
+            status: 0,
+            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
+        };
+    }
+};
+
+export interface IntegrationLog {
+    id: string;
+    organizationId: string;
+    platform: IntegrationPlatform;
+    totalFetched: number;
+    newCreated: number;
+    updated: number;
+    errorMessage?: string;
+    startedAt: string;
+    finishedAt?: string;
+}
+
+export const getIntegrationLogs = async (
+    page = 0,
+    size = 10,
+    platform?: string
+): Promise<ApiResponse<{ content: IntegrationLog[]; totalElements: number; totalPages: number }>> => {
+    const headers = getAuthHeaders();
+    try {
+        const params = new URLSearchParams({ page: String(page), size: String(size) });
+        if (platform) params.append("platform", platform);
+
+        const res = await fetch(`${BASE_URL}/integrations/logs?${params.toString()}`, { headers });
+        const body = await extractResponseBody(res);
+
+        if (res.ok) {
+            return {
+                status: res.status,
+                data: body as { content: IntegrationLog[]; totalElements: number; totalPages: number },
+            };
+        }
+        return {
+            status: res.status,
+            message: resolveErrorMessage(body),
+        };
+    } catch (error) {
+        return {
+            status: 0,
+            message: error instanceof Error ? error.message : "Ağ hatası oluştu.",
+        };
+    }
+};
+
+export interface LeadSyncResult {
+    totalFetched: number;
+    created: number;
+    updated: number;
+}
+
 export const getIntegration = async (
     platform: IntegrationPlatform,
     organizationId?: string,
@@ -706,10 +840,12 @@ export const getSaleById = async (saleId: string): Promise<SaleResponse | null> 
     }
 };
 
-export const getSalesByDateRange = async (startDate: string, endDate: string): Promise<SaleResponse[]> => {
+export const getSalesByDateRange = async (startDate: string, endDate: string, userId?: string): Promise<SaleResponse[]> => {
     const headers = getAuthHeaders();
     try {
-        const query = new URLSearchParams({ startDate, endDate }).toString();
+        const params = new URLSearchParams({ startDate, endDate });
+        if (userId) params.append("userId", userId);
+        const query = params.toString();
         const res = await fetch(`${BASE_URL}/sales?${query}`, { headers });
         if (!res.ok) throw new Error("Satış listesi alınamadı");
         return await res.json();

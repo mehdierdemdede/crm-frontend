@@ -1,5 +1,6 @@
 "use client";
 
+import { Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import {
     PieChart,
@@ -52,11 +53,91 @@ export default function ReportsPage() {
         })();
     }, []);
 
+    const downloadReport = () => {
+        if (!report) return;
+
+        const headers = ["Kullanıcı", "Toplam Lead", "Satış", "Dönüşüm Oranı (%)"];
+        const rows = report.userPerformance.map((u) => {
+            const rate = u.total > 0 ? ((u.sales / u.total) * 100).toFixed(2) : "0";
+            return [u.userName, u.total, u.sales, rate];
+        });
+
+        const csvContent =
+            "data:text/csv;charset=utf-8,\uFEFF" +
+            [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `rapor_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
         <Layout title="Raporlar" subtitle="Zaman bazlı analiz ve performans">
+            {/* 🔹 KPI Cards */}
+            {report && (
+                <div className="col-span-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                    <Card>
+                        <CardContent className="p-4 flex flex-col items-center justify-center">
+                            <span className="text-sm text-gray-500 font-medium">Toplam Lead</span>
+                            <span className="text-2xl font-bold text-blue-600">{report.totalLeads}</span>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-4 flex flex-col items-center justify-center">
+                            <span className="text-sm text-gray-500 font-medium">Toplam Satış</span>
+                            <span className="text-2xl font-bold text-green-600">{report.totalSales}</span>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-4 flex flex-col items-center justify-center">
+                            <span className="text-sm text-gray-500 font-medium">Toplam Ciro</span>
+                            <div className="flex flex-col items-center">
+                                {report.totalRevenue && Object.keys(report.totalRevenue).length > 0 ? (
+                                    Object.entries(report.totalRevenue).map(([currency, amount]) => (
+                                        <span key={currency} className="text-xl font-bold text-amber-600">
+                                            {new Intl.NumberFormat("tr-TR", {
+                                                style: "currency",
+                                                currency,
+                                            }).format(amount)}
+                                        </span>
+                                    ))
+                                ) : (
+                                    <span className="text-2xl font-bold text-amber-600">
+                                        {new Intl.NumberFormat("tr-TR", {
+                                            style: "currency",
+                                            currency: "TRY",
+                                        }).format(0)}
+                                    </span>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardContent className="p-4 flex flex-col items-center justify-center">
+                            <span className="text-sm text-gray-500 font-medium">Dönüşüm Oranı</span>
+                            <span className="text-2xl font-bold text-purple-600">
+                                %{report.conversionRate.toFixed(2)}
+                            </span>
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
+
             <div className="col-span-12">
                 <Card>
-                    <CardHeader>Filtreler</CardHeader>
+                    <CardHeader>
+                        <div className="flex justify-between items-center">
+                            <span>Filtreler</span>
+                            <Button variant="outline" size="sm" onClick={downloadReport} disabled={!report}>
+                                <Download className="w-4 h-4 mr-2" />
+                                Excel / CSV İndir
+                            </Button>
+                        </div>
+                    </CardHeader>
                     <CardContent className="flex flex-wrap gap-3">
                         <div>
                             <label className="block text-sm mb-1">Başlangıç</label>
@@ -66,9 +147,11 @@ export default function ReportsPage() {
                             <label className="block text-sm mb-1">Bitiş</label>
                             <Input type="date" value={end} onChange={(e) => setEnd(e.target.value)} />
                         </div>
-                        <Button variant="primary" onClick={fetchReport}>
-                            Raporu Getir
-                        </Button>
+                        <div className="flex items-end">
+                            <Button variant="primary" onClick={fetchReport}>
+                                Raporu Getir
+                            </Button>
+                        </div>
                     </CardContent>
                 </Card>
             </div>

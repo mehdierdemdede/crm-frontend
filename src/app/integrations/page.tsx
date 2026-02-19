@@ -12,8 +12,12 @@ import {
     getGoogleOAuthUrl,
     triggerFacebookLeadFetch,
     triggerGoogleLeadFetch,
+    updateSyncFrequency,
+    getIntegrationLogs,
     type IntegrationStatus,
     type IntegrationConnectionStatus,
+    type IntegrationLog,
+    type SyncFrequency,
 } from "@/lib/api";
 import { FACEBOOK_OAUTH_MESSAGE_TYPE } from "@/lib/facebookOAuth";
 import { GOOGLE_OAUTH_MESSAGE_TYPE } from "@/lib/googleOAuth";
@@ -199,6 +203,12 @@ export default function IntegrationsPage() {
     const [googleConnectLoading, setGoogleConnectLoading] = useState(false);
     const [googleFetchLoading, setGoogleFetchLoading] = useState(false);
     const [googleAlert, setGoogleAlert] = useState<AlertState | null>(null);
+
+    const [activeTab, setActiveTab] = useState<"connections" | "history">("connections");
+    const [logs, setLogs] = useState<IntegrationLog[]>([]);
+    const [logsLoading, setLogsLoading] = useState(false);
+    const [logsPage, setLogsPage] = useState(0);
+    const [logsTotalPages, setLogsTotalPages] = useState(0);
 
     type OAuthTimerKey = "facebook" | "google";
     type OAuthTimerEntry = {
@@ -625,6 +635,18 @@ export default function IntegrationsPage() {
         setGoogleFetchLoading(false);
     }, [refreshIntegrationStatuses]);
 
+    const handleFrequencyChange = useCallback(async (platform: string, frequency: SyncFrequency) => {
+        setStatusLoading(true);
+        const res = await updateSyncFrequency(platform, frequency);
+        if (res.status === 200) {
+            await refreshIntegrationStatuses();
+        } else {
+            console.error(res.message);
+            // Opsiyonel: Hata göster
+        }
+        setStatusLoading(false);
+    }, [refreshIntegrationStatuses]);
+
     useEffect(() => {
         if (facebookConnectLoading && isFacebookConnected) {
             clearOAuthTimers("facebook");
@@ -655,220 +677,364 @@ export default function IntegrationsPage() {
         };
     }, [clearOAuthTimers]);
 
+    const fetchLogs = useCallback(async (page = 0) => {
+        setLogsLoading(true);
+        const res = await getIntegrationLogs(page, 10);
+        if (res.status === 200 && res.data) {
+            setLogs(res.data.content);
+            setLogsTotalPages(res.data.totalPages);
+            setLogsPage(page);
+        }
+        setLogsLoading(false);
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === "history") {
+            fetchLogs();
+        }
+    }, [activeTab, fetchLogs]);
+
     return (
         <Layout title="Integrations" subtitle="Facebook ve Google bağlantılarınızı yönetin">
-            {/* Facebook */}
-            <div className="col-span-12 md:col-span-6">
-                <Card>
-                    <CardHeader className="flex items-center gap-2">
-                        <Facebook className="h-5 w-5 text-blue-600" />
-                        Facebook Integration
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
-                        <p>
-                            Facebook Ads üzerinden gelen lead’leri Patient Trace&apos;e otomatik olarak aktarın.
-                        </p>
+            <div className="col-span-12 mb-4">
+                <div className="flex border-b">
+                    <button
+                        className={`px-4 py-2 font-medium text-sm ${activeTab === "connections"
+                            ? "border-b-2 border-blue-500 text-blue-600"
+                            : "text-gray-500 hover:text-gray-700"
+                            }`}
+                        onClick={() => setActiveTab("connections")}
+                    >
+                        Bağlantılar
+                    </button>
+                    <button
+                        className={`px-4 py-2 font-medium text-sm ${activeTab === "history"
+                            ? "border-b-2 border-blue-500 text-blue-600"
+                            : "text-gray-500 hover:text-gray-700"
+                            }`}
+                        onClick={() => setActiveTab("history")}
+                    >
+                        Senkronizasyon Geçmişi
+                    </button>
+                </div>
+            </div>
 
-                        {facebookAlert && (
-                            <div
-                                className={`rounded-md border px-3 py-2 text-sm ${
-                                    facebookAlert.type === "success"
-                                        ? "border-green-200 bg-green-50 text-green-700"
-                                        : facebookAlert.type === "error"
-                                            ? "border-red-200 bg-red-50 text-red-700"
-                                            : "border-blue-200 bg-blue-50 text-blue-700"
-                                }`}
-                            >
-                                {facebookAlert.message}
-                            </div>
-                        )}
+            {activeTab === "connections" && (
+                <>
+                    {/* Facebook */}
+                    <div className="col-span-12 md:col-span-6">
+                        <Card>
+                            <CardHeader className="flex items-center gap-2">
+                                <Facebook className="h-5 w-5 text-blue-600" />
+                                Facebook Integration
+                            </CardHeader>
+                            <CardContent className="flex flex-col gap-4">
+                                <p>
+                                    Facebook Ads üzerinden gelen lead&apos;leri Patient Trace&apos;e otomatik olarak aktarın.
+                                </p>
 
-                        {statusLoading ? (
-                            <p className="text-sm text-gray-500">
-                                Facebook bağlantı durumu yükleniyor...
-                            </p>
-                        ) : statusError ? (
-                            <p className="text-sm text-red-600">{statusError}</p>
-                        ) : (
-                            <div className="flex flex-col gap-3">
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <span
-                                        className={`inline-flex h-6 items-center rounded-full px-3 text-xs font-medium ${facebookStatusConfig.badgeClass}`}
-                                    >
-                                        {facebookStatusConfig.label}
-                                    </span>
-
-                                    <Button
-                                        variant="primary"
-                                        onClick={handleFacebookConnectClick}
-                                        disabled={facebookConnectLoading}
-                                        isLoading={facebookConnectLoading}
-                                    >
-                                        {isFacebookConnected
-                                            ? "Yeniden Bağlan"
-                                            : "Bağlan"}
-                                    </Button>
-                                </div>
-
-                                {facebookStatusMessage && (
+                                {facebookAlert && (
                                     <div
-                                        className={`rounded-md border px-3 py-2 text-xs ${MESSAGE_TONE_CLASS[facebookStatusMessage.tone]
+                                        className={`rounded-md border px-3 py-2 text-sm ${facebookAlert.type === "success"
+                                            ? "border-green-200 bg-green-50 text-green-700"
+                                            : facebookAlert.type === "error"
+                                                ? "border-red-200 bg-red-50 text-red-700"
+                                                : "border-blue-200 bg-blue-50 text-blue-700"
                                             }`}
                                     >
-                                        {facebookStatusMessage.message}
+                                        {facebookAlert.message}
                                     </div>
                                 )}
 
-                                {facebookDetails.length > 0 && (
-                                    <dl className="grid gap-2 text-xs text-gray-600">
-                                        {facebookDetails.map((detail, index) => (
-                                            <div
-                                                key={`${detail.label}-${index}`}
-                                                className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"
+                                {statusLoading ? (
+                                    <p className="text-sm text-gray-500">
+                                        Facebook bağlantı durumu yükleniyor...
+                                    </p>
+                                ) : statusError ? (
+                                    <p className="text-sm text-red-600">{statusError}</p>
+                                ) : (
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                            <span
+                                                className={`inline-flex h-6 items-center rounded-full px-3 text-xs font-medium ${facebookStatusConfig.badgeClass}`}
                                             >
-                                                <dt className="font-medium text-gray-500">
-                                                    {detail.label}
-                                                </dt>
-                                                <dd className="text-gray-700 sm:text-right">
-                                                    {detail.value}
-                                                </dd>
+                                                {facebookStatusConfig.label}
+                                            </span>
+
+                                            <Button
+                                                variant="primary"
+                                                onClick={handleFacebookConnectClick}
+                                                disabled={facebookConnectLoading}
+                                                isLoading={facebookConnectLoading}
+                                            >
+                                                {isFacebookConnected
+                                                    ? "Yeniden Bağlan"
+                                                    : "Bağlan"}
+                                            </Button>
+                                        </div>
+
+                                        {facebookStatusMessage && (
+                                            <div
+                                                className={`rounded-md border px-3 py-2 text-xs ${MESSAGE_TONE_CLASS[facebookStatusMessage.tone]
+                                                    }`}
+                                            >
+                                                {facebookStatusMessage.message}
                                             </div>
-                                        ))}
-                                    </dl>
-                                )}
+                                        )}
 
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <span className="text-xs text-gray-500">
-                                        Manuel olarak Facebook lead’lerini hemen senkronize edin.
-                                    </span>
-                                    <Button
-                                        variant="secondary"
-                                        onClick={handleFacebookManualSync}
-                                        disabled={!isFacebookConnected || facebookFetchLoading}
-                                        isLoading={facebookFetchLoading}
-                                    >
-                                        Lead Senkronizasyonu Başlat
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
+                                        {facebookDetails.length > 0 && (
+                                            <dl className="grid gap-2 text-xs text-gray-600">
+                                                {facebookDetails.map((detail, index) => (
+                                                    <div
+                                                        key={`${detail.label}-${index}`}
+                                                        className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"
+                                                    >
+                                                        <dt className="font-medium text-gray-500">
+                                                            {detail.label}
+                                                        </dt>
+                                                        <dd className="text-gray-700 sm:text-right">
+                                                            {detail.value}
+                                                        </dd>
+                                                    </div>
+                                                ))}
+                                            </dl>
+                                        )}
 
-            {/* Google */}
-            <div className="col-span-12 md:col-span-6">
-                <Card>
-                    <CardHeader className="flex items-center gap-2">
-                        <Globe className="h-5 w-5 text-red-500" />
-                        Google Integration
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
-                        <p>
-                            Google Ads üzerinden gelen lead’leri Patient Trace&apos;e otomatik olarak aktarın.
-                        </p>
-                        {googleAlert && (
-                            <div
-                                className={`rounded-md border px-3 py-2 text-sm ${
-                                    googleAlert.type === "success"
-                                        ? "border-green-200 bg-green-50 text-green-700"
-                                        : googleAlert.type === "error"
-                                            ? "border-red-200 bg-red-50 text-red-700"
-                                            : "border-blue-200 bg-blue-50 text-blue-700"
-                                }`}
-                            >
-                                {googleAlert.message}
-                            </div>
-                        )}
-                        {statusLoading ? (
-                            <p className="text-sm text-gray-500">
-                                Google bağlantı durumu yükleniyor...
-                            </p>
-                        ) : statusError ? (
-                            <p className="text-sm text-red-600">{statusError}</p>
-                        ) : (
-                            <div className="flex flex-col gap-3">
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <span
-                                        className={`inline-flex h-6 items-center rounded-full px-3 text-xs font-medium ${googleStatusConfig.badgeClass}`}
-                                    >
-                                        {googleStatusConfig.label}
-                                    </span>
-                                    <Button
-                                        variant="primary"
-                                        onClick={handleGoogleConnectClick}
-                                        disabled={googleConnectLoading}
-                                        isLoading={googleConnectLoading}
-                                    >
-                                        {isGoogleConnected ? "Yeniden Bağlan" : "Bağlan"}
-                                    </Button>
-                                </div>
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                            <span className="text-xs text-gray-500">
+                                                Manuel olarak Facebook lead&apos;lerini hemen senkronize edin.
+                                            </span>
+                                            <Button
+                                                variant="secondary"
+                                                onClick={handleFacebookManualSync}
+                                                disabled={!isFacebookConnected || facebookFetchLoading}
+                                                isLoading={facebookFetchLoading}
+                                            >
+                                                Lead Senkronizasyonu Başlat
+                                            </Button>
+                                        </div>
 
-                                {googleStatusMessage && (
-                                    <div
-                                        className={`rounded-md border px-3 py-2 text-xs ${MESSAGE_TONE_CLASS[googleStatusMessage.tone]
-                                            }`}
-                                    >
-                                        {googleStatusMessage.message}
+                                        <div className="flex items-center justify-between border-t pt-3 mt-1">
+                                            <span className="text-xs text-gray-600 font-medium">Otomatik Senkronizasyon:</span>
+                                            <select
+                                                value={facebookStatus?.syncFrequency || "MANUAL"}
+                                                onChange={(e) => handleFrequencyChange("FACEBOOK", e.target.value as SyncFrequency)}
+                                                disabled={!isFacebookConnected || statusLoading}
+                                                className="text-xs border rounded px-2 py-1 bg-white"
+                                            >
+                                                <option value="MANUAL">Kapalı (Manuel)</option>
+                                                <option value="HOURLY">Her Saat</option>
+                                                <option value="DAILY">Günlük</option>
+                                                <option value="WEEKLY">Haftalık</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 )}
+                            </CardContent>
+                        </Card>
+                    </div>
 
-                                {googleDetails.length > 0 && (
-                                    <dl className="grid gap-2 text-xs text-gray-600">
-                                        {googleDetails.map((detail, index) => (
-                                            <div
-                                                key={`${detail.label}-${index}`}
-                                                className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"
-                                            >
-                                                <dt className="font-medium text-gray-500">
-                                                    {detail.label}
-                                                </dt>
-                                                <dd className="text-gray-700 sm:text-right">
-                                                    {detail.value}
-                                                </dd>
-                                            </div>
-                                        ))}
-                                    </dl>
+                    {/* Google */}
+                    <div className="col-span-12 md:col-span-6">
+                        <Card>
+                            <CardHeader className="flex items-center gap-2">
+                                <Globe className="h-5 w-5 text-red-500" />
+                                Google Integration
+                            </CardHeader>
+                            <CardContent className="flex flex-col gap-4">
+                                <p>
+                                    Google Ads üzerinden gelen lead&apos;leri Patient Trace&apos;e otomatik olarak aktarın.
+                                </p>
+                                {googleAlert && (
+                                    <div
+                                        className={`rounded-md border px-3 py-2 text-sm ${googleAlert.type === "success"
+                                            ? "border-green-200 bg-green-50 text-green-700"
+                                            : googleAlert.type === "error"
+                                                ? "border-red-200 bg-red-50 text-red-700"
+                                                : "border-blue-200 bg-blue-50 text-blue-700"
+                                            }`}
+                                    >
+                                        {googleAlert.message}
+                                    </div>
                                 )}
-                                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                                    <span className="text-xs text-gray-500">
-                                        Manuel olarak Google lead’lerini hemen senkronize edin.
+                                {statusLoading ? (
+                                    <p className="text-sm text-gray-500">
+                                        Google bağlantı durumu yükleniyor...
+                                    </p>
+                                ) : statusError ? (
+                                    <p className="text-sm text-red-600">{statusError}</p>
+                                ) : (
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                            <span
+                                                className={`inline-flex h-6 items-center rounded-full px-3 text-xs font-medium ${googleStatusConfig.badgeClass}`}
+                                            >
+                                                {googleStatusConfig.label}
+                                            </span>
+                                            <Button
+                                                variant="primary"
+                                                onClick={handleGoogleConnectClick}
+                                                disabled={googleConnectLoading}
+                                                isLoading={googleConnectLoading}
+                                            >
+                                                {isGoogleConnected ? "Yeniden Bağlan" : "Bağlan"}
+                                            </Button>
+                                        </div>
+
+                                        {googleStatusMessage && (
+                                            <div
+                                                className={`rounded-md border px-3 py-2 text-xs ${MESSAGE_TONE_CLASS[googleStatusMessage.tone]
+                                                    }`}
+                                            >
+                                                {googleStatusMessage.message}
+                                            </div>
+                                        )}
+
+                                        {googleDetails.length > 0 && (
+                                            <dl className="grid gap-2 text-xs text-gray-600">
+                                                {googleDetails.map((detail, index) => (
+                                                    <div
+                                                        key={`${detail.label}-${index}`}
+                                                        className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between"
+                                                    >
+                                                        <dt className="font-medium text-gray-500">
+                                                            {detail.label}
+                                                        </dt>
+                                                        <dd className="text-gray-700 sm:text-right">
+                                                            {detail.value}
+                                                        </dd>
+                                                    </div>
+                                                ))}
+                                            </dl>
+                                        )}
+                                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                            <span className="text-xs text-gray-500">
+                                                Manuel olarak Google lead&apos;lerini hemen senkronize edin.
+                                            </span>
+                                            <Button
+                                                variant="secondary"
+                                                onClick={handleGoogleManualSync}
+                                                disabled={!isGoogleConnected || googleFetchLoading}
+                                                isLoading={googleFetchLoading}
+                                            >
+                                                Lead Senkronizasyonu Başlat
+                                            </Button>
+                                        </div>
+
+                                        <div className="flex items-center justify-between border-t pt-3 mt-1">
+                                            <span className="text-xs text-gray-600 font-medium">Otomatik Senkronizasyon:</span>
+                                            <select
+                                                value={googleStatus?.syncFrequency || "MANUAL"}
+                                                onChange={(e) => handleFrequencyChange("GOOGLE", e.target.value as SyncFrequency)}
+                                                disabled={!isGoogleConnected || statusLoading}
+                                                className="text-xs border rounded px-2 py-1 bg-white"
+                                            >
+                                                <option value="MANUAL">Kapalı (Manuel)</option>
+                                                <option value="HOURLY">Her Saat</option>
+                                                <option value="DAILY">Günlük</option>
+                                                <option value="WEEKLY">Haftalık</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Excel Import */}
+                    <div className="col-span-12">
+                        <Card>
+                            <CardHeader className="flex items-center gap-2">
+                                <PlugZap className="h-5 w-5 text-amber-500" />
+                                Excel Import
+                            </CardHeader>
+                            <CardContent className="flex flex-col gap-4">
+                                <p>Excel dosyalarınızı yükleyerek manuel lead ekleyin.</p>
+                                <Button
+                                    variant="primary"
+                                    onClick={() => {
+                                        window.location.href = "/integrations/excel";
+                                    }}
+                                >
+                                    Excel Import Başlat
+                                </Button>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </>
+            )}
+
+            {activeTab === "history" && (
+                <div className="col-span-12">
+                    <Card>
+                        <CardHeader>İşlem Geçmişi</CardHeader>
+                        <CardContent>
+                            {logsLoading ? (
+                                <p className="text-center text-gray-500 py-4">Yükleniyor...</p>
+                            ) : logs.length === 0 ? (
+                                <p className="text-center text-gray-500 py-4">Henüz bir işlem kaydı bulunmuyor.</p>
+                            ) : (
+                                <div className="overflow-x-auto">
+                                    <table className="min-w-full text-sm">
+                                        <thead>
+                                            <tr className="bg-gray-100 text-left">
+                                                <th className="p-2">Platform</th>
+                                                <th className="p-2">Başlangıç</th>
+                                                <th className="p-2">Durum/Sonuç</th>
+                                                <th className="p-2">Yeni/Gnc</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {logs.map((log) => (
+                                                <tr key={log.id} className="border-t hover:bg-gray-50">
+                                                    <td className="p-2 font-medium">{log.platform}</td>
+                                                    <td className="p-2">
+                                                        {new Date(log.startedAt).toLocaleString("tr-TR")}
+                                                    </td>
+                                                    <td className="p-2">
+                                                        {log.errorMessage ? (
+                                                            <span className="text-red-600" title={log.errorMessage}>
+                                                                Hata
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-green-600">Başarılı</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-2">
+                                                        +{log.newCreated} / ↻{log.updated}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+
+                            {logsTotalPages > 1 && (
+                                <div className="flex justify-center gap-2 mt-4">
+                                    <Button
+                                        variant="secondary"
+                                        disabled={logsPage === 0}
+                                        onClick={() => fetchLogs(logsPage - 1)}
+                                    >
+                                        Önceki
+                                    </Button>
+                                    <span className="flex items-center text-sm text-gray-600">
+                                        Sayfa {logsPage + 1} / {logsTotalPages}
                                     </span>
                                     <Button
                                         variant="secondary"
-                                        onClick={handleGoogleManualSync}
-                                        disabled={!isGoogleConnected || googleFetchLoading}
-                                        isLoading={googleFetchLoading}
+                                        disabled={logsPage >= logsTotalPages - 1}
+                                        onClick={() => fetchLogs(logsPage + 1)}
                                     >
-                                        Lead Senkronizasyonu Başlat
+                                        Sonraki
                                     </Button>
                                 </div>
-                            </div>
-                        )}
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Excel Import yönlendirme */}
-            <div className="col-span-12">
-                <Card>
-                    <CardHeader className="flex items-center gap-2">
-                        <PlugZap className="h-5 w-5 text-amber-500" />
-                        Excel Import
-                    </CardHeader>
-                    <CardContent className="flex flex-col gap-4">
-                        <p>Excel dosyalarınızı yükleyerek manuel lead ekleyin.</p>
-                        <Button
-                            variant="primary"
-                            onClick={() => {
-                                window.location.href = "/integrations/excel";
-                            }}
-                        >
-                            Excel Import Başlat
-                        </Button>
-                    </CardContent>
-                </Card>
-            </div>
+                            )}
+                        </CardContent>
+                    </Card>
+                </div>
+            )}
         </Layout>
     );
 }

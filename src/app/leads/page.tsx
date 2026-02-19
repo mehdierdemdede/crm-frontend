@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown, Send, Copy } from "lucide-react";
+import { Phone, MessageCircle, Facebook, Trash2, ArrowUpDown, Send, Copy, LayoutGrid, List, Download } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/Button";
@@ -234,6 +234,10 @@ export default function LeadsPage() {
     const [callNote, setCallNote] = useState("");
     const [callLoading, setCallLoading] = useState(false);
 
+    const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
+    const [sourceFilter, setSourceFilter] = useState<"ALL" | "ORGANIC" | "PAID">("ALL");
+    const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
+
     const debouncedSearch = useDebounce(search, 400);
     const isSearching = search !== debouncedSearch;
     const selectAllRef = useRef<HTMLInputElement>(null);
@@ -365,6 +369,13 @@ export default function LeadsPage() {
                         ? responseMinutes != null && responseMinutes <= responseMaxMinutes
                         : true;
 
+                const matchesSource = (() => {
+                    if (sourceFilter === "ALL") return true;
+                    if (sourceFilter === "ORGANIC") return lead.organic === true;
+                    if (sourceFilter === "PAID") return lead.organic === false || lead.organic == null; // null usually means not explicitly organic (e.g. ad)
+                    return true;
+                })();
+
                 return (
                     matchesSearch &&
                     matchesAd &&
@@ -373,7 +384,8 @@ export default function LeadsPage() {
                     matchesFrom &&
                     matchesTo &&
                     matchesMin &&
-                    matchesMax
+                    matchesMax &&
+                    matchesSource
                 );
             });
         },
@@ -1013,6 +1025,58 @@ export default function LeadsPage() {
                                     )}
                                 </div>
                                 <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            const csvContent = [
+                                                ["İsim", "Telefon", "Email", "Durum", "Kaynak", "Reklam Bilgisi", "Oluşturulma Tarihi"],
+                                                ...displayedLeads.map((l) => [
+                                                    l.name,
+                                                    l.phone || "",
+                                                    l.email || "",
+                                                    STATUS_LABELS[l.status] || l.status,
+                                                    l.organic ? "Organik" : "Reklam",
+                                                    formatAdInfo(l),
+                                                    new Date(l.createdAt).toLocaleString(),
+                                                ]),
+                                            ]
+                                                .map((e) => e.join(","))
+                                                .join("\n");
+
+                                            const blob = new Blob([`\uFEFF${csvContent}`], { type: "text/csv;charset=utf-8;" });
+                                            const url = URL.createObjectURL(blob);
+                                            const link = document.createElement("a");
+                                            link.href = url;
+                                            link.setAttribute("download", `leads_export_${new Date().toISOString().slice(0, 10)}.csv`);
+                                            document.body.appendChild(link);
+                                            link.click();
+                                            document.body.removeChild(link);
+                                        }}
+                                        title="Listeyi Excel/CSV olarak indir"
+                                    >
+                                        <Download className="h-4 w-4 mr-2" />
+                                        İndir
+                                    </Button>
+
+                                    <div className="flex bg-gray-100 rounded-lg p-1">
+                                        <button
+                                            className={`p-1.5 rounded-md transition ${viewMode === "table" ? "bg-white shadow" : "text-gray-500 hover:text-gray-900"
+                                                }`}
+                                            onClick={() => setViewMode("table")}
+                                            title="Liste Görünümü"
+                                        >
+                                            <List className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                            className={`p-1.5 rounded-md transition ${viewMode === "kanban" ? "bg-white shadow" : "text-gray-500 hover:text-gray-900"
+                                                }`}
+                                            onClick={() => setViewMode("kanban")}
+                                            title="Kanban Görünümü"
+                                        >
+                                            <LayoutGrid className="h-4 w-4" />
+                                        </button>
+                                    </div>
+
                                     {canBulkAssign && (
                                         <Button
                                             variant="secondary"
@@ -1087,9 +1151,24 @@ export default function LeadsPage() {
                                             hint={isSearching ? "Aranıyor..." : undefined}
                                         />
                                     </div>
+                                    <div className="space-y-2 md:col-span-1 xl:col-span-2">
+                                        <label className="block text-sm font-medium text-gray-800 mb-1">Kaynak</label>
+                                        <select
+                                            className={FILTER_SELECT_CLASSES}
+                                            value={sourceFilter}
+                                            onChange={(e) => {
+                                                setSourceFilter(e.target.value as any);
+                                                setPage(0);
+                                            }}
+                                        >
+                                            <option value="ALL">Tümü</option>
+                                            <option value="ORGANIC">Sadece Organik</option>
+                                            <option value="PAID">Sadece Reklam</option>
+                                        </select>
+                                    </div>
                                     <div className="md:col-span-1 xl:col-span-3">
+                                        <label className="block text-sm font-medium text-gray-800 mb-1">Reklam</label>
                                         <Input
-                                            label="Reklam"
                                             placeholder="Reklam adı..."
                                             value={campaignFilter}
                                             onChange={(e) => {
@@ -1310,6 +1389,90 @@ export default function LeadsPage() {
                                         ))}
                                     </div>
                                 </>
+                            ) : viewMode === "kanban" ? (
+                                <div className="flex overflow-x-auto gap-4 p-2 pb-4 min-h-[600px]">
+                                    {Object.entries(STATUS_LABELS).map(([statusKey, statusLabel]) => {
+                                        const columnLeads = displayedLeads.filter(l => l.status === statusKey);
+                                        return (
+                                            <div
+                                                key={statusKey}
+                                                className="flex-shrink-0 w-80 bg-gray-50 rounded-lg border flex flex-col h-full max-h-[calc(100vh-200px)]"
+                                                onDragOver={(e) => e.preventDefault()}
+                                                onDrop={(e) => {
+                                                    e.preventDefault();
+                                                    if (draggedLeadId) {
+                                                        const lead = leads.find(l => l.id === draggedLeadId);
+                                                        if (lead && lead.status !== statusKey) {
+                                                            void handleStatusChange(draggedLeadId, statusKey as LeadStatus);
+                                                        }
+                                                        setDraggedLeadId(null);
+                                                    }
+                                                }}
+                                            >
+                                                <div className={`p-3 font-semibold border-b ${STATUS_COLORS[statusKey as LeadStatus]} rounded-t-lg flex justify-between items-center`}>
+                                                    <span>{statusLabel}</span>
+                                                    <span className="bg-white/50 text-xs px-2 py-0.5 rounded-full">
+                                                        {columnLeads.length}
+                                                    </span>
+                                                </div>
+                                                <div className="p-2 space-y-2 overflow-y-auto flex-1">
+                                                    {columnLeads.map((lead) => (
+                                                        <div
+                                                            key={lead.id}
+                                                            draggable
+                                                            onDragStart={() => setDraggedLeadId(lead.id)}
+                                                            className="bg-white p-3 rounded shadow-sm border border-gray-100 cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow group relative"
+                                                        >
+                                                            <div className="flex justify-between items-start mb-1">
+                                                                <Link href={`/leads/${lead.id}`} className="font-medium text-blue-600 truncate hover:underline block max-w-[180px]">
+                                                                    {lead.name}
+                                                                </Link>
+                                                                <span className="text-[10px] text-gray-400 whitespace-nowrap">
+                                                                    {new Date(lead.createdAt).toLocaleDateString()}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-xs text-gray-500 mb-2 truncate">
+                                                                {getEmailDisplay(lead)}
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-1 mb-2">
+                                                                {lead.organic ? (
+                                                                    <span className="px-1.5 py-0.5 bg-green-50 text-green-700 text-[10px] rounded border border-green-100">Organik</span>
+                                                                ) : (
+                                                                    <span className="px-1.5 py-0.5 bg-purple-50 text-purple-700 text-[10px] rounded border border-purple-100">Reklam</span>
+                                                                )}
+                                                                {lead.assignedToUser ? (
+                                                                    <span className="px-1.5 py-0.5 bg-blue-50 text-blue-700 text-[10px] rounded border border-blue-100" title={formatUserName(lead.assignedToUser)}>
+                                                                        {lead.assignedToUser.firstName}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="px-1.5 py-0.5 bg-gray-100 text-gray-500 text-[10px] rounded border border-gray-200">Atanmadı</span>
+                                                                )}
+                                                            </div>
+
+                                                            <div className="flex justify-end gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                                                {lead.phone && (
+                                                                    <button onClick={() => handleCall(lead)} className="p-1 hover:bg-gray-100 rounded text-blue-600" title="Ara">
+                                                                        <Phone className="w-3 h-3" />
+                                                                    </button>
+                                                                )}
+                                                                {lead.phone && (
+                                                                    <button onClick={() => handleWhatsApp(lead)} className="p-1 hover:bg-gray-100 rounded text-green-600" title="WhatsApp">
+                                                                        <MessageCircle className="w-3 h-3" />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                    {columnLeads.length === 0 && (
+                                                        <div className="text-center text-gray-400 text-xs py-4 italic">
+                                                            Lead yok
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
                             ) : (
                                 <>
                                     <div className="hidden md:block overflow-x-auto">
@@ -1511,6 +1674,7 @@ export default function LeadsPage() {
                                         </table>
                                     </div>
 
+
                                     <div className="md:hidden flex flex-col gap-4">
                                         {displayedLeads.length === 0 ? (
                                             <div className="text-center text-gray-500 py-10">
@@ -1657,9 +1821,9 @@ export default function LeadsPage() {
                                     </div>
                                 </>
                             )}
-                        </CardContent>
-                    </Card>
-                </div>
+                        </CardContent >
+                    </Card >
+                </div >
 
                 <div className="col-span-12 flex flex-col lg:flex-row lg:items-center gap-4 justify-between mt-6 mb-8">
                     <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-4 py-2 shadow-sm w-full sm:w-auto">
@@ -1705,7 +1869,7 @@ export default function LeadsPage() {
                         </Button>
                     </div>
                 </div>
-            </Layout>
+            </Layout >
 
             <ToastContainer toasts={toasts} onDismiss={dismissToast} />
 
@@ -2046,73 +2210,75 @@ export default function LeadsPage() {
                 </div>
             </Modal>
 
-            {isCallModalOpen && callLead && (
-                <Modal
-                    isOpen={isCallModalOpen}
-                    onClose={() => setIsCallModalOpen(false)}
-                    title="Arama Sonucu Kaydet"
-                    description={(
-                        <div className="flex items-center gap-2 mt-2 bg-gray-50 p-3 rounded-lg border">
-                            <Phone className="h-5 w-5 text-gray-500" />
-                            <span className="text-lg font-mono font-semibold text-gray-800">{callLead.phone}</span>
-                            <Button size="sm" variant="ghost" onClick={handleCopyPhone} title="Kopyala">
-                                <Copy className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    )}
-                    actions={[
-                        {
-                            label: "İptal",
-                            onClick: () => setIsCallModalOpen(false),
-                            variant: "ghost",
-                        },
-                        {
-                            label: "Kaydet",
-                            onClick: () => void handleLogCall(),
-                            variant: "primary",
-                            isLoading: callLoading,
-                        },
-                    ]}
-                >
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Arama Sonucu</label>
-                            <div className="grid grid-cols-2 gap-2">
-                                {[
-                                    { val: "CONNECTED", label: "✅ Ulaşıldı" },
-                                    { val: "BUSY", label: "⛔ Meşgul" },
-                                    { val: "WRONG_NUMBER", label: "❌ Yanlış No" },
-                                    { val: "NO_ANSWER", label: "🔕 Cevap Yok" },
-                                ].map((opt) => (
-                                    <button
-                                        key={opt.val}
-                                        type="button"
-                                        onClick={() => setCallResult(opt.val as "CONNECTED" | "BUSY" | "WRONG_NUMBER" | "NO_ANSWER")}
-                                        className={`
+            {
+                isCallModalOpen && callLead && (
+                    <Modal
+                        isOpen={isCallModalOpen}
+                        onClose={() => setIsCallModalOpen(false)}
+                        title="Arama Sonucu Kaydet"
+                        description={(
+                            <div className="flex items-center gap-2 mt-2 bg-gray-50 p-3 rounded-lg border">
+                                <Phone className="h-5 w-5 text-gray-500" />
+                                <span className="text-lg font-mono font-semibold text-gray-800">{callLead.phone}</span>
+                                <Button size="sm" variant="ghost" onClick={handleCopyPhone} title="Kopyala">
+                                    <Copy className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        )}
+                        actions={[
+                            {
+                                label: "İptal",
+                                onClick: () => setIsCallModalOpen(false),
+                                variant: "ghost",
+                            },
+                            {
+                                label: "Kaydet",
+                                onClick: () => void handleLogCall(),
+                                variant: "primary",
+                                isLoading: callLoading,
+                            },
+                        ]}
+                    >
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Arama Sonucu</label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {[
+                                        { val: "CONNECTED", label: "✅ Ulaşıldı" },
+                                        { val: "BUSY", label: "⛔ Meşgul" },
+                                        { val: "WRONG_NUMBER", label: "❌ Yanlış No" },
+                                        { val: "NO_ANSWER", label: "🔕 Cevap Yok" },
+                                    ].map((opt) => (
+                                        <button
+                                            key={opt.val}
+                                            type="button"
+                                            onClick={() => setCallResult(opt.val as "CONNECTED" | "BUSY" | "WRONG_NUMBER" | "NO_ANSWER")}
+                                            className={`
                                             p-2 rounded-md text-sm border text-left transition
                                             ${callResult === opt.val
-                                                ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500 text-blue-700"
-                                                : "hover:bg-gray-50 border-gray-200 text-gray-700"}
+                                                    ? "bg-blue-50 border-blue-500 ring-1 ring-blue-500 text-blue-700"
+                                                    : "hover:bg-gray-50 border-gray-200 text-gray-700"}
                                         `}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                ))}
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Not (Opsiyonel)</label>
+                                <textarea
+                                    className="w-full border rounded-md p-2 text-sm h-24"
+                                    placeholder="Görüşme notlarınızı buraya ekleyin..."
+                                    value={callNote}
+                                    onChange={(e) => setCallNote(e.target.value)}
+                                />
                             </div>
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Not (Opsiyonel)</label>
-                            <textarea
-                                className="w-full border rounded-md p-2 text-sm h-24"
-                                placeholder="Görüşme notlarınızı buraya ekleyin..."
-                                value={callNote}
-                                onChange={(e) => setCallNote(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                </Modal>
-            )}
+                    </Modal>
+                )
+            }
         </>
     );
 }

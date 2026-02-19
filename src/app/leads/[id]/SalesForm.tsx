@@ -171,9 +171,8 @@ export default function SalesForm({
         }
         if (step === 3) {
             if (!form.transferPreference) errs.push("Transfer tercihi seçilmelidir.");
-            if (!form.hotel) errs.push("Otel seçilmelidir.");
-            if (form.nights === "" || Number(form.nights) <= 0)
-                errs.push("Gece sayısı 1 veya üzeri olmalıdır.");
+            if (form.hotel && (form.nights === "" || Number(form.nights) <= 0))
+                errs.push("Otel seçiliyse gece sayısı 1 veya üzeri olmalıdır.");
             if (form.transferPreference === "YES" && form.transfer.length === 0)
                 errs.push("Transfer seçeneklerinden en az birini işaretleyiniz.");
         }
@@ -193,9 +192,8 @@ export default function SalesForm({
 
         // Step 3 Check
         if (!form.transferPreference) errs.push("Transfer tercihi seçilmelidir.");
-        if (!form.hotel) errs.push("Otel seçilmelidir.");
-        if (form.nights === "" || Number(form.nights) <= 0)
-            errs.push("Gece sayısı 1 veya üzeri olmalıdır.");
+        if (form.hotel && (form.nights === "" || Number(form.nights) <= 0))
+            errs.push("Otel seçiliyse gece sayısı 1 veya üzeri olmalıdır.");
         if (form.transferPreference === "YES" && form.transfer.length === 0)
             errs.push("Transfer seçeneklerinden en az birini işaretleyiniz.");
 
